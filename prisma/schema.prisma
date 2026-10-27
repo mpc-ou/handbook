@@ -1,0 +1,208 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN   // Ban Chủ Nhiệm: Toàn quyền hệ thống
+  EDITOR  // Trưởng/Phó ban, Leader sự kiện: Quyền tạo/sửa bài viết trong danh mục được giao
+  MEMBER  // Thành viên / CTV: Chỉ đọc và làm bài tập
+}
+
+enum ArticleStatus {
+  DRAFT          // Bản nháp của tác giả
+  PENDING_REVIEW // Chờ duyệt
+  PUBLISHED      // Đã xuất bản (khóa sửa, cần rollback về PENDING_REVIEW để sửa)
+}
+
+model User {
+  id                String           @id @default(cuid())
+  ssoId             String           @unique
+  email             String           @unique
+  fullName          String
+  avatarUrl         String?
+  department        String?
+  managedGroups     Json             @default("[]")
+  role              Role             @default(MEMBER)
+  articlesAuthored  Article[]        @relation("ArticleAuthor")
+  articlesUpdated   Article[]        @relation("ArticleUpdater")
+  progress          UserProgress[]
+  quizAttempts      QuizAttempt[]
+  managedCategories CategoryEditor[]
+  likes             ArticleLike[]
+  comments          Comment[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([ssoId])
+  @@index([email])
+}
+
+model CategoryEditor {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+}
+
+model Category {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  icon        String?
+  orderIndex  Int              @default(0)
+  isPublished Boolean          @default(true)
+  depth       Int              @default(1) // Chỉ nhận giá trị 1 hoặc 2
+  parentId    String?
+  parent      Category?        @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[]       @relation("CategoryHierarchy")
+  articles    Article[]
+  editors     CategoryEditor[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([parentId, orderIndex])
+}
+
+model Article {
+  id                    String         @id @default(cuid())
+  title                 String
+  slug                  String         @unique
+  summary               String?
+  coverImage            String?
+  content               Json           @default("[]")
+  plainText             String         @default("") @db.Text
+  readingTime           Int            @default(1)
+  attachments           Json           @default("[]")
+  categoryId            String
+  category              Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderIndex            Int            @default(0)
+  status                ArticleStatus  @default(DRAFT)
+  isPublished           Boolean        @default(false)
+  visibility            String         @default("PUBLIC") // PUBLIC | UNPUBLIC
+  audience              String         @default("INTERNAL") // FREE | INTERNAL
+  requirePrevious       Boolean        @default(false)
+  requireScrollToBottom Boolean        @default(true)
+  passScorePercent      Int?
+  isRequired            Boolean        @default(true)
+  allowedGroups         Json           @default("[]")
+  likesCount            Int            @default(0)
+  viewsCount            Int            @default(0)
+  authorId              String
+  author                User           @relation("ArticleAuthor", fields: [authorId], references: [id])
+  updaterId             String?
+  updater               User?          @relation("ArticleUpdater", fields: [updaterId], references: [id])
+  quiz                  Quiz?
+  progress              UserProgress[]
+  likes                 ArticleLike[]
+  comments              Comment[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([categoryId, orderIndex])
+  @@index([slug])
+  @@index([status])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String    @db.Text
+  articleId String
+  article   Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?   // null = Bậc 1 (gốc), có giá trị = Bậc 2 (trả lời)
+  parent    Comment?  @relation("CommentHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentHierarchy")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([articleId, createdAt])
+  @@index([parentId])
+}
+
+model ArticleLike {
+  id        String   @id @default(cuid())
+  userId    String
+  articleId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, articleId])
+  @@index([articleId])
+  @@index([userId])
+}
+
+model Quiz {
+  id               String        @id @default(cuid())
+  title            String?
+  description      String?
+  articleId        String?       @unique
+  article          Article?      @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  durationMinutes  Int?
+  passScorePercent Int           @default(80)
+  maxAttempts      Int?
+  isExam           Boolean       @default(false)
+  questions        Json          @default("[]")
+  attempts         QuizAttempt[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model UserProgress {
+  id                String    @id @default(cuid())
+  userId            String
+  articleId         String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  hasScrolledBottom Boolean   @default(false)
+  highestQuizScore  Int?
+  isCompleted       Boolean   @default(false)
+  completedAt       DateTime?
+  lastAccessedAt    DateTime  @default(now())
+
+  @@unique([userId, articleId])
+  @@index([userId, isCompleted])
+}
+
+model QuizAttempt {
+  id           String    @id @default(cuid())
+  userId       String
+  quizId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  scorePercent Int
+  answers      Json
+  isPassed     Boolean
+  timeSpentSec Int?
+  status       String    @default("COMPLETED")
+  feedback     String?
+  gradedBy     String?
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId, quizId])
+  @@index([quizId, createdAt])
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?  @default("#f97316")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}

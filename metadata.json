@@ -1,0 +1,6 @@
+{
+  "name": "MPClub Handbook - Hệ thống sổ tay nội bộ & LMS",
+  "description": "Hệ thống Sổ tay Nội bộ kết hợp LMS lộ trình tuần tự dành riêng cho Câu lạc bộ Lập trình Học thuật (MPC).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
