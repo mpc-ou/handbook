@@ -10,7 +10,6 @@ import { ArticleCover } from "@/components/ui/ArticleCover";
 import { ScrollTracker } from "@/components/reader/ScrollTracker";
 import { QuizRunner } from "@/components/reader/QuizRunner";
 import { CommentSection } from "@/components/comments/CommentSection";
-import { AsciiReveal } from "@/components/ui/AsciiReveal";
 import { ArticleSkeleton } from "@/components/reader/ArticleSkeleton";
 import {
   canUserManageCategory,
@@ -70,6 +69,8 @@ export function ArticleClientPage({
     articles,
     progressMap,
     dataLoading,
+    authLoading,
+    dbError,
     signInWithMpcOidc,
     markArticleScrolled,
     submitArticleQuiz,
@@ -81,7 +82,6 @@ export function ArticleClientPage({
   const [scrollProgressPct, setScrollProgressPct] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
 
-  // Sync with context articles or fallback to initialArticle
   const article =
     articles.find((a) => a.slug === slug || a.id === slug) || initialArticle;
 
@@ -93,7 +93,6 @@ export function ArticleClientPage({
     }
   }, [article?.viewsCount]);
 
-  // Debounced view count registration (waits 2.5s of reading, deduplicated per browser session)
   useEffect(() => {
     if (!article?.id) return;
     const sessionKey = `mpc_viewed_${article.id}`;
@@ -118,7 +117,6 @@ export function ArticleClientPage({
     return () => clearTimeout(timer);
   }, [article?.id, recordArticleView]);
 
-  // Mobile/Tablet top reading progress bar
   useEffect(() => {
     const onScroll = () => {
       const docEl = document.documentElement;
@@ -152,52 +150,11 @@ export function ArticleClientPage({
     await markArticleScrolled(article.id);
   }, [article, markArticleScrolled]);
 
-  if (!article) {
-    if (dataLoading) {
-      return (
-        <AppShell>
-          <ArticleSkeleton />
-        </AppShell>
-      );
-    }
-
-    return (
-      <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-        <div className="mx-auto max-w-2xl px-6 py-16">
-          <Card className="p-8 text-center items-center space-y-3">
-            <h1 className="text-2xl font-bold text-foreground">
-              Article Not Found
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              The path{" "}
-              <code className="font-mono text-primary">/docs/{slug}</code>{" "}
-              does not exist or has been removed.
-            </p>
-            <Button asChild size="sm">
-              <Link href="/">
-                <ArrowLeft className="size-4" />
-                <span>Return to Handbook Home</span>
-              </Link>
-            </Button>
-          </Card>
-        </div>
-      </AppShell>
-    );
-  }
-
-  const access = checkArticleAccess(article.id, articles, progressMap);
-  const myProgress = progressMap[article.id];
-  const isScrolledBottom =
-    !article.requireScrollToBottom || Boolean(myProgress?.hasScrolledBottom);
-  const isArticleCompleted = Boolean(myProgress?.isCompleted);
-  const isLiked = Boolean(user && article.likedUserIds?.includes(user.uid));
-  const likesCount = article.likesCount ?? 0;
-
-  // Category Completion & Next Category Navigation
-  const currentCat = categories.find((c) => c.id === article.categoryId);
+  const currentCat = article ? categories.find((c) => c.id === article.categoryId) : undefined;
 
   const currentRootCategory = React.useMemo(() => {
-    let cat = currentCat;
+    if (!currentCat) return undefined;
+    let cat: typeof currentCat | undefined = currentCat;
     while (cat && cat.parentId) {
       const parent = categories.find((c) => c.id === cat?.parentId);
       if (!parent) break;
@@ -207,14 +164,16 @@ export function ArticleClientPage({
   }, [currentCat, categories]);
 
   const categoryIds = React.useMemo(() => {
+    if (!article) return [];
     if (!currentRootCategory) return [article.categoryId];
     const subIds = categories
       .filter((c) => c.depth === 2 && c.parentId === currentRootCategory.id)
       .map((c) => c.id);
     return [currentRootCategory.id, ...subIds];
-  }, [currentRootCategory, categories, article.categoryId]);
+  }, [currentRootCategory, categories, article?.categoryId]);
 
   const categoryArticles = React.useMemo(() => {
+    if (categoryIds.length === 0) return [];
     return articles
       .filter((a) => a.isPublished && categoryIds.includes(a.categoryId))
       .sort((a, b) => a.orderIndex - b.orderIndex);
@@ -276,6 +235,85 @@ export function ArticleClientPage({
     }
   }, [isCategoryCompleted]);
 
+  // While checking authentication or loading handbook data, show Skeleton
+  // to avoid flashing forbidden/locked content before access evaluation
+  if (dataLoading || authLoading) {
+    return (
+      <AppShell>
+        <ArticleSkeleton />
+      </AppShell>
+    );
+  }
+
+  if (!article) {
+    if (dbError) {
+      return (
+        <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+          <div className="mx-auto max-w-2xl px-6 py-16">
+            <Card className="border-destructive/30 bg-destructive/5 p-8 text-center items-center space-y-3">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+                <ShieldAlert className="size-6" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">
+                Lỗi kết nối cơ sở dữ liệu
+              </h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Hệ thống không thể tải dữ liệu từ PostgreSQL ({dbError}). Vui lòng kiểm tra lại đường truyền mạng hoặc liên hệ quản trị viên.
+              </p>
+              <div className="flex justify-center gap-3 pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="gap-1.5 font-semibold cursor-pointer"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span>Thử lại</span>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="cursor-pointer">
+                  <Link href="/">
+                    <ArrowLeft className="size-4 mr-1" />
+                    <span>Quay về trang chủ</span>
+                  </Link>
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </AppShell>
+      );
+    }
+
+    return (
+      <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+        <div className="mx-auto max-w-2xl px-6 py-16">
+          <Card className="p-8 text-center items-center space-y-3">
+            <h1 className="text-2xl font-bold text-foreground">
+              Article Not Found
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              The path{" "}
+              <code className="font-mono text-primary">/docs/{slug}</code>{" "}
+              does not exist or has been removed.
+            </p>
+            <Button asChild size="sm">
+              <Link href="/">
+                <ArrowLeft className="size-4" />
+                <span>Return to Handbook Home</span>
+              </Link>
+            </Button>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const access = checkArticleAccess(article.id, articles, progressMap);
+  const myProgress = progressMap[article.id];
+  const isScrolledBottom =
+    !article.requireScrollToBottom || Boolean(myProgress?.hasScrolledBottom);
+  const isArticleCompleted = Boolean(myProgress?.isCompleted);
+  const isLiked = Boolean(user && article.likedUserIds?.includes(user.uid));
+  const likesCount = article.likesCount ?? 0;
+
   // Ordered articles in the same category for Prev / Next sequential navigation
   const siblingArticles = articles
     .filter((a) => a.categoryId === article.categoryId && a.isPublished)
@@ -290,6 +328,55 @@ export function ArticleClientPage({
   const clientSafeQuestions = stripQuizAnswersForClient(
     article.quizQuestions || []
   );
+
+  // Draft / Pending Review Gate:
+  // Non-published articles can ONLY be viewed by ADMIN, EDITOR, or the original author.
+  // Regular users (MEMBER) or guests cannot view them via /docs/[...slug].
+  const isStaffOrAuthor = Boolean(
+    user &&
+      (user.role === "ADMIN" ||
+        user.role === "EDITOR" ||
+        user.uid === article.authorId)
+  );
+
+  if (!article.isPublished || article.status !== "PUBLISHED") {
+    if (!isStaffOrAuthor) {
+      return (
+        <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+          <div className="mx-auto max-w-2xl px-6 py-16">
+            <Card className="border-border bg-card p-8 text-center items-center gap-4">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <Lock className="size-6" />
+              </div>
+              <Badge variant="warning">
+                {article.status === "PENDING_REVIEW"
+                  ? "Đang chờ duyệt (Pending Review)"
+                  : "Bản nháp (Draft)"}
+              </Badge>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+                Bài viết chưa được xuất bản
+              </h1>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
+                Bài viết <strong>&ldquo;{article.title}&rdquo;</strong> hiện đang ở trạng thái{" "}
+                <span className="font-semibold text-foreground lowercase">
+                  {article.status === "PENDING_REVIEW" ? "chờ kiểm duyệt" : "bản nháp"}
+                </span>{" "}
+                và chưa được công khai cho người đọc.
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button asChild size="sm" className="cursor-pointer">
+                  <Link href="/">
+                    <ArrowLeft className="size-4 mr-1.5" />
+                    <span>Quay về trang chủ</span>
+                  </Link>
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </AppShell>
+      );
+    }
+  }
 
   // Group Privacy Gate
   const groupAccess = canUserViewArticle(user, article);
@@ -392,6 +479,29 @@ export function ArticleClientPage({
 
   return (
     <AppShell>
+      {/* Draft / Pending Preview Notice Banner for Staff & Author */}
+      {(!article.isPublished || article.status !== "PUBLISHED") && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-center text-xs sm:text-sm text-amber-800 dark:text-amber-300">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-medium">
+              <Badge variant="outline" className="border-amber-500/40 bg-amber-500/20 text-amber-900 dark:text-amber-200 uppercase text-[10px] tracking-wide">
+                Chế độ xem trước
+              </Badge>
+              <span>
+                Bài viết này đang ở trạng thái{" "}
+                <strong>{article.status === "PENDING_REVIEW" ? "Pending Review" : "Draft"}</strong>{" "}
+                và chỉ Admin, Editor hoặc tác giả mới có thể thấy.
+              </span>
+            </div>
+            {isStaffOrAuthor && (
+              <Button asChild size="xs" variant="outline" className="h-7 text-xs border-amber-500/40 hover:bg-amber-500/20">
+                <Link href={`/studio/articles/${article.id}`}>Chỉnh sửa trong Studio</Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mobile / Tablet Top Sticky Reading Progress Bar */}
       <div className="sticky top-14 z-20 xl:hidden">
         <Progress value={scrollProgressPct} className="h-1 rounded-none" />
@@ -422,7 +532,7 @@ export function ArticleClientPage({
           {/* Article H1 & Metadata */}
           <header className="mb-8 border-b border-border pb-6 space-y-3.5">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground text-balance">
-              <AsciiReveal text={article.title} durationMs={650} />
+              {article.title}
             </h1>
 
             {article.summary && (

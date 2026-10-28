@@ -112,6 +112,7 @@ export async function GET() {
       department: u.department || "",
       managedGroups: (u.managedGroups as any) || [],
       role: u.role,
+      noPassword: Boolean(u.noPassword),
       managedCategoryIds: u.managedCategories.map((m) => m.categoryId),
       createdAt: u.createdAt.toISOString(),
       updatedAt: u.updatedAt.toISOString(),

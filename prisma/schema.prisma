@@ -25,6 +25,8 @@ model User {
   id                String           @id @default(cuid())
   ssoId             String           @unique
   email             String           @unique
+  passwordHash      String?
+  noPassword        Boolean          @default(false)
   fullName          String
   avatarUrl         String?
   department        String?
@@ -37,6 +39,7 @@ model User {
   managedCategories CategoryEditor[]
   likes             ArticleLike[]
   comments          Comment[]
+  uploadedFiles     UploadedFile[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -106,6 +109,7 @@ model Article {
   progress              UserProgress[]
   likes                 ArticleLike[]
   comments              Comment[]
+  uploadedFiles         UploadedFile[]
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
@@ -205,4 +209,23 @@ model Department {
   updatedAt   DateTime @updatedAt
 
   @@index([name])
+}
+
+model UploadedFile {
+  id           String    @id @default(cuid())
+  publicId     String    @unique
+  url          String
+  bytes        Int?
+  format       String?
+  uploaderId   String?
+  uploader     User?     @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  isAttached   Boolean   @default(false) // True when saved into an article/quiz/profile
+  articleId    String?
+  article      Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([publicId])
+  @@index([isAttached, createdAt])
+  @@index([uploaderId])
 }

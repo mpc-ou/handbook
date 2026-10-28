@@ -79,6 +79,7 @@ export default function StudioArticlesPage() {
     dataLoading,
     deleteArticle,
     duplicateArticle,
+    updateArticleStatus,
     bulkUpdateArticles,
     createCategory,
     updateCategory,
@@ -496,6 +497,7 @@ export default function StudioArticlesPage() {
         header: "",
         cell: ({ row }) => {
           const art = row.original;
+          const currentStatus = art.status || (art.isPublished ? "PUBLISHED" : "DRAFT");
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -503,7 +505,7 @@ export default function StudioArticlesPage() {
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 text-xs">
+              <DropdownMenuContent align="end" className="w-48 text-xs">
                 <DropdownMenuItem asChild>
                   <Link href={`/studio/articles/${art.id}`} className="cursor-pointer">
                     <FileEdit className="size-3.5 mr-2" />
@@ -537,6 +539,57 @@ export default function StudioArticlesPage() {
                   <span>Duplicate</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+
+                {/* Quick Status Changers */}
+                {currentStatus !== "PUBLISHED" && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await updateArticleStatus(art.id, "PUBLISHED");
+                      } catch (e: any) {
+                        showToast(e.message || "Failed to publish", "error");
+                      }
+                    }}
+                    className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer"
+                  >
+                    <CheckCircle2 className="size-3.5 mr-2" />
+                    <span>Publish (Xuất bản)</span>
+                  </DropdownMenuItem>
+                )}
+
+                {currentStatus !== "PENDING_REVIEW" && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await updateArticleStatus(art.id, "PENDING_REVIEW");
+                      } catch (e: any) {
+                        showToast(e.message || "Failed to submit review", "error");
+                      }
+                    }}
+                    className="text-blue-600 dark:text-blue-400 cursor-pointer"
+                  >
+                    <Clock className="size-3.5 mr-2" />
+                    <span>Gửi duyệt (Pending)</span>
+                  </DropdownMenuItem>
+                )}
+
+                {currentStatus !== "DRAFT" && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await updateArticleStatus(art.id, "DRAFT");
+                      } catch (e: any) {
+                        showToast(e.message || "Failed to revert to draft", "error");
+                      }
+                    }}
+                    className="text-amber-600 dark:text-amber-400 cursor-pointer"
+                  >
+                    <RotateCcw className="size-3.5 mr-2" />
+                    <span>Về bản nháp (Draft)</span>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
                     setDeleteTargetIds([art.id]);
@@ -553,7 +606,7 @@ export default function StudioArticlesPage() {
         },
       },
     ],
-    [categoryMap, duplicateArticle]
+    [categoryMap, duplicateArticle, updateArticleStatus, showToast]
   );
 
   const selectedCategoryObj = categories.find((c) => c.id === selectedCategoryId);
@@ -784,7 +837,7 @@ export default function StudioArticlesPage() {
                                 className="cursor-pointer"
                               >
                                 <FileEdit className="size-3.5 mr-2" />
-                                <span>Edit Name & Description</span>
+                                <span>Edit</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -842,7 +895,7 @@ export default function StudioArticlesPage() {
                                         className="cursor-pointer"
                                       >
                                         <FileEdit className="size-3.5 mr-2" />
-                                        <span>Edit Name & Description</span>
+                                        <span>Edit</span>
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
@@ -1045,7 +1098,7 @@ export default function StudioArticlesPage() {
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 text-xs">
+                            <DropdownMenuContent align="end" className="w-48 text-xs">
                               <DropdownMenuItem asChild>
                                 <Link href={`/studio/articles/${art.id}`} className="cursor-pointer">
                                   <FileEdit className="size-3.5 mr-2" />
@@ -1078,6 +1131,57 @@ export default function StudioArticlesPage() {
                                 <Copy className="size-3.5 mr-2" />
                                 <span>Duplicate</span>
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+
+                              {/* Quick Status Changers */}
+                              {(art.status || (art.isPublished ? "PUBLISHED" : "DRAFT")) !== "PUBLISHED" && (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await updateArticleStatus(art.id, "PUBLISHED");
+                                    } catch (e: any) {
+                                      showToast(e.message || "Failed to publish", "error");
+                                    }
+                                  }}
+                                  className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer"
+                                >
+                                  <CheckCircle2 className="size-3.5 mr-2" />
+                                  <span>Publish (Xuất bản)</span>
+                                </DropdownMenuItem>
+                              )}
+
+                              {(art.status || (art.isPublished ? "PUBLISHED" : "DRAFT")) !== "PENDING_REVIEW" && (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await updateArticleStatus(art.id, "PENDING_REVIEW");
+                                    } catch (e: any) {
+                                      showToast(e.message || "Failed to submit review", "error");
+                                    }
+                                  }}
+                                  className="text-blue-600 dark:text-blue-400 cursor-pointer"
+                                >
+                                  <Clock className="size-3.5 mr-2" />
+                                  <span>Gửi duyệt (Pending)</span>
+                                </DropdownMenuItem>
+                              )}
+
+                              {(art.status || (art.isPublished ? "PUBLISHED" : "DRAFT")) !== "DRAFT" && (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await updateArticleStatus(art.id, "DRAFT");
+                                    } catch (e: any) {
+                                      showToast(e.message || "Failed to revert to draft", "error");
+                                    }
+                                  }}
+                                  className="text-amber-600 dark:text-amber-400 cursor-pointer"
+                                >
+                                  <RotateCcw className="size-3.5 mr-2" />
+                                  <span>Về bản nháp (Draft)</span>
+                                </DropdownMenuItem>
+                              )}
+
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => {
@@ -1251,8 +1355,8 @@ export default function StudioArticlesPage() {
               <DialogTitle>
                 {categoryModalMode === "create"
                   ? categoryFormParentId
-                    ? "Add Subcategory (Tier 2)"
-                    : "Add Category (Tier 1)"
+                    ? "Add Subcategory"
+                    : "Add Category"
                   : "Edit Category"}
               </DialogTitle>
               <DialogDescription>

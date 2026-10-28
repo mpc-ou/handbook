@@ -6,6 +6,8 @@ import { useHandbook } from "@/context/HandbookContext";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate, formatDateTime } from "@/lib/date";
@@ -17,9 +19,14 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Eye,
+  EyeOff,
   GraduationCap,
   Heart,
   HelpCircle,
+  KeyRound,
+  Loader2,
+  Lock,
   Mail,
   ShieldCheck,
   User,
@@ -27,8 +34,61 @@ import {
 } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user, articles, categories, progressMap, quizAttempts, showToast } = useHandbook();
-  const [activeTab, setActiveTab] = useState<"reading" | "quizzes" | "likes">("reading");
+  const { user, articles, categories, progressMap, quizAttempts, ssoStatus, showToast } = useHandbook();
+  const [activeTab, setActiveTab] = useState<"reading" | "quizzes" | "likes" | "security">("reading");
+  const isEmailLoginActive = ssoStatus?.emailLoginEnabled ?? true;
+
+  // Password management state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      showToast("Mật khẩu mới phải có tối thiểu 6 ký tự.", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast("Xác nhận mật khẩu mới không khớp.", "error");
+      return;
+    }
+    if (!user?.noPassword && !currentPassword) {
+      showToast("Vui lòng nhập mật khẩu hiện tại.", "error");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: user?.noPassword ? undefined : currentPassword,
+          newPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || "Cập nhật mật khẩu thành công!", "success");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        if (user) {
+          user.noPassword = false;
+        }
+      } else {
+        showToast(data.error || "Không thể cập nhật mật khẩu.", "error");
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Lỗi kết nối máy chủ.", "error");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   // Category mapping
   const categoryMap = useMemo(() => {
@@ -287,6 +347,20 @@ export default function ProfilePage() {
           >
             Liked Articles ({likedArticles.length})
           </button>
+
+          {isEmailLoginActive && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("security")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                activeTab === "security"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              Security & Password
+            </button>
+          )}
         </div>
 
         {/* TAB 1: Reading Progress */}
@@ -506,6 +580,130 @@ export default function ProfilePage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 4: Security & Password */}
+        {activeTab === "security" && isEmailLoginActive && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs max-w-xl space-y-5">
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Lock className="size-4.5 text-primary" />
+                <span>
+                  {user?.noPassword ? "Thiết lập mật khẩu mới" : "Đổi mật khẩu"}
+                </span>
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {user?.noPassword ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">
+                    Tài khoản của bạn được liên kết qua MPC-SSO và chưa có mật khẩu riêng. Bạn có thể tạo mật khẩu ngay bên dưới để đăng nhập bằng Email + Mật khẩu mà không cần nhập mật khẩu cũ.
+                  </span>
+                ) : (
+                  "Cập nhật mật khẩu định kỳ để bảo vệ tài khoản thành viên của bạn."
+                )}
+              </p>
+            </div>
+
+            <form onSubmit={handleUpdatePassword} className="space-y-4 pt-1">
+              {!user?.noPassword && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="current-pass" className="text-xs font-medium">
+                    Mật khẩu hiện tại
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="current-pass"
+                      type={showCurrentPass ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="pr-9 text-xs h-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showCurrentPass ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="new-pass" className="text-xs font-medium">
+                  {user?.noPassword ? "Mật khẩu mong muốn" : "Mật khẩu mới"}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="new-pass"
+                    type={showNewPass ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Tối thiểu 6 ký tự"
+                    required
+                    minLength={6}
+                    className="pr-9 text-xs h-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showNewPass ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm-pass" className="text-xs font-medium">
+                  Xác nhận mật khẩu mới
+                </Label>
+                <Input
+                  id="confirm-pass"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới"
+                  required
+                  minLength={6}
+                  className="text-xs h-9"
+                />
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="font-semibold text-xs cursor-pointer gap-2"
+                >
+                  {passwordLoading ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="size-3.5" />
+                      <span>
+                        {user?.noPassword ? "Tạo mật khẩu" : "Cập nhật mật khẩu"}
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
         )}
       </div>

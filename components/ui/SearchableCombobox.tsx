@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, Search, X } from "lucide-react";
+import { Check, ChevronDown, Lock, Search, X } from "lucide-react";
 
 export interface ComboboxOption {
   value: string;
@@ -18,6 +18,10 @@ export interface ComboboxOption {
   icon?: React.ComponentType<{ className?: string }>;
   depth?: number;
   badge?: string;
+  /** When true the option is shown but cannot be selected */
+  disabled?: boolean;
+  /** Reason shown (in red) when hovering a disabled option */
+  disabledReason?: string;
 }
 
 interface SearchableComboboxProps {
@@ -157,16 +161,21 @@ export function SearchableCombobox({
                 <button
                   key={opt.value}
                   type="button"
+                  aria-disabled={opt.disabled || undefined}
+                  title={opt.disabled ? opt.disabledReason : undefined}
                   onClick={() => {
+                    if (opt.disabled) return;
                     onValueChange(opt.value);
                     setOpen(false);
                     setSearch("");
                   }}
                   className={cn(
-                    "flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer",
-                    isSelected
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground",
+                    "group/opt flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors",
+                    opt.disabled
+                      ? "cursor-not-allowed text-muted-foreground/50 hover:bg-destructive/5"
+                      : isSelected
+                      ? "bg-primary/10 text-primary font-medium cursor-pointer"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer",
                     opt.depth === 2 && "pl-5"
                   )}
                 >
@@ -185,8 +194,15 @@ export function SearchableCombobox({
                         : opt.label}
                     </span>
                   </div>
-                  {isSelected && (
-                    <Check className="size-3.5 shrink-0 text-primary" />
+                  {opt.disabled ? (
+                    <span className="flex items-center gap-1 shrink-0 text-[10px]">
+                      <Lock className="size-3 text-muted-foreground/60 group-hover/opt:text-destructive" />
+                      <span className="hidden group-hover/opt:inline text-destructive font-medium">
+                        {opt.disabledReason || "No permission"}
+                      </span>
+                    </span>
+                  ) : (
+                    isSelected && <Check className="size-3.5 shrink-0 text-primary" />
                   )}
                 </button>
               );

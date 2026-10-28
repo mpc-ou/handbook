@@ -273,7 +273,7 @@ export function QuizBuilder({
               <div className="flex items-center gap-2">
                 <HelpCircle className="size-5 text-primary" />
                 <CardTitle className="text-base font-bold">
-                  Lesson Assessment & Quiz Configuration
+                  Lesson Assessment
                 </CardTitle>
               </div>
               <p className="text-xs text-muted-foreground">

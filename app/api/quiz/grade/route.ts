@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { INITIAL_ARTICLES } from "@/lib/seed-data";
 import { QuizGradeResponse, QuizQuestion } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -69,20 +68,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (questions.length === 0) {
-      const seedArticle = INITIAL_ARTICLES.find((a) => a.id === articleId);
-      questions =
-        providedQuestions && providedQuestions.length > 0
-          ? providedQuestions
-          : seedArticle?.quizQuestions || [];
-      if (requiredScore === undefined) {
-        requiredScore = seedArticle?.passScorePercent ?? 80;
-      }
+    if (questions.length === 0 && providedQuestions && providedQuestions.length > 0) {
+      questions = providedQuestions;
     }
 
     if (questions.length === 0) {
       return NextResponse.json(
-        { error: "This article does not have an attached quiz." },
+        { error: "This article does not have an attached quiz in the database." },
         { status: 400 }
       );
     }

@@ -49,7 +49,23 @@ export async function uploadToCloudinary(file: File): Promise<string> {
   }
 
   const data = await uploadRes.json();
+  const secureUrl = String(data.secure_url).replace("/upload/", "/upload/f_auto,q_auto/");
 
-  // 3. Inject f_auto,q_auto optimization parameters into secure_url
-  return String(data.secure_url).replace("/upload/", "/upload/f_auto,q_auto/");
+  // 3. Register newly uploaded file in backend tracking (pending confirmation/save)
+  try {
+    fetch("/api/upload/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        publicId: data.public_id,
+        url: secureUrl,
+        bytes: data.bytes,
+        format: data.format,
+      }),
+    }).catch(() => {});
+  } catch (regErr) {
+    console.warn("Could not register file in tracking system:", regErr);
+  }
+
+  return secureUrl;
 }

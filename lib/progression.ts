@@ -84,9 +84,9 @@ export function stripQuizAnswersForClient(
 }
 
 /**
- * Checks if a user (`ADMIN` or `EDITOR`) has permission to manage a specific category.
- * Supports 2-level inheritance: if an EDITOR is assigned to a Level 1 parent category,
- * they automatically have permission on its Level 2 child categories.
+ * Checks if a user (`ADMIN` or `EDITOR`) has permission to manage articles in a category.
+ * - Both ADMIN and EDITOR have full permissions across all categories.
+ * - MEMBER does not have permission.
  */
 export function canUserManageCategory(
   user: UserProfile | null,
@@ -94,17 +94,7 @@ export function canUserManageCategory(
   categories: CategoryRecord[]
 ): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
-
-  if (user.role === "EDITOR") {
-    const managed = user.managedCategoryIds || [];
-    if (managed.includes(categoryId)) return true;
-
-    const category = categories.find((c) => c.id === categoryId);
-    if (category?.parentId && managed.includes(category.parentId)) {
-      return true;
-    }
-  }
+  if (user.role === "ADMIN" || user.role === "EDITOR") return true;
 
   return false;
 }

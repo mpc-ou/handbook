@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { isSuperAdminEmail } from "@/lib/constants";
 import type { CommentRecord, Role } from "@/types";
-
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "trieukon1011@gmail.com";
 
 export async function GET(req: NextRequest) {
   try {
@@ -195,7 +194,7 @@ export async function DELETE(req: NextRequest) {
 
     const isAuthor = caller && caller.id === targetComment.userId;
     const isAdmin = caller && caller.role === "ADMIN";
-    const isSuperAdmin = caller && caller.email === SUPER_ADMIN_EMAIL;
+    const isSuperAdmin = caller && isSuperAdminEmail(caller.email);
 
     if (!isAuthor && !isAdmin && !isSuperAdmin) {
       return NextResponse.json(

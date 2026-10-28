@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   title: "MPC Handbook — Internal Handbook & Curriculum Roadmap",
   description:
     "Standardized internal handbook and sequential curriculum system for the Academic Programming Club (MPC), featuring MPC-SSO, BlockNote editor, and assessments.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/favicon.ico",
+  },
   openGraph: {
     title: "MPC Handbook — Internal Handbook & Curriculum Roadmap",
     description:

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMpcSsoConfigured } from "@/lib/auth";
+import { isEmailLoginEnabled, getSuperAdminEmails } from "@/lib/constants";
 
 export async function GET() {
   const cloudinaryConfigured = Boolean(
@@ -14,5 +15,7 @@ export async function GET() {
     clientIdConfigured: Boolean(process.env.MPC_SSO_CLIENT_ID),
     cloudinaryConfigured,
     cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || null,
+    emailLoginEnabled: isEmailLoginEnabled(),
+    superAdminEmails: getSuperAdminEmails(),
   });
 }

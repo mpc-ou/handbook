@@ -36,6 +36,10 @@ export function CommandSearch() {
 
   const publishedArticles = articles
     .filter((a) => {
+      // 1. Only PUBLISHED articles can appear in global search
+      if (!a.isPublished || a.status !== "PUBLISHED") {
+        return false;
+      }
       const isUnpublic = (a.visibility || "").toUpperCase() === "UNPUBLIC";
       const isStaff = user?.role === "ADMIN" || user?.role === "EDITOR";
       if (isUnpublic) return isStaff;
@@ -43,7 +47,7 @@ export function CommandSearch() {
         const aud = (a.audience || "INTERNAL").toUpperCase();
         if (aud === "INTERNAL") return false;
       }
-      return a.isPublished;
+      return true;
     })
     .sort((a, b) => a.orderIndex - b.orderIndex);
 

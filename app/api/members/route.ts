@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "trieukon1011@gmail.com";
+import { isSuperAdminEmail } from "@/lib/constants";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -27,14 +26,14 @@ export async function PUT(req: NextRequest) {
       caller = await prisma.user.findFirst({ where: { role: "ADMIN" } });
     }
 
-    if (!caller || (caller.role !== "ADMIN" && caller.email !== SUPER_ADMIN_EMAIL)) {
+    if (!caller || (caller.role !== "ADMIN" && !isSuperAdminEmail(caller.email))) {
       return NextResponse.json(
         { success: false, error: "You do not have permission to manage members." },
         { status: 403 }
       );
     }
 
-    const isSuperAdmin = caller.email === SUPER_ADMIN_EMAIL;
+    const isSuperAdmin = isSuperAdminEmail(caller.email);
 
     // Target user
     const targetUser = await prisma.user.findUnique({ where: { id: uid } });
@@ -43,7 +42,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // If target user is Super Admin, no regular admin can modify
-    if (targetUser.email === SUPER_ADMIN_EMAIL && caller.id !== targetUser.id && !isSuperAdmin) {
+    if (isSuperAdminEmail(targetUser.email) && caller.id !== targetUser.id && !isSuperAdmin) {
       return NextResponse.json(
         { success: false, error: "Cannot modify Super Admin account." },
         { status: 403 }

@@ -59,8 +59,10 @@
     "@radix-ui/react-tooltip": "1.4.1",
     "@tanstack/react-table": "^8.21.2",
     "autoprefixer": "^10.4.21",
+    "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
     "date-fns": "^4.4.0",
@@ -78,6 +80,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/bcryptjs": "^3.0.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",

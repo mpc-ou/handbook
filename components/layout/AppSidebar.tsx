@@ -77,11 +77,23 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   const visibleArticles = articles
     .filter((a) => {
+      const isPublished = a.isPublished && a.status === "PUBLISHED";
       const isUnpublic = (a.visibility || "").toUpperCase() === "UNPUBLIC";
       const isReadingThis = a.slug === currentSlug || a.id === currentSlug;
-      const isStaff = user?.role === "ADMIN" || user?.role === "EDITOR";
+      const isStaffOrAuthor = Boolean(
+        user &&
+          (user.role === "ADMIN" ||
+            user.role === "EDITOR" ||
+            user.uid === a.authorId)
+      );
+
+      // Non-published articles are only visible in sidebar to Staff or their Author
+      if (!isPublished && !isStaffOrAuthor) {
+        return false;
+      }
+
       if (isUnpublic) {
-        return isReadingThis || isStaff;
+        return isReadingThis || isStaffOrAuthor;
       }
       if (!user) {
         const aud = (a.audience || "INTERNAL").toUpperCase();
@@ -89,7 +101,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           return false;
         }
       }
-      return a.isPublished || isStaff;
+      return isPublished || isStaffOrAuthor;
     })
     .sort((a, b) => a.orderIndex - b.orderIndex);
 

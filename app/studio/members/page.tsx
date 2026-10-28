@@ -66,8 +66,6 @@ interface MemberWithStats extends UserProfile {
   statusKey: "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
 }
 
-const SUPER_ADMIN_EMAIL = "trieukon1011@gmail.com";
-
 function roleLabel(role: Role): string {
   if (role === "ADMIN") return "Administrator";
   if (role === "EDITOR") return "Department Editor";
@@ -84,6 +82,7 @@ export default function StudioMembersPage() {
     allProgress,
     quizAttempts,
     dataLoading,
+    ssoStatus,
     updateUserRoleAndPermissions,
     saveDepartment,
     deleteDepartment,
@@ -289,7 +288,8 @@ export default function StudioMembersPage() {
         ),
         cell: ({ row }) => {
           const m = row.original;
-          if (m.email === SUPER_ADMIN_EMAIL) {
+          const adminEmails = ssoStatus?.superAdminEmails || ["trieukon1011@gmail.com"];
+          if (adminEmails.includes(m.email.toLowerCase())) {
             return (
               <Badge
                 variant="default"
@@ -929,8 +929,9 @@ export default function StudioMembersPage() {
                   {/* Tab 2: Explicit Save Permissions Form */}
                   <TabsContent value="permissions" className="space-y-5 mt-0">
                     {(() => {
-                      const isCurrentSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
-                      const isTargetSuperAdmin = selectedMember?.email === SUPER_ADMIN_EMAIL;
+                      const adminEmails = ssoStatus?.superAdminEmails || ["trieukon1011@gmail.com"];
+                      const isCurrentSuperAdmin = Boolean(currentUser?.email && adminEmails.includes(currentUser.email.toLowerCase()));
+                      const isTargetSuperAdmin = Boolean(selectedMember?.email && adminEmails.includes(selectedMember.email.toLowerCase()));
                       const isTargetAdmin = selectedMember?.role === "ADMIN";
                       const canModifyTarget =
                         isCurrentSuperAdmin ||

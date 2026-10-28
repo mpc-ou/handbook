@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { slugify, extractPlainTextFromBlocks, estimateReadingTime } from "@/lib/seed-data";
+import { extractCloudinaryUrlsFromArticle, syncArticleAttachments } from "@/lib/cloudinary-server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -152,6 +153,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Sync uploaded Cloudinary files into database as attached
+    const activeUrls = extractCloudinaryUrlsFromArticle({
+      coverImage: article.coverImage,
+      content: article.content,
+      attachments: article.attachments,
+    });
+    syncArticleAttachments(article.id, activeUrls).catch(() => {});
+
     return NextResponse.json({
       success: true,
       article: {
@@ -292,6 +301,14 @@ export async function PUT(req: NextRequest) {
         author: { select: { fullName: true } },
       },
     });
+
+    // Sync uploaded Cloudinary files into database as attached
+    const activeUrls = extractCloudinaryUrlsFromArticle({
+      coverImage: reloaded?.coverImage || updated.coverImage,
+      content: reloaded?.content || updated.content,
+      attachments: reloaded?.attachments || updated.attachments,
+    });
+    syncArticleAttachments(updated.id, activeUrls).catch(() => {});
 
     return NextResponse.json({
       success: true,

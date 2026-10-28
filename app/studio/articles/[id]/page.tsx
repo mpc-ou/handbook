@@ -11,6 +11,7 @@ import { ArticleRenderer } from "@/components/reader/ArticleRenderer";
 import { ArticleCover } from "@/components/ui/ArticleCover";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { formatTime } from "@/lib/date";
+import { canUserManageCategory } from "@/lib/progression";
 import { cn } from "@/lib/utils";
 import {
   estimateReadingTime,
@@ -191,6 +192,29 @@ export default function StudioArticleEditorPage() {
     existingArticle?.status || (existingArticle?.isPublished ? "PUBLISHED" : "DRAFT")
   );
   const isLocked = !isNew && status === "PUBLISHED";
+
+  // Category-level edit permission for the current user
+  const canEditCategory = (catId: string) =>
+    canUserManageCategory(user, catId, categories);
+  const noPerm = Boolean(user) && !!categoryId && !canEditCategory(categoryId);
+  const noPermReason =
+    user?.role === "MEMBER"
+      ? "Members cannot edit articles."
+      : "You are not assigned to manage this category.";
+  const editableCategoryNames = categories
+    .filter((c) => canEditCategory(c.id))
+    .map((c) => c.name);
+
+  // New article: auto-pick the first category the user is allowed to edit
+  useEffect(() => {
+    if (!isNew || !user || queryCategoryId || categories.length === 0) return;
+    if (categoryId && canUserManageCategory(user, categoryId, categories)) return;
+    const firstAllowed = categories.find((c) =>
+      canUserManageCategory(user, c.id, categories)
+    );
+    if (firstAllowed) setCategoryId(firstAllowed.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, user, categories, queryCategoryId]);
   const [blocks, setBlocks] = useState<EditorBlock[]>(
     existingArticle?.content || [
       {
@@ -734,7 +758,7 @@ export default function StudioArticleEditorPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleRollbackToReview}
-                disabled={saving}
+                disabled={saving || noPerm}
                 className="gap-1.5 text-xs text-amber-700 dark:text-amber-300 border-amber-500/40 hover:bg-amber-500/10 cursor-pointer"
               >
                 <RotateCcw className="size-3.5" />
@@ -746,7 +770,7 @@ export default function StudioArticleEditorPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={saving}
+                  disabled={saving || noPerm}
                   onClick={() => handleSave("DRAFT")}
                   className="gap-1.5 text-xs cursor-pointer"
                 >
@@ -758,7 +782,7 @@ export default function StudioArticleEditorPage() {
                   <Button
                     type="button"
                     size="sm"
-                    disabled={saving}
+                    disabled={saving || noPerm}
                     onClick={() => handleSave("PENDING_REVIEW")}
                     className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                   >
@@ -771,7 +795,7 @@ export default function StudioArticleEditorPage() {
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={saving}
+                      disabled={saving || noPerm}
                       onClick={() => handleSave("PENDING_REVIEW")}
                       className="gap-1.5 text-xs cursor-pointer"
                     >
@@ -781,7 +805,7 @@ export default function StudioArticleEditorPage() {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={saving}
+                      disabled={saving || noPerm}
                       onClick={() => handleSave("PUBLISHED")}
                       className="gap-1.5 text-xs cursor-pointer font-semibold"
                     >
@@ -800,7 +824,7 @@ export default function StudioArticleEditorPage() {
               <Button
                 type="button"
                 size="sm"
-                disabled={saving}
+                disabled={saving || noPerm}
                 onClick={() => handleSave(status === "PUBLISHED" ? "PUBLISHED" : "DRAFT")}
                 className="gap-1 text-xs font-semibold cursor-pointer h-8 px-2.5"
               >
@@ -813,7 +837,7 @@ export default function StudioArticleEditorPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleRollbackToReview}
-                disabled={saving}
+                disabled={saving || noPerm}
                 className="h-8 px-2 text-xs text-amber-600 border-amber-500/30 cursor-pointer"
               >
                 <RotateCcw className="size-3" />
@@ -864,7 +888,7 @@ export default function StudioArticleEditorPage() {
                 {!isLocked && (
                   <>
                     <DropdownMenuItem
-                      disabled={saving}
+                      disabled={saving || noPerm}
                       onClick={() => handleSave("DRAFT")}
                       className="gap-2.5 cursor-pointer text-xs py-2"
                     >
@@ -874,7 +898,7 @@ export default function StudioArticleEditorPage() {
 
                     {user?.role === "EDITOR" ? (
                       <DropdownMenuItem
-                        disabled={saving}
+                        disabled={saving || noPerm}
                         onClick={() => handleSave("PENDING_REVIEW")}
                         className="gap-2.5 cursor-pointer text-xs py-2 text-blue-600 font-medium"
                       >
@@ -884,7 +908,7 @@ export default function StudioArticleEditorPage() {
                     ) : (
                       <>
                         <DropdownMenuItem
-                          disabled={saving}
+                          disabled={saving || noPerm}
                           onClick={() => handleSave("PENDING_REVIEW")}
                           className="gap-2.5 cursor-pointer text-xs py-2"
                         >
@@ -892,7 +916,7 @@ export default function StudioArticleEditorPage() {
                           <span>Save for Review</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          disabled={saving}
+                          disabled={saving || noPerm}
                           onClick={() => handleSave("PUBLISHED")}
                           className="gap-2.5 cursor-pointer text-xs py-2 text-primary font-semibold"
                         >
@@ -907,7 +931,7 @@ export default function StudioArticleEditorPage() {
                 {isLocked && (
                   <DropdownMenuItem
                     onClick={handleRollbackToReview}
-                    disabled={saving}
+                    disabled={saving || noPerm}
                     className="gap-2.5 cursor-pointer text-xs py-2 text-amber-600 font-medium"
                   >
                     <RotateCcw className="size-3.5" />
@@ -935,7 +959,7 @@ export default function StudioArticleEditorPage() {
               variant="outline"
               size="sm"
               onClick={handleRollbackToReview}
-              disabled={saving}
+              disabled={saving || noPerm}
               className="h-8 text-xs font-semibold gap-1.5 border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 shrink-0 cursor-pointer shadow-xs"
             >
               <RotateCcw className="size-3.5" />
@@ -973,6 +997,23 @@ export default function StudioArticleEditorPage() {
                 Discard
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category permission notice */}
+      {noPerm && (
+        <div className="border-b border-destructive/30 bg-destructive/5 px-4 sm:px-8 py-2.5">
+          <div className="mx-auto max-w-6xl flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <ShieldAlert className="size-4 text-destructive shrink-0" />
+            <span className="font-semibold text-destructive">
+              Read-only: {noPermReason}
+            </span>
+            <span className="text-muted-foreground">
+              {editableCategoryNames.length > 0
+                ? `You can edit: ${editableCategoryNames.join(", ")}. Change the category in Settings to save.`
+                : "You have no assigned categories. Ask an Admin to grant access in Studio → Members."}
+            </span>
           </div>
         </div>
       )}
@@ -1135,12 +1176,17 @@ export default function StudioArticleEditorPage() {
                       markDirty();
                     }
                   }}
-                  options={categories.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                    depth: c.depth,
-                    description: c.depth === 2 ? "Tier 2 Subcategory" : "Tier 1 Root Category",
-                  }))}
+                  options={categories.map((c) => {
+                    const allowed = canEditCategory(c.id);
+                    return {
+                      value: c.id,
+                      label: c.name,
+                      depth: c.depth,
+                      description: c.depth === 2 ? "Tier 2 Subcategory" : "Tier 1 Root Category",
+                      disabled: !allowed,
+                      disabledReason: allowed ? undefined : "No edit permission",
+                    };
+                  })}
                   placeholder="Select category..."
                   searchPlaceholder="Search categories..."
                   defaultLimit={5}
@@ -1261,8 +1307,8 @@ export default function StudioArticleEditorPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold text-foreground">
                             {audience === "FREE"
-                              ? "Free (No login required)"
-                              : "Internal (Login required)"}
+                              ? "Free "
+                              : "Internal "}
                           </p>
                           <Badge
                             variant={audience === "FREE" ? "secondary" : "default"}

@@ -23,6 +23,7 @@ import {
 } from "@/lib/progression";
 import {
   ArticleRecord,
+  ArticleStatus,
   CategoryRecord,
   DepartmentRecord,
   QuizAttemptRecord,
@@ -40,12 +41,15 @@ export interface SsoEnvStatus {
   clientIdConfigured: boolean;
   cloudinaryConfigured: boolean;
   cloudName: string;
+  emailLoginEnabled?: boolean;
+  superAdminEmails?: string[];
 }
 
 export interface HandbookContextValue {
   user: UserProfile | null;
   authLoading: boolean;
   dataLoading: boolean;
+  dbError: string | null;
   categories: CategoryRecord[];
   articles: ArticleRecord[];
   departments: DepartmentRecord[];
@@ -98,6 +102,10 @@ export interface HandbookContextValue {
   ) => Promise<ArticleRecord>;
   deleteArticle: (articleId: string) => Promise<void>;
   duplicateArticle: (articleId: string) => Promise<ArticleRecord>;
+  updateArticleStatus: (
+    articleId: string,
+    status: ArticleStatus
+  ) => Promise<void>;
   bulkUpdateArticles: (
     articleIds: string[],
     action: "publish" | "unpublish" | "delete"
@@ -140,24 +148,13 @@ const HandbookContext = createContext<HandbookContextValue | undefined>(
   undefined
 );
 
-const DEFAULT_ADMIN: UserProfile = {
-  uid: "usr_admin_trieu",
-  ssoId: "mpc_101",
-  email: "trieukon1011@gmail.com",
-  fullName: "Nguyễn Thanh Triều",
-  department: "Executive Board",
-  role: "ADMIN",
-  managedCategoryIds: [],
-  createdAt: "2026-10-24T08:00:00.000Z",
-  updatedAt: "2026-10-24T08:00:00.000Z",
-};
-
 export function HandbookProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
 
-  // Restore user session from localStorage or seed initial session
+  // Restore user session from localStorage if logged in
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
@@ -178,10 +175,8 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Default initial session for first-time visitors
-        setUser(DEFAULT_ADMIN);
-        localStorage.setItem("mpc_auth_state", "LOGGED_IN");
-        localStorage.setItem("mpc_current_user", JSON.stringify(DEFAULT_ADMIN));
+        // Guests / non-logged in visitors start with null (NO fake admin injection)
+        setUser(null);
       }
     } catch (err) {
       console.warn("Session restore error:", err);
@@ -195,7 +190,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
   const [articles, setArticles] = useState<ArticleRecord[]>([]);
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, UserProgressRecord>>({});
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([DEFAULT_ADMIN]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [allProgress, setAllProgress] = useState<UserProgressRecord[]>([]);
   const [quizAttempts, setQuizAttempts] = useState<QuizAttemptRecord[]>([]);
   const [ssoStatus, setSsoStatus] = useState<SsoEnvStatus | null>(null);
@@ -270,6 +265,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
   const loadHandbookData = useCallback(
     async (currentProfile?: UserProfile | null) => {
       setDataLoading(true);
+      setDbError(null);
       try {
         const res = await fetch("/api/handbook/data", { cache: "no-store" });
         if (res.ok) {
@@ -277,7 +273,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
           if (data.success) {
             setCategories(Array.isArray(data.categories) ? data.categories : []);
             setArticles(Array.isArray(data.articles) ? data.articles : []);
-            if (Array.isArray(data.allUsers) && data.allUsers.length > 0) {
+            if (Array.isArray(data.allUsers)) {
               setAllUsers(data.allUsers);
             }
             if (Array.isArray(data.allProgress)) {
@@ -300,10 +296,15 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
               }
             }
             setProgressMap(myMap);
+          } else {
+            setDbError(data.error || "Không thể tải dữ liệu từ cơ sở dữ liệu.");
           }
+        } else {
+          setDbError("Lỗi kết nối cơ sở dữ liệu. Vui lòng thử lại sau.");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to load handbook data from Postgres:", err);
+        setDbError(err?.message || "Mất kết nối với cơ sở dữ liệu PostgreSQL.");
       } finally {
         setDataLoading(false);
       }
@@ -336,15 +337,16 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
 
             const nowIso = new Date().toISOString();
             const ssoUser = session.user as Record<string, unknown>;
+            const adminEmails = ssoStatus?.superAdminEmails || ["trieukon1011@gmail.com"];
             const isBootstrapAdmin =
-              session.user.email === "trieukon1011@gmail.com" ||
+              adminEmails.includes(session.user.email.toLowerCase()) ||
               ssoUser.role === "ADMIN";
             const rawId = String(
               ssoUser.id || ssoUser.ssoId || session.user.email
             ).replace(/[^a-zA-Z0-9_-]/g, "_");
 
             const resolvedUid =
-              session.user.email === "trieukon1011@gmail.com"
+              adminEmails.includes(session.user.email.toLowerCase())
                 ? "usr_admin_trieu"
                 : rawId;
 
@@ -375,6 +377,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
               role: isBootstrapAdmin
                 ? "ADMIN"
                 : ((ssoUser.role as Role) || "MEMBER"),
+              noPassword: Boolean(ssoUser.noPassword),
               managedCategoryIds: [],
               createdAt: nowIso,
               updatedAt: nowIso,
@@ -410,6 +413,45 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Update personal progress map locally when user or allProgress updates
+  // Sync the session user with its PostgreSQL record (role + assigned categories),
+  // since the auth session alone does not carry managedCategoryIds.
+  useEffect(() => {
+    if (!user || allUsers.length === 0) return;
+    const dbUser = allUsers.find(
+      (u) =>
+        u.uid === user.uid ||
+        u.email?.toLowerCase() === user.email?.toLowerCase()
+    );
+    if (!dbUser) return;
+    const isSuper = (ssoStatus?.superAdminEmails || []).includes(
+      user.email?.toLowerCase() || ""
+    );
+    const nextRole = isSuper ? "ADMIN" : dbUser.role;
+    const nextManaged = dbUser.managedCategoryIds || [];
+    const sameManaged =
+      (user.managedCategoryIds || []).join(",") === nextManaged.join(",");
+    if (
+      user.uid === dbUser.uid &&
+      user.role === nextRole &&
+      sameManaged &&
+      user.department === (dbUser.department || user.department)
+    ) {
+      return;
+    }
+    const merged: UserProfile = {
+      ...user,
+      uid: dbUser.uid,
+      role: nextRole,
+      department: dbUser.department || user.department,
+      managedCategoryIds: nextManaged,
+      managedGroups: dbUser.managedGroups ?? user.managedGroups,
+    };
+    setUser(merged);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mpc_current_user", JSON.stringify(merged));
+    }
+  }, [user, allUsers, ssoStatus]);
+
   useEffect(() => {
     if (!user || allProgress.length === 0) {
       setProgressMap({});
@@ -700,8 +742,8 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
   // Delete Category -> PostgreSQL
   const deleteCategory = useCallback(
     async (categoryId: string) => {
-      if (!user || user.role !== "ADMIN") {
-        throw new Error("Only Executive Board Administrators can delete categories.");
+      if (!user || (user.role !== "ADMIN" && user.role !== "EDITOR")) {
+        throw new Error("You do not have permission to delete categories.");
       }
 
       const res = await fetch(`/api/categories?id=${encodeURIComponent(categoryId)}`, {
@@ -726,8 +768,8 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
       action: "cascade" | "reassign",
       targetCategoryId?: string
     ) => {
-      if (!user || user.role !== "ADMIN") {
-        throw new Error("Only Executive Board Administrators can delete categories.");
+      if (!user || (user.role !== "ADMIN" && user.role !== "EDITOR")) {
+        throw new Error("You do not have permission to delete categories.");
       }
 
       let url = `/api/categories?id=${encodeURIComponent(categoryId)}`;
@@ -958,6 +1000,46 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
       return copyRecord;
     },
     [user, articles, categories, showToast]
+  );
+
+  // Quick single article status change (DRAFT, PENDING_REVIEW, PUBLISHED)
+  const updateArticleStatus = useCallback(
+    async (articleId: string, targetStatus: ArticleStatus) => {
+      if (!user) throw new Error("Please sign in first.");
+      const isPublished = targetStatus === "PUBLISHED";
+
+      const res = await fetch("/api/articles", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: articleId,
+          status: targetStatus,
+          isPublished,
+          updaterId: user.uid,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update article status.");
+      }
+
+      setArticles((prev) =>
+        prev.map((a) =>
+          a.id === articleId
+            ? { ...a, status: targetStatus, isPublished }
+            : a
+        )
+      );
+
+      const statusLabels: Record<ArticleStatus, string> = {
+        PUBLISHED: "Đã xuất bản",
+        PENDING_REVIEW: "Chờ duyệt",
+        DRAFT: "Bản nháp",
+      };
+      showToast(`Cập nhật trạng thái thành công: ${statusLabels[targetStatus] || targetStatus}`, "success");
+    },
+    [user, showToast]
   );
 
   // Bulk update articles
@@ -1222,6 +1304,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
     user,
     authLoading,
     dataLoading,
+    dbError,
     categories,
     articles,
     departments,
@@ -1249,6 +1332,7 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
     saveArticle,
     deleteArticle,
     duplicateArticle,
+    updateArticleStatus,
     bulkUpdateArticles,
     reorderArticle,
     batchUpdateCurriculum,

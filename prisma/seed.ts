@@ -1,54 +1,146 @@
 import { PrismaClient, Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { INITIAL_CATEGORIES, INITIAL_ARTICLES } from "../lib/seed-data";
 
 const prisma = new PrismaClient();
 
+const DEFAULT_PASSWORD = "Tester@123"; // Default password for test seed accounts
+
+// 9 Test Accounts:
+// - 1 Admin (in addition to SUPER_ADMIN_EMAILS from .env)
+// - 2 Content Editors
+// - 6 Members distributed across 3 departments: Ban Chuyên môn, Ban Truyền thông, Ban Sự kiện
 const SEED_USERS = [
+  // 1. Super Admin from .env (Có thể đăng nhập bằng SSO hoặc mật khẩu Tester@123)
   {
-    id: "usr_admin_trieu",
-    ssoId: "mpc_101",
+    id: "usr_superadmin_trieu",
+    ssoId: "mpc_sso_superadmin",
     email: "trieukon1011@gmail.com",
     fullName: "Nguyễn Thanh Triều",
     department: "Ban Chủ Nhiệm",
     role: Role.ADMIN,
+    noPassword: false, // Sẵn mật khẩu Tester@123
+    password: DEFAULT_PASSWORD,
   },
+  // 2. Regular Admin
   {
-    id: "usr_minh_quan",
-    ssoId: "mpc_102",
-    email: "quan.tran@mpclub.dev",
+    id: "usr_admin_bao",
+    ssoId: "mpc_seed_admin_1",
+    email: "admin.bao@mpclub.dev",
+    fullName: "Nguyễn Gia Bảo",
+    department: "Ban Chủ Nhiệm",
+    role: Role.ADMIN,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 3. Content Editor 1 (Tech)
+  {
+    id: "usr_editor_quan",
+    ssoId: "mpc_seed_editor_1",
+    email: "editor.quan@mpclub.dev",
     fullName: "Trần Minh Quân",
     department: "Ban Chuyên môn",
     role: Role.EDITOR,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
   },
+  // 4. Content Editor 2 (Media)
   {
-    id: "usr_khanh_linh",
-    ssoId: "mpc_103",
-    email: "linh.le@mpclub.dev",
+    id: "usr_editor_linh",
+    ssoId: "mpc_seed_editor_2",
+    email: "editor.linh@mpclub.dev",
     fullName: "Lê Khánh Linh",
     department: "Ban Truyền thông",
     role: Role.EDITOR,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
   },
+  // 5. Member 1 - Ban Chuyên môn
   {
-    id: "usr_hoang_nam",
-    ssoId: "mpc_104",
-    email: "nam.pham@mpclub.dev",
+    id: "usr_member_dev1",
+    ssoId: "mpc_seed_mem_1",
+    email: "dev.tuan@mpclub.dev",
+    fullName: "Võ Tuấn Anh",
+    department: "Ban Chuyên môn",
+    role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 6. Member 2 - Ban Chuyên môn
+  {
+    id: "usr_member_dev2",
+    ssoId: "mpc_seed_mem_2",
+    email: "dev.huy@mpclub.dev",
+    fullName: "Đỗ Quốc Huy",
+    department: "Ban Chuyên môn",
+    role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 7. Member 3 - Ban Truyền thông
+  {
+    id: "usr_member_media1",
+    ssoId: "mpc_seed_mem_3",
+    email: "media.mai@mpclub.dev",
+    fullName: "Hoàng Tuyết Mai",
+    department: "Ban Truyền thông",
+    role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 8. Member 4 - Ban Truyền thông
+  {
+    id: "usr_member_media2",
+    ssoId: "mpc_seed_mem_4",
+    email: "media.khoa@mpclub.dev",
+    fullName: "Phan Đăng Khoa",
+    department: "Ban Truyền thông",
+    role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 9. Member 5 - Ban Sự kiện
+  {
+    id: "usr_member_event1",
+    ssoId: "mpc_seed_mem_5",
+    email: "event.nam@mpclub.dev",
     fullName: "Phạm Hoàng Nam",
     department: "Ban Sự kiện",
     role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
+  },
+  // 10. Member 6 - Ban Sự kiện
+  {
+    id: "usr_member_event2",
+    ssoId: "mpc_seed_mem_6",
+    email: "event.ha@mpclub.dev",
+    fullName: "Ngô Thu Hà",
+    department: "Ban Sự kiện",
+    role: Role.MEMBER,
+    noPassword: false,
+    password: DEFAULT_PASSWORD,
   },
 ];
 
 async function main() {
-  console.log("🌱 Starting PostgreSQL database seed...");
+  console.log("🌱 Starting PostgreSQL database seed with 9 test accounts + 1 SuperAdmin...");
+
+  // Pre-calculate hash for default password
+  const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   // 1. Seed Users
   for (const u of SEED_USERS) {
+    const passwordHash = u.password ? await bcrypt.hash(u.password, 10) : null;
+
     await prisma.user.upsert({
       where: { email: u.email },
       update: {
         fullName: u.fullName,
         department: u.department,
         role: u.role,
+        noPassword: u.noPassword,
+        ...(passwordHash ? { passwordHash } : {}),
       },
       create: {
         id: u.id,
@@ -57,10 +149,12 @@ async function main() {
         fullName: u.fullName,
         department: u.department,
         role: u.role,
+        noPassword: u.noPassword,
+        passwordHash,
       },
     });
   }
-  console.log(`✅ Seeded ${SEED_USERS.length} users.`);
+  console.log(`✅ Seeded ${SEED_USERS.length} users successfully with passwords.`);
 
   // 2. Seed Root Categories (depth = 1)
   const rootCats = INITIAL_CATEGORIES.filter((c) => c.depth === 1);
@@ -192,4 +286,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

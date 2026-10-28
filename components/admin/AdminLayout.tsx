@@ -37,6 +37,7 @@ import {
   PanelLeftOpen,
   Plus,
   Search,
+  Settings,
   Shield,
   ShieldAlert,
   Sun,
@@ -152,6 +153,13 @@ export function AdminLayout({
       icon: Users,
       isActive: pathname.startsWith("/studio/members"),
       count: allUsers.length,
+    },
+    {
+      label: "Storage & Settings",
+      href: "/studio/settings",
+      icon: Settings,
+      isActive: pathname.startsWith("/studio/settings"),
+      count: undefined,
     },
   ];
 

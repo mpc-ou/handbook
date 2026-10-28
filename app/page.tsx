@@ -383,7 +383,7 @@ export default function HomePage() {
 
   const publishedArticles = articles
     .filter((a) => {
-      if (!a.isPublished) return false;
+      if (!a.isPublished || a.status !== "PUBLISHED") return false;
       if ((a.visibility || "").toUpperCase() === "UNPUBLIC") return false;
       if (!user && (a.audience || "INTERNAL").toUpperCase() === "INTERNAL") {
         return false;

@@ -140,6 +140,7 @@ export interface UserProfile {
   department: string;
   managedGroups?: string[];
   role: Role;
+  noPassword?: boolean;
   managedCategoryIds: string[];
   createdAt: string;
   updatedAt: string;
