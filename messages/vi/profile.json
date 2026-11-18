@@ -1,0 +1,116 @@
+{
+  "title": "Hồ sơ học tập",
+  "guestPrompt": {
+    "title": "Đăng nhập để xem hồ sơ học tập",
+    "description": "Theo dõi tiến độ khóa học, chuỗi ngày học, thành tích và lịch sử làm bài.",
+    "cta": "Đăng nhập"
+  },
+  "defaultDepartment": "Thành viên CLB",
+  "tabs": {
+    "progress": "Tiến độ",
+    "achievements": "Thành tích",
+    "attempts": "Bài đã làm",
+    "account": "Tài khoản"
+  },
+  "streak": {
+    "title": "Chuỗi ngày học",
+    "current": "Chuỗi hiện tại",
+    "longest": "Chuỗi dài nhất",
+    "daysUnit": "{count} ngày",
+    "keepStreakTooltip": "Học một chương hôm nay để giữ chuỗi",
+    "activeTooltip": "Đã học hôm nay · Chuỗi {count} ngày liên tiếp",
+    "chipAriaLabel": "Chuỗi {count} ngày học",
+    "heatmapLabel": "12 tuần gần đây",
+    "activeDay": "Có học ngày {date}",
+    "inactiveDay": "Chưa học ngày {date}"
+  },
+  "courses": {
+    "title": "Tiến độ theo khóa học",
+    "empty": "Chưa có khóa học nào được xuất bản.",
+    "chaptersProgress": "{completed}/{total} chương bắt buộc",
+    "completed": "Đã hoàn thành",
+    "certificate": "Xem chứng nhận",
+    "continue": "Học tiếp",
+    "start": "Bắt đầu"
+  },
+  "achievements": {
+    "unlockedLabel": "Đã mở khóa",
+    "unlockedCount": "Đã mở {unlocked}/{total} thành tích",
+    "first_chapter": {
+      "title": "Khởi đầu hành trình",
+      "description": "Hoàn thành chương học đầu tiên."
+    },
+    "chapters_5": {
+      "title": "Người đọc chăm chỉ",
+      "description": "Hoàn thành 5 chương học."
+    },
+    "chapters_20": {
+      "title": "Thông thạo sổ tay",
+      "description": "Hoàn thành 20 chương học."
+    },
+    "first_quiz_passed": {
+      "title": "Vượt thử thách đầu tiên",
+      "description": "Vượt qua bài kiểm tra hoặc bài tập đầu tiên."
+    },
+    "perfect_score": {
+      "title": "Điểm tuyệt đối",
+      "description": "Đạt 100% điểm trong một bài kiểm tra."
+    },
+    "first_course_complete": {
+      "title": "Hoàn tất khóa học",
+      "description": "Hoàn thành 100% một khóa học."
+    },
+    "streak_3": {
+      "title": "Chuỗi 3 ngày",
+      "description": "Duy trì học liên tục trong 3 ngày."
+    },
+    "streak_7": {
+      "title": "Chuỗi 7 ngày",
+      "description": "Duy trì học liên tục trong 7 ngày."
+    },
+    "streak_30": {
+      "title": "Bền bỉ 30 ngày",
+      "description": "Duy trì học liên tục trong 30 ngày."
+    }
+  },
+  "attempts": {
+    "empty": "Bạn chưa nộp bài kiểm tra hoặc bài tập nào.",
+    "untitledItem": "Bài kiểm tra",
+    "score": "{score}%",
+    "status": {
+      "passed": "Đạt",
+      "failed": "Chưa đạt",
+      "pendingReview": "Chờ chấm"
+    },
+    "openItem": "Xem bài"
+  },
+  "account": {
+    "infoTitle": "Thông tin cá nhân",
+    "fullName": "Họ và tên",
+    "email": "Email",
+    "department": "Ban chuyên môn",
+    "role": "Vai trò",
+    "passwordTitle": "Đổi mật khẩu",
+    "setPasswordTitle": "Tạo mật khẩu đăng nhập",
+    "noPasswordHint": "Tài khoản của bạn đăng nhập qua MPC-SSO và chưa có mật khẩu riêng. Bạn có thể đặt mật khẩu bên dưới để đăng nhập bằng email.",
+    "passwordHint": "Cập nhật mật khẩu đăng nhập bằng email của bạn.",
+    "currentPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "confirmPassword": "Xác nhận mật khẩu mới",
+    "passwordPlaceholder": "Tối thiểu 6 ký tự",
+    "confirmPlaceholder": "Nhập lại mật khẩu mới",
+    "showPassword": "Hiện mật khẩu",
+    "hidePassword": "Ẩn mật khẩu",
+    "submitUpdate": "Cập nhật mật khẩu",
+    "submitCreate": "Tạo mật khẩu",
+    "saving": "Đang lưu…",
+    "errors": {
+      "tooShort": "Mật khẩu mới phải có tối thiểu 6 ký tự.",
+      "mismatch": "Xác nhận mật khẩu mới không khớp.",
+      "currentRequired": "Vui lòng nhập mật khẩu hiện tại.",
+      "failed": "Không thể cập nhật mật khẩu.",
+      "serverError": "Lỗi kết nối máy chủ."
+    },
+    "success": "Đã cập nhật mật khẩu."
+  }
+}

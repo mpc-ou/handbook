@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "notFoundTitle": "Content not found | MPC Handbook",
+    "notFoundDescription": "The requested content does not exist in MPC Handbook.",
+    "fallbackTitle": "Chapter | MPC Handbook",
+    "fallbackDescription": "Internal handbook and training roadmap for Mobile Programming Club (MPC) members.",
+    "siteName": "MPC Handbook"
+  },
+  "readingTime": "~{minutes} min read",
+  "updatedAt": "Updated {date}",
+  "views": "{count, plural, one {# view} other {# views}}",
+  "progressBarLabel": "Reading progress",
+  "focusMode": {
+    "enable": "Enter focus mode (F)",
+    "disable": "Exit focus mode (F)",
+    "label": "Focus"
+  },
+  "settings": {
+    "trigger": "Display",
+    "tooltip": "Display settings",
+    "fontSize": "Font size",
+    "fontSizeSm": "S",
+    "fontSizeMd": "M",
+    "fontSizeLg": "L",
+    "columnWidth": "Column width",
+    "widthSm": "Narrow",
+    "widthMd": "Medium",
+    "widthLg": "Wide"
+  },
+  "shortcuts": {
+    "triggerTooltip": "Keyboard shortcuts (?)",
+    "title": "Keyboard shortcuts",
+    "description": "Use your keyboard to navigate quickly while reading.",
+    "prevNext": "Previous / Next chapter",
+    "focusMode": "Toggle focus mode",
+    "search": "Open quick search",
+    "help": "Open shortcuts dialog"
+  },
+  "toc": {
+    "title": "On this page"
+  },
+  "content": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "imageAlt": "Article illustration",
+    "galleryImageAlt": "Image {index}",
+    "videoTitle": "Lecture video",
+    "comparisonDo": "Recommended",
+    "comparisonAvoid": "Avoid",
+    "attachmentsTitle": "Attachments & resources ({count})"
+  },
+  "completion": {
+    "completed": "Completed",
+    "scrollHint": "Scroll to the bottom to complete this chapter",
+    "nextChapter": "Next chapter",
+    "lessonCompletedHint": "You finished the last chapter of this lesson! Continue to the next lesson.",
+    "courseCompletedHint": "Congratulations! You have completed the entire course.",
+    "viewCertificate": "View certificate"
+  },
+  "actions": {
+    "like": "Like",
+    "liked": "Liked",
+    "likeAria": "Like this chapter",
+    "unlikeAria": "Unlike this chapter",
+    "share": "Share",
+    "linkCopied": "Link copied to clipboard",
+    "editInStudio": "Edit in Studio",
+    "actionFailed": "Could not complete action"
+  },
+  "nav": {
+    "previous": "Previous chapter",
+    "next": "Next chapter",
+    "backToLesson": "Back to lesson",
+    "backToCourse": "Back to course",
+    "backToHome": "Back to home"
+  },
+  "gates": {
+    "previewBadge": "Preview",
+    "previewNotice": "This item is currently {status} and visible only to staff and its author.",
+    "dbErrorTitle": "Unable to load data",
+    "dbErrorDesc": "Could not connect to the database ({error}). Please try again.",
+    "courseNotFoundTitle": "Course not found",
+    "courseNotFoundDesc": "This course does not exist or has been removed.",
+    "itemNotFoundTitle": "Content not found",
+    "itemNotFoundDesc": "This chapter or assignment does not exist or has been removed.",
+    "unpublishedTitle": "Content not published",
+    "unpublishedDesc": "\"{title}\" is currently being drafted and is not yet public.",
+    "loginRequiredTitle": "MPC internal content",
+    "loginRequiredDesc": "Please sign in with your MPC account to access \"{title}\".",
+    "loginButton": "Sign in with MPC",
+    "groupRestrictedTitle": "Restricted to specific groups",
+    "groupRestrictedDesc": "The course \"{title}\" is restricted to members of the following groups:",
+    "lockedTitle": "Chapter locked",
+    "lockedDesc": "Complete the required previous item to unlock \"{title}\".",
+    "goToBlockingItem": "Go to: {title}"
+  },
+  "comments": {
+    "title": "Discussion",
+    "placeholder": "Ask a question or share your notes…",
+    "replyPlaceholder": "Write a reply…",
+    "replyPlaceholderUser": "Reply to @{name}…",
+    "submit": "Post comment",
+    "submitReply": "Send reply",
+    "reply": "Reply",
+    "replyingTo": "Replying to",
+    "removeTag": "Remove mention",
+    "deleteTooltip": "Delete comment",
+    "deleteDialogTitle": "Delete comment?",
+    "deleteDialogDesc": "This comment and its replies will be permanently removed.",
+    "empty": "No comments yet. Start the discussion!",
+    "signInPrompt": "Sign in to join the discussion with other members.",
+    "signInRequired": "Please sign in to comment.",
+    "postedSuccess": "Comment posted",
+    "replySuccess": "Reply posted",
+    "deletedSuccess": "Comment deleted",
+    "postError": "Failed to post comment",
+    "deleteError": "Failed to delete comment",
+    "roleAdmin": "Admin",
+    "roleEditor": "Editor",
+    "fallbackMember": "Member"
+  }
+}

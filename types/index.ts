@@ -1,11 +1,11 @@
 export type Role = "ADMIN" | "EDITOR" | "MEMBER";
 
-export type ArticleStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED";
+export type ContentStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED";
 
 export interface CommentRecord {
   id: string;
   content: string;
-  articleId: string;
+  itemId: string;
   userId: string;
   userFullName: string;
   userAvatarUrl?: string;
@@ -19,7 +19,7 @@ export interface CommentRecord {
 
 export type AttachmentType = "youtube" | "drive" | "figma" | "github" | "external";
 
-export interface ArticleAttachment {
+export interface ItemAttachment {
   id: string;
   type: AttachmentType;
   title: string;
@@ -141,7 +141,7 @@ export interface UserProfile {
   managedGroups?: string[];
   role: Role;
   noPassword?: boolean;
-  managedCategoryIds: string[];
+  managedCourseIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +155,7 @@ export interface DepartmentRecord {
   updatedAt?: string;
 }
 
+/** Danh mục phẳng (tag), gắn nhiều-nhiều với Course. */
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -162,45 +163,76 @@ export interface CategoryRecord {
   description: string;
   icon: string;
   orderIndex: number;
-  isPublished: boolean;
-  depth: 1 | 2;
-  parentId: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export type ArticleAudience = "FREE" | "INTERNAL";
-export type ArticleVisibility = "PUBLIC" | "UNPUBLIC";
+export type ContentAudience = "FREE" | "INTERNAL";
+export type ContentVisibility = "PUBLIC" | "UNPUBLIC";
+export type ItemType = "CONTENT" | "QUIZ" | "ASSIGNMENT";
 
-export interface ArticleRecord {
+/** Khóa học. Có ảnh bìa, gắn 1+ Category. */
+export interface CourseRecord {
   id: string;
   title: string;
   slug: string;
   summary: string;
-  coverImage?: string; // 3:1 banner ratio
+  coverImage?: string; // Cloudinary URL | "preset:<id>"
+  status: ContentStatus;
+  orderIndex: number;
+  sequential: boolean; // true = học theo thứ tự
+  visibility: ContentVisibility;
+  audience: ContentAudience;
+  allowedGroups: string[];
+  categoryIds: string[];
+  authorId: string;
+  authorName: string;
+  updaterId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Bài học trong khóa. Có ảnh bìa. */
+export interface LessonRecord {
+  id: string;
+  courseId: string;
+  title: string;
+  slug: string;
+  summary: string;
+  coverImage?: string;
+  orderIndex: number;
+  isPublished: boolean;
+  requirePrevious: boolean | null; // null = theo Course.sequential
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Chương / bài tập trong bài học. KHÔNG có ảnh bìa. */
+export interface ItemRecord {
+  id: string;
+  lessonId: string;
+  type: ItemType;
+  title: string;
+  slug: string;
+  summary: string;
   content: EditorBlock[];
   plainText: string;
   readingTime: number;
-  attachments: ArticleAttachment[];
-  categoryId: string;
+  attachments: ItemAttachment[];
   orderIndex: number;
-  status: ArticleStatus;
-  isPublished: boolean;
-  visibility?: ArticleVisibility;
-  audience?: ArticleAudience;
-  requirePrevious: boolean;
+  status: ContentStatus;
+  isRequired: boolean;
+  requirePrevious: boolean | null; // null = kế thừa Lesson/Course
   requireScrollToBottom: boolean;
-  passScorePercent: number; // 0 means no quiz required, 1..100 means required %
-  isRequired?: boolean;
-  allowedGroups?: string[];
+  passScorePercent: number; // 0 = không yêu cầu quiz, 1..100 = % bắt buộc
   quizDurationMinutes?: number;
   quizMaxAttempts?: number;
   quizIsExam?: boolean;
   quizQuestions: QuizQuestion[];
-  likesCount?: number;
-  likedUserIds?: string[];
+  likesCount: number;
+  likedUserIds: string[];
   isLiked?: boolean;
-  viewsCount?: number;
+  viewsCount: number;
   authorId: string;
   authorName: string;
   updaterId?: string;
@@ -212,8 +244,8 @@ export interface StandaloneQuizRecord {
   id: string;
   title: string;
   description?: string;
-  articleId?: string;
-  articleTitle?: string;
+  itemId?: string;
+  itemTitle?: string;
   durationMinutes?: number;
   passScorePercent: number;
   maxAttempts?: number;
@@ -228,7 +260,7 @@ export interface UserProgressRecord {
   userId: string;
   userEmail: string;
   userName: string;
-  articleId: string;
+  itemId: string;
   hasScrolledBottom: boolean;
   highestQuizScore: number;
   isCompleted: boolean;
@@ -244,8 +276,8 @@ export interface QuizAttemptRecord {
   userAvatarUrl?: string;
   userDepartment?: string;
   quizId?: string;
-  articleId: string;
-  articleTitle?: string;
+  itemId: string;
+  itemTitle?: string;
   scorePercent: number;
   isPassed: boolean;
   timeSpentSec?: number;
@@ -257,14 +289,21 @@ export interface QuizAttemptRecord {
   createdAt: string;
 }
 
-export interface ArticleAccessResult {
+export interface ItemAccessResult {
   allowed: boolean;
   reason: "NOT_FOUND" | "PREVIOUS_INCOMPLETE" | null;
-  blockingArticle: {
+  blockingItem: {
     id: string;
     title: string;
     slug: string;
+    lessonId: string;
   } | null;
+}
+
+export interface ProgressSummary {
+  completed: number;
+  total: number; // chỉ tính Item PUBLISHED & isRequired
+  percent: number; // 0..100
 }
 
 export interface QuizGradeResponse {

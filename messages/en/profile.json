@@ -1,0 +1,116 @@
+{
+  "title": "Learning profile",
+  "guestPrompt": {
+    "title": "Sign in to view your learning profile",
+    "description": "Track your course progress, learning streak, achievements, and submission history.",
+    "cta": "Sign in"
+  },
+  "defaultDepartment": "Club member",
+  "tabs": {
+    "progress": "Progress",
+    "achievements": "Achievements",
+    "attempts": "Submissions",
+    "account": "Account"
+  },
+  "streak": {
+    "title": "Learning streak",
+    "current": "Current streak",
+    "longest": "Longest streak",
+    "daysUnit": "{count, plural, one {# day} other {# days}}",
+    "keepStreakTooltip": "Complete a chapter today to keep your streak",
+    "activeTooltip": "Studied today · {count, plural, one {# day} other {# days}} streak",
+    "chipAriaLabel": "{count, plural, one {# day} other {# days}} learning streak",
+    "heatmapLabel": "Last 12 weeks",
+    "activeDay": "Studied on {date}",
+    "inactiveDay": "No activity on {date}"
+  },
+  "courses": {
+    "title": "Course progress",
+    "empty": "No courses have been published yet.",
+    "chaptersProgress": "{completed}/{total} required chapters",
+    "completed": "Completed",
+    "certificate": "View certificate",
+    "continue": "Continue",
+    "start": "Start"
+  },
+  "achievements": {
+    "unlockedLabel": "Unlocked",
+    "unlockedCount": "{unlocked}/{total} achievements unlocked",
+    "first_chapter": {
+      "title": "First Step",
+      "description": "Complete your first chapter."
+    },
+    "chapters_5": {
+      "title": "Steady Reader",
+      "description": "Complete 5 chapters."
+    },
+    "chapters_20": {
+      "title": "Handbook Master",
+      "description": "Complete 20 chapters."
+    },
+    "first_quiz_passed": {
+      "title": "First Pass",
+      "description": "Pass your first quiz or assignment."
+    },
+    "perfect_score": {
+      "title": "Perfect Score",
+      "description": "Score 100% on a quiz or assignment."
+    },
+    "first_course_complete": {
+      "title": "Course Graduate",
+      "description": "Complete 100% of a course."
+    },
+    "streak_3": {
+      "title": "3-Day Streak",
+      "description": "Maintain a 3-day learning streak."
+    },
+    "streak_7": {
+      "title": "7-Day Streak",
+      "description": "Maintain a 7-day learning streak."
+    },
+    "streak_30": {
+      "title": "30-Day Streak",
+      "description": "Maintain a 30-day learning streak."
+    }
+  },
+  "attempts": {
+    "empty": "You haven't submitted any quizzes or assignments yet.",
+    "untitledItem": "Assessment",
+    "score": "{score}%",
+    "status": {
+      "passed": "Passed",
+      "failed": "Not passed",
+      "pendingReview": "Pending review"
+    },
+    "openItem": "Open"
+  },
+  "account": {
+    "infoTitle": "Personal information",
+    "fullName": "Full name",
+    "email": "Email",
+    "department": "Department",
+    "role": "Role",
+    "passwordTitle": "Change password",
+    "setPasswordTitle": "Set sign-in password",
+    "noPasswordHint": "Your account is linked via MPC-SSO and doesn't have a password yet. Set one below to also sign in with email.",
+    "passwordHint": "Update the password used for email sign-in.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Re-enter new password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submitUpdate": "Update password",
+    "submitCreate": "Set password",
+    "saving": "Saving…",
+    "errors": {
+      "tooShort": "New password must be at least 6 characters.",
+      "mismatch": "Password confirmation doesn't match.",
+      "currentRequired": "Please enter your current password.",
+      "failed": "Couldn't update password.",
+      "serverError": "Server connection error."
+    },
+    "success": "Password updated."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "siteName": "MPC Handbook",
+  "domain": "handbook.mpclub.dev",
+  "tagline": "The internal handbook & training roadmap of the Mobile Programming Club",
+  "titleTemplate": "{title} · MPC Handbook",
+  "private": {
+    "title": "Members-only content · MPC Handbook",
+    "description": "This content is for members only. Sign in to view it.",
+    "badge": "Members only"
+  },
+  "kind": {
+    "course": "Course",
+    "lesson": "Lesson",
+    "CONTENT": "Chapter",
+    "QUIZ": "Quiz",
+    "ASSIGNMENT": "Assignment"
+  },
+  "pages": {
+    "login": "Sign in",
+    "profile": "My profile",
+    "studio": "Studio",
+    "certificate": "Certificate of completion",
+    "notFound": "Page not found"
+  }
+}

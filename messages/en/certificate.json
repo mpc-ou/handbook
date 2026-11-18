@@ -1,0 +1,25 @@
+{
+  "backToCourse": "Back to course",
+  "printBtn": "Print / Save PDF",
+  "notFoundTitle": "Course not found",
+  "notFoundDesc": "The requested course does not exist.",
+  "backToHome": "Back to home",
+  "locked": {
+    "loginTitle": "Sign in to view your certificate",
+    "loginDesc": "Please sign in with your MPC account to verify your progress and claim your certificate.",
+    "loginBtn": "Sign in with MPC",
+    "incompleteTitle": "Course not yet completed",
+    "incompleteDesc": "You have completed {completed}/{total} required items ({percent}%) in \"{title}\". Complete all required items to unlock your certificate.",
+    "continueCourseBtn": "Continue learning"
+  },
+  "card": {
+    "organization": "MPClub Handbook",
+    "badge": "Certificate of Completion",
+    "presentedTo": "Proudly presented to",
+    "completedCourse": "for successfully completing all required coursework in",
+    "dateLabel": "Date of completion",
+    "codeLabel": "Verification ID",
+    "issuerLabel": "Issued by",
+    "issuerValue": "Mobile Programming Club"
+  }
+}

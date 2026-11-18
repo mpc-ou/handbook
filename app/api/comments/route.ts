@@ -1,216 +1,121 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { isSuperAdminEmail } from "@/lib/constants";
+import { HttpError, handleApiError, requireUser } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 import type { CommentRecord, Role } from "@/types";
+
+const userSelect = {
+  id: true,
+  fullName: true,
+  avatarUrl: true,
+  department: true,
+  role: true,
+} as const;
+
+const bad = apiError;
+
+function toRecord(c: {
+  id: string;
+  content: string;
+  itemId: string;
+  userId: string;
+  parentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  user: { fullName: string; avatarUrl: string | null; department: string | null; role: Role };
+}): CommentRecord {
+  return {
+    id: c.id,
+    content: c.content,
+    itemId: c.itemId,
+    userId: c.userId,
+    userFullName: c.user.fullName || "Member",
+    userAvatarUrl: c.user.avatarUrl || undefined,
+    userDepartment: c.user.department || undefined,
+    userRole: c.user.role,
+    parentId: c.parentId,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+    replies: [],
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const articleId = searchParams.get("articleId");
-
-    if (!articleId) {
-      return NextResponse.json({ success: false, error: "Missing articleId" }, { status: 400 });
-    }
+    const itemId = new URL(req.url).searchParams.get("itemId");
+    if (!itemId) return bad("missingItemRef", 400);
 
     const comments = await prisma.comment.findMany({
-      where: { articleId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            avatarUrl: true,
-            department: true,
-            role: true,
-            email: true,
-          },
-        },
-      },
+      where: { itemId },
+      include: { user: { select: userSelect } },
       orderBy: { createdAt: "asc" },
     });
 
-    // Group comments into Level 1 (roots) and Level 2 (replies)
+    // Nhóm thành bậc 1 (gốc) và bậc 2 (trả lời)
     const roots: CommentRecord[] = [];
     const replyMap = new Map<string, CommentRecord[]>();
-
     for (const c of comments) {
-      const record: CommentRecord = {
-        id: c.id,
-        content: c.content,
-        articleId: c.articleId,
-        userId: c.userId,
-        userFullName: c.user?.fullName || "Member",
-        userAvatarUrl: c.user?.avatarUrl || undefined,
-        userDepartment: c.user?.department || undefined,
-        userRole: (c.user?.role as Role) || "MEMBER",
-        parentId: c.parentId,
-        createdAt: c.createdAt.toISOString(),
-        updatedAt: c.updatedAt.toISOString(),
-        replies: [],
-      };
-
+      const record = toRecord(c);
       if (!c.parentId) {
         roots.push(record);
       } else {
-        const list = replyMap.get(c.parentId) || [];
-        list.push(record);
-        replyMap.set(c.parentId, list);
+        replyMap.set(c.parentId, [...(replyMap.get(c.parentId) ?? []), record]);
       }
     }
+    for (const root of roots) root.replies = replyMap.get(root.id) ?? [];
 
-    // Attach replies to roots
-    for (const root of roots) {
-      root.replies = replyMap.get(root.id) || [];
-    }
-
-    return NextResponse.json({
-      success: true,
-      comments: roots,
-      totalCount: comments.length,
-    });
-  } catch (error: any) {
-    console.error("GET /api/comments error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, comments: roots, totalCount: comments.length });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    const body = await req.json().catch(() => ({}));
-    const { articleId, content, parentId } = body;
-    const userId = body.userId || session?.user?.id;
+    const user = await requireUser();
+    const { itemId, content, parentId } = await req.json().catch(() => ({}));
 
-    if (!articleId || !content?.trim()) {
-      return NextResponse.json(
-        { success: false, error: "Please enter your comment content." },
-        { status: 400 }
-      );
+    if (!itemId || typeof content !== "string" || !content.trim()) {
+      return bad("commentEmpty", 400);
     }
+    const item = await prisma.item.findUnique({ where: { id: itemId }, select: { id: true } });
+    if (!item) throw new HttpError(404, "itemNotFound");
 
-    // Resolve user
-    let user = null;
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-    if (!user && session?.user?.email) {
-      user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    }
-    if (!user) {
-      user = await prisma.user.findFirst();
-    }
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Please sign in to post a comment." },
-        { status: 401 }
-      );
-    }
-
-    // STRICT LEVEL 2 HIERARCHY ENFORCEMENT:
-    // If parentId is specified, check if that comment itself has a parentId.
-    // If yes, this means the user is replying to a Level 2 comment.
-    // Attach this new comment to the Level 1 root comment!
+    // Chỉ cho 2 bậc: trả lời một bình luận bậc 2 thì gắn vào bình luận gốc
     let targetParentId: string | null = null;
     if (parentId) {
-      const parentComment = await prisma.comment.findUnique({
-        where: { id: parentId },
-      });
-      if (parentComment) {
-        targetParentId = parentComment.parentId ? parentComment.parentId : parentComment.id;
-      }
+      const parent = await prisma.comment.findUnique({ where: { id: parentId } });
+      if (!parent || parent.itemId !== itemId) return bad("parentInvalid");
+      targetParentId = parent.parentId ?? parent.id;
     }
 
     const created = await prisma.comment.create({
-      data: {
-        articleId,
-        userId: user.id,
-        content: content.trim(),
-        parentId: targetParentId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            avatarUrl: true,
-            department: true,
-            role: true,
-          },
-        },
-      },
+      data: { itemId, userId: user.id, content: content.trim(), parentId: targetParentId },
+      include: { user: { select: userSelect } },
     });
 
-    const record: CommentRecord = {
-      id: created.id,
-      content: created.content,
-      articleId: created.articleId,
-      userId: created.userId,
-      userFullName: created.user.fullName,
-      userAvatarUrl: created.user.avatarUrl || undefined,
-      userDepartment: created.user.department || undefined,
-      userRole: created.user.role as Role,
-      parentId: created.parentId,
-      createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
-      replies: [],
-    };
-
-    return NextResponse.json({ success: true, comment: record });
-  } catch (error: any) {
-    console.error("POST /api/comments error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, comment: toRecord(created) });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
+/** Tác giả bình luận hoặc ADMIN mới được xóa. */
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await auth();
-    const { searchParams } = new URL(req.url);
-    const commentId = searchParams.get("id");
-    const callerId = searchParams.get("userId") || session?.user?.id;
+    const user = await requireUser();
+    const commentId = new URL(req.url).searchParams.get("id");
+    if (!commentId) return bad("missingCommentId", 400);
 
-    if (!commentId) {
-      return NextResponse.json({ success: false, error: "Missing comment ID" }, { status: 400 });
+    const target = await prisma.comment.findUnique({ where: { id: commentId } });
+    if (!target) throw new HttpError(404, "commentNotFound");
+    if (target.userId !== user.id && user.role !== "ADMIN") {
+      throw new HttpError(403, "commentForbidden");
     }
 
-    const targetComment = await prisma.comment.findUnique({
-      where: { id: commentId },
-    });
-
-    if (!targetComment) {
-      return NextResponse.json({ success: false, error: "Comment does not exist" }, { status: 404 });
-    }
-
-    // Resolve caller
-    let caller = null;
-    if (callerId) {
-      caller = await prisma.user.findUnique({ where: { id: callerId } });
-    }
-    if (!caller && session?.user?.email) {
-      caller = await prisma.user.findUnique({ where: { email: session.user.email } });
-    }
-
-    const isAuthor = caller && caller.id === targetComment.userId;
-    const isAdmin = caller && caller.role === "ADMIN";
-    const isSuperAdmin = caller && isSuperAdminEmail(caller.email);
-
-    if (!isAuthor && !isAdmin && !isSuperAdmin) {
-      return NextResponse.json(
-        { success: false, error: "You do not have permission to delete this comment." },
-        { status: 403 }
-      );
-    }
-
-    await prisma.comment.delete({
-      where: { id: commentId },
-    });
-
+    await prisma.comment.delete({ where: { id: commentId } });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("DELETE /api/comments error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
-

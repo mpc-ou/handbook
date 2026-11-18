@@ -11,118 +11,198 @@ datasource db {
 
 enum Role {
   ADMIN   // Ban Chủ Nhiệm: Toàn quyền hệ thống
-  EDITOR  // Trưởng/Phó ban, Leader sự kiện: Quyền tạo/sửa bài viết trong danh mục được giao
+  EDITOR  // Trưởng/Phó ban, Leader sự kiện: Quyền tạo/sửa nội dung trong khóa học được giao
   MEMBER  // Thành viên / CTV: Chỉ đọc và làm bài tập
 }
 
-enum ArticleStatus {
+enum ContentStatus {
   DRAFT          // Bản nháp của tác giả
   PENDING_REVIEW // Chờ duyệt
   PUBLISHED      // Đã xuất bản (khóa sửa, cần rollback về PENDING_REVIEW để sửa)
 }
 
+enum ItemType {
+  CONTENT    // Chương: nội dung (block editor)
+  QUIZ       // Bài tập / kiểm tra trắc nghiệm (bắt buộc có Quiz)
+  ASSIGNMENT // Bài tập nộp bài / tự luận (bắt buộc có Quiz)
+}
+
+enum Visibility {
+  PUBLIC
+  UNPUBLIC
+}
+
+enum Audience {
+  FREE
+  INTERNAL
+}
+
+enum AttemptStatus {
+  COMPLETED
+  PENDING_REVIEW
+  GRADED
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cấu trúc nội dung:  Course (cover) → Lesson (cover) → Item (KHÔNG cover)
+// Course gắn nhiều Category (phẳng) qua CourseCategory.
+// Thứ tự học: Course.sequential là mặc định; Lesson/Item.requirePrevious ghi đè (null = kế thừa).
+// ─────────────────────────────────────────────────────────────
+
 model User {
-  id                String           @id @default(cuid())
-  ssoId             String           @unique
-  email             String           @unique
-  passwordHash      String?
-  noPassword        Boolean          @default(false)
-  fullName          String
-  avatarUrl         String?
-  department        String?
-  managedGroups     Json             @default("[]")
-  role              Role             @default(MEMBER)
-  articlesAuthored  Article[]        @relation("ArticleAuthor")
-  articlesUpdated   Article[]        @relation("ArticleUpdater")
-  progress          UserProgress[]
-  quizAttempts      QuizAttempt[]
-  managedCategories CategoryEditor[]
-  likes             ArticleLike[]
-  comments          Comment[]
-  uploadedFiles     UploadedFile[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id              String         @id @default(cuid())
+  ssoId           String         @unique
+  email           String         @unique
+  passwordHash    String?
+  noPassword      Boolean        @default(false)
+  fullName        String
+  avatarUrl       String?
+  department      String?
+  managedGroups   Json           @default("[]")
+  role            Role           @default(MEMBER)
+  coursesAuthored Course[]       @relation("CourseAuthor")
+  coursesUpdated  Course[]       @relation("CourseUpdater")
+  itemsAuthored   Item[]         @relation("ItemAuthor")
+  itemsUpdated    Item[]         @relation("ItemUpdater")
+  progress        UserProgress[]
+  quizAttempts    QuizAttempt[]
+  managedCourses  CourseEditor[]
+  likes           ItemLike[]
+  comments        Comment[]
+  uploadedFiles   UploadedFile[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([ssoId])
   @@index([email])
 }
 
-model CategoryEditor {
-  id         String   @id @default(cuid())
-  userId     String
-  categoryId String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, categoryId])
-}
-
+/// Danh mục phẳng (tag) dùng để nhóm Course.
 model Category {
   id          String           @id @default(cuid())
   name        String
   slug        String           @unique
   description String?
-  icon        String?
+  icon        String?          // tên icon lucide
   orderIndex  Int              @default(0)
-  isPublished Boolean          @default(true)
-  depth       Int              @default(1) // Chỉ nhận giá trị 1 hoặc 2
-  parentId    String?
-  parent      Category?        @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children    Category[]       @relation("CategoryHierarchy")
-  articles    Article[]
-  editors     CategoryEditor[]
+  courses     CourseCategory[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  @@index([parentId, orderIndex])
+  @@index([orderIndex])
 }
 
-model Article {
+model Course {
+  id            String           @id @default(cuid())
+  title         String
+  slug          String           @unique
+  summary       String?
+  coverImage    String?          // URL Cloudinary | "preset:<id>"
+  status        ContentStatus    @default(DRAFT)
+  orderIndex    Int              @default(0)
+  sequential    Boolean          @default(true) // true = học theo thứ tự
+  visibility    Visibility       @default(PUBLIC)
+  audience      Audience         @default(INTERNAL)
+  allowedGroups Json             @default("[]")
+  authorId      String
+  author        User             @relation("CourseAuthor", fields: [authorId], references: [id])
+  updaterId     String?
+  updater       User?            @relation("CourseUpdater", fields: [updaterId], references: [id])
+  categories    CourseCategory[]
+  lessons       Lesson[]
+  editors       CourseEditor[]
+  uploadedFiles UploadedFile[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([status, orderIndex])
+}
+
+model CourseCategory {
+  id         String   @id @default(cuid())
+  courseId   String
+  categoryId String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, categoryId])
+  @@index([categoryId])
+}
+
+/// EDITOR được phép sửa nội dung của Course nào.
+model CourseEditor {
+  id       String @id @default(cuid())
+  userId   String
+  courseId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model Lesson {
+  id              String         @id @default(cuid())
+  courseId        String
+  course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title           String
+  slug            String
+  summary         String?
+  coverImage      String?
+  orderIndex      Int            @default(0)
+  isPublished     Boolean        @default(false)
+  requirePrevious Boolean?       // null = theo Course.sequential
+  items           Item[]
+  uploadedFiles   UploadedFile[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([courseId, slug])
+  @@index([courseId, orderIndex])
+}
+
+/// Chương hoặc bài tập. KHÔNG có ảnh bìa.
+model Item {
   id                    String         @id @default(cuid())
+  lessonId              String
+  lesson                Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  type                  ItemType       @default(CONTENT)
   title                 String
-  slug                  String         @unique
+  slug                  String
   summary               String?
-  coverImage            String?
+  orderIndex            Int            @default(0)
+  status                ContentStatus  @default(DRAFT)
+  isRequired            Boolean        @default(true)
+  requirePrevious       Boolean?       // null = kế thừa Lesson/Course
+  requireScrollToBottom Boolean        @default(true)
+  passScorePercent      Int?
   content               Json           @default("[]")
   plainText             String         @default("") @db.Text
   readingTime           Int            @default(1)
   attachments           Json           @default("[]")
-  categoryId            String
-  category              Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  orderIndex            Int            @default(0)
-  status                ArticleStatus  @default(DRAFT)
-  isPublished           Boolean        @default(false)
-  visibility            String         @default("PUBLIC") // PUBLIC | UNPUBLIC
-  audience              String         @default("INTERNAL") // FREE | INTERNAL
-  requirePrevious       Boolean        @default(false)
-  requireScrollToBottom Boolean        @default(true)
-  passScorePercent      Int?
-  isRequired            Boolean        @default(true)
-  allowedGroups         Json           @default("[]")
   likesCount            Int            @default(0)
   viewsCount            Int            @default(0)
   authorId              String
-  author                User           @relation("ArticleAuthor", fields: [authorId], references: [id])
+  author                User           @relation("ItemAuthor", fields: [authorId], references: [id])
   updaterId             String?
-  updater               User?          @relation("ArticleUpdater", fields: [updaterId], references: [id])
+  updater               User?          @relation("ItemUpdater", fields: [updaterId], references: [id])
   quiz                  Quiz?
   progress              UserProgress[]
-  likes                 ArticleLike[]
+  likes                 ItemLike[]
   comments              Comment[]
   uploadedFiles         UploadedFile[]
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
-  @@index([categoryId, orderIndex])
-  @@index([slug])
+  @@unique([lessonId, slug])
+  @@index([lessonId, orderIndex])
   @@index([status])
 }
 
 model Comment {
   id        String    @id @default(cuid())
   content   String    @db.Text
-  articleId String
-  article   Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   parentId  String?   // null = Bậc 1 (gốc), có giá trị = Bậc 2 (trả lời)
@@ -131,20 +211,20 @@ model Comment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  @@index([articleId, createdAt])
+  @@index([itemId, createdAt])
   @@index([parentId])
 }
 
-model ArticleLike {
+model ItemLike {
   id        String   @id @default(cuid())
   userId    String
-  articleId String
+  itemId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@unique([userId, articleId])
-  @@index([articleId])
+  @@unique([userId, itemId])
+  @@index([itemId])
   @@index([userId])
 }
 
@@ -152,8 +232,8 @@ model Quiz {
   id               String        @id @default(cuid())
   title            String?
   description      String?
-  articleId        String?       @unique
-  article          Article?      @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  itemId           String?       @unique
+  item             Item?         @relation(fields: [itemId], references: [id], onDelete: Cascade)
   durationMinutes  Int?
   passScorePercent Int           @default(80)
   maxAttempts      Int?
@@ -164,37 +244,38 @@ model Quiz {
   updatedAt        DateTime      @updatedAt
 }
 
+/// Tiến độ lưu theo Item. Tiến độ Lesson/Course được tính suy ra, không lưu.
 model UserProgress {
   id                String    @id @default(cuid())
   userId            String
-  articleId         String
+  itemId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  article           Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  item              Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
   hasScrolledBottom Boolean   @default(false)
   highestQuizScore  Int?
   isCompleted       Boolean   @default(false)
   completedAt       DateTime?
   lastAccessedAt    DateTime  @default(now())
 
-  @@unique([userId, articleId])
+  @@unique([userId, itemId])
   @@index([userId, isCompleted])
 }
 
 model QuizAttempt {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String
   quizId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz         Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
   scorePercent Int
   answers      Json
   isPassed     Boolean
   timeSpentSec Int?
-  status       String    @default("COMPLETED")
+  status       AttemptStatus @default(COMPLETED)
   feedback     String?
   gradedBy     String?
   gradedAt     DateTime?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime      @default(now())
 
   @@index([userId, quizId])
   @@index([quizId, createdAt])
@@ -212,18 +293,22 @@ model Department {
 }
 
 model UploadedFile {
-  id           String    @id @default(cuid())
-  publicId     String    @unique
-  url          String
-  bytes        Int?
-  format       String?
-  uploaderId   String?
-  uploader     User?     @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
-  isAttached   Boolean   @default(false) // True when saved into an article/quiz/profile
-  articleId    String?
-  article      Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  publicId   String   @unique
+  url        String
+  bytes      Int?
+  format     String?
+  uploaderId String?
+  uploader   User?    @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  isAttached Boolean  @default(false) // True when saved into a course/lesson/item
+  courseId   String?
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lessonId   String?
+  lesson     Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  itemId     String?
+  item       Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([publicId])
   @@index([isAttached, createdAt])

@@ -1,69 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/constants";
+import { handleApiError, requireAdmin } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 
+const fail = apiError;
+
+/** Quản lý thành viên: chỉ ADMIN. Người gọi lấy từ session, không nhận `callerId` từ client. */
 export async function PUT(req: NextRequest) {
   try {
-    const session = await auth();
-    const body = await req.json();
-    const { uid, role, department, managedGroups, managedCategoryIds, callerId } = body;
+    const caller = await requireAdmin();
+    const { uid, role, department, managedGroups, managedCourseIds } = await req.json();
+    if (!uid) return fail("missingUserId", 422);
 
-    if (!uid) {
-      return NextResponse.json({ success: false, error: "Missing user ID" }, { status: 400 });
-    }
-
-    // Resolve caller
-    let caller = null;
-    const resolvedCallerId = callerId || session?.user?.id;
-    if (resolvedCallerId) {
-      caller = await prisma.user.findUnique({ where: { id: resolvedCallerId } });
-    }
-    if (!caller && session?.user?.email) {
-      caller = await prisma.user.findUnique({ where: { email: session.user.email } });
-    }
-    if (!caller) {
-      caller = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    }
-
-    if (!caller || (caller.role !== "ADMIN" && !isSuperAdminEmail(caller.email))) {
-      return NextResponse.json(
-        { success: false, error: "You do not have permission to manage members." },
-        { status: 403 }
-      );
-    }
-
-    const isSuperAdmin = isSuperAdminEmail(caller.email);
-
-    // Target user
     const targetUser = await prisma.user.findUnique({ where: { id: uid } });
-    if (!targetUser) {
-      return NextResponse.json({ success: false, error: "Member not found" }, { status: 404 });
-    }
+    if (!targetUser) return fail("memberNotFound", 404);
 
-    // If target user is Super Admin, no regular admin can modify
-    if (isSuperAdminEmail(targetUser.email) && caller.id !== targetUser.id && !isSuperAdmin) {
-      return NextResponse.json(
-        { success: false, error: "Cannot modify Super Admin account." },
-        { status: 403 }
-      );
-    }
+    const callerIsSuper = isSuperAdminEmail(caller.email);
 
-    // If caller is NOT Super Admin:
-    if (!isSuperAdmin) {
-      // Cannot modify other Admins
+    if (isSuperAdminEmail(targetUser.email) && caller.id !== targetUser.id && !callerIsSuper) {
+      return fail("superAdminLocked", 403);
+    }
+    if (!callerIsSuper) {
       if (targetUser.role === "ADMIN" && caller.id !== targetUser.id) {
-        return NextResponse.json(
-          { success: false, error: "Only Super Admin can modify Administrator accounts." },
-          { status: 403 }
-        );
+        return fail("superAdminOnlyEditAdmin", 403);
       }
-      // Cannot promote anyone to ADMIN
       if (role === "ADMIN" && targetUser.role !== "ADMIN") {
-        return NextResponse.json(
-          { success: false, error: "Only Super Admin can appoint new Administrators." },
-          { status: 403 }
-        );
+        return fail("superAdminOnlyAppoint", 403);
       }
     }
 
@@ -72,22 +36,24 @@ export async function PUT(req: NextRequest) {
       data: {
         role: role || undefined,
         department: department !== undefined ? department : undefined,
-        managedGroups: managedGroups !== undefined ? managedGroups : undefined,
+        managedGroups: managedGroups !== undefined ? (managedGroups as Prisma.InputJsonValue) : undefined,
       },
     });
 
-    // Update managed categories if role is EDITOR
-    if (managedCategoryIds !== undefined) {
-      await prisma.categoryEditor.deleteMany({ where: { userId: uid } });
-      if (Array.isArray(managedCategoryIds) && managedCategoryIds.length > 0) {
-        await prisma.categoryEditor.createMany({
-          data: managedCategoryIds.map((catId: string) => ({
-            userId: uid,
-            categoryId: catId,
-          })),
+    // Gán khóa học cho EDITOR
+    if (managedCourseIds !== undefined) {
+      await prisma.courseEditor.deleteMany({ where: { userId: uid } });
+      if (Array.isArray(managedCourseIds) && managedCourseIds.length > 0) {
+        await prisma.courseEditor.createMany({
+          data: (managedCourseIds as string[]).map((courseId) => ({ userId: uid, courseId })),
         });
       }
     }
+
+    const assigned = await prisma.courseEditor.findMany({
+      where: { userId: uid },
+      select: { courseId: true },
+    });
 
     return NextResponse.json({
       success: true,
@@ -98,13 +64,12 @@ export async function PUT(req: NextRequest) {
         fullName: updated.fullName,
         avatarUrl: updated.avatarUrl || undefined,
         department: updated.department || "",
-        managedGroups: (updated.managedGroups as any) || [],
+        managedGroups: (updated.managedGroups as string[]) || [],
         role: updated.role,
-        managedCategoryIds: managedCategoryIds || [],
+        managedCourseIds: assigned.map((a) => a.courseId),
       },
     });
-  } catch (error: any) {
-    console.error("Error updating member in Postgres:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

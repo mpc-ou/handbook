@@ -1,50 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { handleApiError, requireUser } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 
+/**
+ * Cập nhật tiến độ của người dùng hiện tại trên một Item.
+ * userId lấy từ session; `isCompleted` do client gửi bị bỏ qua — hoàn thành được
+ * tính ở server từ điều kiện cuộn hết bài + điểm quiz.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { userId, articleId, hasScrolledBottom, highestQuizScore, isCompleted } = body;
+    const user = await requireUser();
+    const { itemId, hasScrolledBottom, highestQuizScore } = await req.json();
+    if (!itemId) {
+      return apiError("missingItemRef");
+    }
 
-    if (!userId || !articleId) {
-      return NextResponse.json({ success: false, error: "Missing userId or articleId" }, { status: 400 });
+    const item = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: {
+        type: true,
+        passScorePercent: true,
+        requireScrollToBottom: true,
+        quiz: { select: { passScorePercent: true } },
+      },
+    });
+    if (!item) {
+      return apiError("itemNotFound", 404);
     }
 
     const existing = await prisma.userProgress.findUnique({
-      where: {
-        userId_articleId: { userId, articleId },
-      },
+      where: { userId_itemId: { userId: user.id, itemId } },
     });
 
-    const finalScrolled = hasScrolledBottom ?? existing?.hasScrolledBottom ?? false;
+    const scrolled = hasScrolledBottom ?? existing?.hasScrolledBottom ?? false;
     const currentHighest = existing?.highestQuizScore ?? 0;
-    const nextHighest = highestQuizScore !== undefined ? Math.max(currentHighest, highestQuizScore) : currentHighest;
+    const highest =
+      typeof highestQuizScore === "number" ? Math.max(currentHighest, highestQuizScore) : currentHighest;
 
-    // Check article requirement
-    const article = await prisma.article.findUnique({ where: { id: articleId } });
-    const quizRequired = (article?.passScorePercent ?? 0) > 0;
-    const quizPassed = !quizRequired || nextHighest >= (article?.passScorePercent ?? 0);
-    const scrollOk = !article?.requireScrollToBottom || finalScrolled;
-    const finalCompleted = isCompleted || (scrollOk && quizPassed);
+    // Điểm bắt buộc: cấu hình trên Item, hoặc theo Quiz với bài tập/kiểm tra
+    const requiredScore =
+      item.passScorePercent ?? (item.type === "CONTENT" ? 0 : (item.quiz?.passScorePercent ?? 0));
+    const quizPassed = requiredScore <= 0 || highest >= requiredScore;
+    // Item thuần quiz không có nội dung để cuộn
+    const scrollOk = item.type !== "CONTENT" || !item.requireScrollToBottom || scrolled;
+    const completed = Boolean(existing?.isCompleted) || (scrollOk && quizPassed);
 
     const progress = await prisma.userProgress.upsert({
-      where: {
-        userId_articleId: { userId, articleId },
-      },
+      where: { userId_itemId: { userId: user.id, itemId } },
       update: {
-        hasScrolledBottom: finalScrolled,
-        highestQuizScore: nextHighest,
-        isCompleted: finalCompleted,
-        completedAt: finalCompleted ? (existing?.completedAt || new Date()) : null,
+        hasScrolledBottom: scrolled,
+        highestQuizScore: highest,
+        isCompleted: completed,
+        completedAt: completed ? (existing?.completedAt ?? new Date()) : null,
         lastAccessedAt: new Date(),
       },
       create: {
-        userId,
-        articleId,
-        hasScrolledBottom: finalScrolled,
-        highestQuizScore: nextHighest,
-        isCompleted: finalCompleted,
-        completedAt: finalCompleted ? new Date() : null,
+        userId: user.id,
+        itemId,
+        hasScrolledBottom: scrolled,
+        highestQuizScore: highest,
+        isCompleted: completed,
+        completedAt: completed ? new Date() : null,
       },
     });
 
@@ -52,13 +69,11 @@ export async function POST(req: NextRequest) {
       success: true,
       progress: {
         ...progress,
-        completedAt: progress.completedAt?.toISOString() || null,
+        completedAt: progress.completedAt?.toISOString() ?? null,
         lastAccessedAt: progress.lastAccessedAt.toISOString(),
       },
     });
-  } catch (error: any) {
-    console.error("Error updating progress in Postgres:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
-

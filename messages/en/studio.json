@@ -1,0 +1,311 @@
+{
+  "nav": {
+    "studio": "Studio",
+    "overview": "Overview",
+    "curriculum": "Curriculum",
+    "items": "Chapters & assignments",
+    "progress": "Learner progress",
+    "quizzes": "Submissions",
+    "members": "Members",
+    "settings": "Settings",
+    "roleAdmin": "Admin",
+    "roleEditor": "Editor",
+    "defaultDepartment": "Board of Directors",
+    "logout": "Sign out",
+    "mobileTitle": "Studio navigation",
+    "openMenu": "Open navigation menu",
+    "toggleSidebar": "Toggle sidebar (Ctrl+B)",
+    "quickSearch": "Quick search...",
+    "toggleTheme": "Toggle light / dark theme",
+    "backToLearn": "Back to learning"
+  },
+  "accessDenied": {
+    "title": "Studio access restricted",
+    "description": "Only authorized administrators and editors can access the studio workspace.",
+    "login": "Sign in",
+    "backHome": "Back to learning"
+  },
+  "confirmDialog": {
+    "processing": "Processing…"
+  },
+  "table": {
+    "selectedCount": "{count, plural, one {# item selected} other {# items selected}}",
+    "deselect": "Clear selection",
+    "emptyTitle": "No data available",
+    "showing": "Showing {from}–{to} of {total}",
+    "rowsPerPage": "Rows per page:",
+    "rowsOption": "{size} rows"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "description": "Monitor learning content, pending reviews, and recent updates at a glance.",
+    "openCurriculum": "Open curriculum",
+    "stats": {
+      "courses": "Courses",
+      "coursesSub": "{published} published · {categories} categories",
+      "lessons": "Lessons",
+      "lessonsSub": "{published} visible · {hidden} hidden",
+      "items": "Chapters & assignments",
+      "itemsSub": "{published} published · {draft} drafts",
+      "pendingReview": "Pending review",
+      "pendingReviewSub": "{items} items · {attempts} submissions"
+    },
+    "needsAction": {
+      "title": "Needs attention",
+      "empty": "Everything is up to date.",
+      "pendingItemMeta": "{course} › {lesson} · {author}",
+      "pendingAttemptBadge": "Needs grading",
+      "pendingAttemptMeta": "{learner} · {date}",
+      "view": "View"
+    },
+    "recentEdits": {
+      "title": "Recently edited",
+      "viewAll": "View all",
+      "empty": "No chapters or assignments yet.",
+      "itemMeta": "{course} › {lesson}"
+    }
+  },
+  "curriculum": {
+    "title": "Curriculum",
+    "description": "Organize courses, lessons, chapters, and assignments.",
+    "categoriesButton": "Categories ({count})",
+    "createCourseButton": "New course",
+    "allCoursesFilter": "All courses",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "emptyAll": "No courses yet. Create your first course to start building the curriculum.",
+    "emptyCategory": "No courses in this category.",
+    "createFirstCourse": "Create first course",
+    "actions": {
+      "dragCourse": "Drag to reorder course",
+      "dragLesson": "Drag to reorder lesson",
+      "dragItem": "Drag to reorder item",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "moreActions": "More actions",
+      "changeStatus": "Change status",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    },
+    "sequential": {
+      "inherit": "Inherit from course",
+      "locked": "Sequential order required",
+      "free": "Free order",
+      "lockedShort": "Sequential",
+      "freeShort": "Free",
+      "courseLocked": "Sequential learning",
+      "courseFree": "Free learning",
+      "courseLockedHint": "Learners must complete items in order by default (unless overridden by a lesson or item).",
+      "courseFreeHint": "Learners can open any lesson or item in this course freely (unless overridden).",
+      "effectiveLocked": "Sequential learning",
+      "effectiveFree": "Free learning",
+      "lessonOverrideLocked": "Lesson override: sequential order required.",
+      "lessonOverrideFree": "Lesson override: free order allowed.",
+      "itemOverrideLocked": "Item override: previous item required.",
+      "itemOverrideFree": "Item override: free access allowed.",
+      "inheritFromLesson": "Inherited from lesson \"{title}\" ({mode}).",
+      "inheritFromCourse": "Inherited from course \"{title}\" ({mode})."
+    },
+    "course": {
+      "internalBadge": "Internal",
+      "counts": "{lessons} lessons · {items} items",
+      "addLesson": "Add lesson",
+      "viewCourse": "View course page",
+      "emptyLessons": "This course has no lessons yet.",
+      "addFirstLesson": "Add first lesson"
+    },
+    "lesson": {
+      "hiddenBadge": "Hidden",
+      "itemCount": "{count, plural, one {# item} other {# items}}",
+      "addItem": "Add item",
+      "hideLesson": "Hide lesson",
+      "showLesson": "Show lesson",
+      "emptyItems": "This lesson has no chapters or assignments yet.",
+      "addFirstItem": "Add first item"
+    },
+    "item": {
+      "editContent": "Edit content",
+      "duplicate": "Duplicate",
+      "moveLesson": "Move to lesson…"
+    },
+    "confirmDeleteCourse": {
+      "title": "Delete course",
+      "description": "Course \"{title}\" contains {lessons} lessons and {items} chapters/assignments. Deleting it will permanently remove all nested content and learner progress. Are you sure?"
+    },
+    "confirmDeleteLesson": {
+      "title": "Delete lesson",
+      "description": "Lesson \"{title}\" contains {items} chapters/assignments. Deleting it will permanently remove all items inside. Are you sure?"
+    },
+    "confirmDeleteItem": {
+      "title": "Delete chapter / assignment",
+      "description": "Are you sure you want to permanently delete \"{title}\"? This action cannot be undone."
+    },
+    "toasts": {
+      "reorderCourseFailed": "Couldn't reorder courses.",
+      "reorderLessonFailed": "Couldn't reorder lessons.",
+      "reorderItemFailed": "Couldn't reorder items.",
+      "updateCourseFailed": "Couldn't update the course.",
+      "deleteCourseFailed": "Couldn't delete the course.",
+      "updateLessonFailed": "Couldn't update the lesson.",
+      "deleteLessonFailed": "Couldn't delete the lesson.",
+      "updateItemFailed": "Couldn't update the item.",
+      "duplicateItemFailed": "Couldn't duplicate this item.",
+      "deleteItemFailed": "Couldn't delete this item."
+    },
+    "categoryManager": {
+      "title": "Manage categories",
+      "description": "Categories are flat tags used to organize and filter courses. A course can have multiple categories.",
+      "editingLabel": "Editing: {name}",
+      "addLabel": "Add new category",
+      "nameField": "Category name",
+      "namePlaceholder": "e.g. Club Rules, Engineering...",
+      "slugField": "URL slug",
+      "slugPlaceholder": "club-rules",
+      "descriptionField": "Short description",
+      "descriptionPlaceholder": "Briefly describe what courses belong in this category...",
+      "createButton": "Create category",
+      "adminOnlyHint": "Only administrators can create, edit, or delete categories.",
+      "listHeading": "Existing categories ({count})",
+      "empty": "No categories yet.",
+      "courseCount": "{count, plural, one {# course} other {# courses}}",
+      "deleteTitle": "Delete category",
+      "deleteDescription": "Are you sure you want to delete \"{name}\"? This only removes the tag from {count} courses and will not delete any courses.",
+      "nameRequired": "Please enter a category name.",
+      "saveFailed": "Couldn't save the category.",
+      "deleteFailed": "Couldn't delete the category."
+    },
+    "courseDialog": {
+      "editTitle": "Edit course",
+      "createTitle": "Create new course",
+      "description": "Configure general details, cover image, categories, sequential progression, and access permissions.",
+      "coverField": "Course cover image",
+      "defaultCoverTitle": "Course",
+      "titleField": "Course title",
+      "titlePlaceholder": "e.g. MPC Culture & Handbook",
+      "slugField": "URL slug",
+      "slugPlaceholder": "mpc-culture-handbook",
+      "regenerateSlug": "Regenerate",
+      "summaryField": "Course summary",
+      "summaryPlaceholder": "Introduce the goals and main topics of this course...",
+      "categoriesField": "Categories ({count} selected)",
+      "categoriesEmpty": "No categories yet. You can create them in Manage categories.",
+      "sequentialField": "Sequential learning",
+      "sequentialHint": "Require completing the previous item before unlocking the next",
+      "statusField": "Status",
+      "audienceField": "Course audience",
+      "audienceFree": "Public (everyone)",
+      "audienceInternal": "Club internal (members only)",
+      "audienceFreeHint": "Guests and all club members can view this course",
+      "audienceInternalHint": "Requires signing in with a club member account",
+      "allowedGroupsField": "Restrict by department (leave empty for all members)",
+      "clearGroups": "Clear all",
+      "departmentsEmpty": "No departments available.",
+      "createButton": "Create course",
+      "titleRequired": "Please enter a course title.",
+      "invalidSlug": "Course URL slug is invalid.",
+      "saveFailed": "Couldn't save the course."
+    },
+    "lessonDialog": {
+      "editTitle": "Edit lesson",
+      "createTitle": "Add new lesson",
+      "description": "Configure details, cover image, and progression rules for this lesson.",
+      "descriptionWithCourse": "In course \"{courseTitle}\".",
+      "coverField": "Lesson cover image",
+      "defaultCoverTitle": "Lesson",
+      "titleField": "Lesson title",
+      "titlePlaceholder": "e.g. Lesson 1: Code of Conduct",
+      "slugField": "URL slug",
+      "slugPlaceholder": "code-of-conduct",
+      "regenerateSlug": "Regenerate",
+      "summaryField": "Lesson summary",
+      "summaryPlaceholder": "Briefly describe what this lesson covers...",
+      "sequentialField": "Learning order",
+      "publishField": "Show lesson",
+      "publishedHint": "Visible to learners in this course",
+      "hiddenHint": "Hidden from the course lesson list",
+      "createButton": "Create lesson",
+      "courseMissing": "Couldn't determine the parent course for this lesson.",
+      "titleRequired": "Please enter a lesson title.",
+      "invalidSlug": "Lesson URL slug is invalid.",
+      "saveFailed": "Couldn't save the lesson."
+    },
+    "itemQuickDialog": {
+      "title": "Add new item",
+      "description": "Choose an item type and enter a title to start authoring.",
+      "descriptionWithLesson": "Creating in lesson \"{lessonTitle}\".",
+      "descriptionWithCourse": "Creating in lesson \"{lessonTitle}\" ({courseTitle}).",
+      "typeField": "Item type",
+      "types": {
+        "CONTENT": {
+          "label": "Chapter (reading)",
+          "description": "Reading material with text, images, videos, and attachments.",
+          "placeholder": "e.g. Chapter 1: Workflow overview"
+        },
+        "QUIZ": {
+          "label": "Quiz",
+          "description": "Multiple-choice and fill-in-the-blank questions graded automatically.",
+          "placeholder": "e.g. End-of-lesson review quiz"
+        },
+        "ASSIGNMENT": {
+          "label": "Assignment",
+          "description": "Essay, file upload, or code submission reviewed by an instructor.",
+          "placeholder": "e.g. Practical assignment: First deliverable"
+        }
+      },
+      "titleField": "Title",
+      "submitButton": "Create & edit content",
+      "lessonMissing": "Couldn't determine the parent lesson for this item.",
+      "titleRequired": "Please enter a title.",
+      "createFailed": "Couldn't create the item."
+    },
+    "moveItemDialog": {
+      "title": "Move to another lesson",
+      "description": "Select the destination lesson for this item.",
+      "descriptionWithItem": "Select the destination lesson for \"{title}\".",
+      "targetField": "Destination lesson",
+      "targetPlaceholder": "Select a lesson...",
+      "currentTag": "Current",
+      "submitButton": "Move item",
+      "targetRequired": "Please select a destination lesson.",
+      "moveFailed": "Couldn't move the item to another lesson."
+    }
+  },
+  "settings": {
+    "title": "Storage & Settings",
+    "description": "Monitor Cloudinary storage usage and clean up unattached uploaded files.",
+    "refresh": "Refresh",
+    "cloudinary": {
+      "heading": "Cloudinary Cloud Storage",
+      "plan": "Plan: {plan}",
+      "defaultPlan": "Free",
+      "cloudName": "Cloud name: {name}",
+      "connected": "Connected",
+      "unconfigured": "Not configured",
+      "apiError": "Storage API note: {error}",
+      "storageLabel": "Storage used",
+      "storageHint": "Total size of stored images and media files",
+      "bandwidthLabel": "Bandwidth",
+      "bandwidthHint": "Transfer volume over the last 30 days",
+      "creditsLabel": "Credits used"
+    },
+    "orphans": {
+      "heading": "Orphaned files cleanup",
+      "description": "When authors upload images but leave the page without saving, those files become orphaned (not attached to any course, lesson, or chapter). Clean them up to free storage space.",
+      "cleaning": "Cleaning up…",
+      "cleanButton": "Clean up now ({count} files)",
+      "totalTracked": "Total tracked files",
+      "attachedCount": "In use",
+      "orphanCount": "Orphaned files",
+      "trackedVolume": "Tracked size",
+      "cronTitle": "Automated periodic cleanup",
+      "cronDescription": "You can schedule a periodic job to call the following endpoint:",
+      "cronHint": "Deletes orphaned files older than 2 hours that are not attached to any content."
+    },
+    "toasts": {
+      "loadFailed": "Couldn't load storage usage data.",
+      "serverError": "Couldn't connect to the server.",
+      "cleanSuccess": "Cleaned up {count} orphaned files (freed ~{mb} MB).",
+      "cleanFailed": "Couldn't clean up orphaned files."
+    }
+  }
+}

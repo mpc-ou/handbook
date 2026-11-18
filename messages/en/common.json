@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "MPC Handbook — Internal Handbook & Training Roadmap",
+    "description": "The internal handbook and roadmap-based training system of the Mobile Programming Club (MPC), with MPC-SSO, a block editor and assessments."
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "retry": "Retry",
+    "loading": "Loading…"
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "PENDING_REVIEW": "Pending review",
+    "PUBLISHED": "Published"
+  },
+  "itemType": {
+    "CONTENT": "Chapter",
+    "QUIZ": "Quiz",
+    "ASSIGNMENT": "Assignment"
+  },
+  "toast": {
+    "loadFailed": "Couldn't load data. Please try again.",
+    "connectionError": "Couldn't reach the server. Please try again later.",
+    "connectionLost": "Lost connection to the server.",
+    "loggedOut": "Signed out.",
+    "signedInAs": "Signed in as {name}.",
+    "chapterCompleted": "Chapter completed! The next one is now unlocked.",
+    "guestNotSaved": "You're taking this as a guest, so your result won't be saved.",
+    "loginRequired": "Please sign in.",
+    "likeLoginRequired": "Please sign in to like this.",
+    "adminOnlyPermissions": "Only administrators can manage member permissions.",
+    "memberUpdated": "Member role and permissions updated.",
+    "categoryNameRequired": "Category name can't be empty.",
+    "categoryCreated": "Category \"{name}\" created.",
+    "categoryUpdated": "Category updated.",
+    "categoryDeleted": "Category deleted.",
+    "courseSaved": "Course \"{title}\" saved.",
+    "courseCreated": "Course \"{title}\" created.",
+    "courseDeleted": "Course deleted.",
+    "courseDeletedNamed": "Course \"{title}\" deleted.",
+    "courseStatus": "Course status: {status}.",
+    "lessonSaved": "Lesson \"{title}\" saved.",
+    "lessonCreated": "Lesson \"{title}\" created.",
+    "lessonDeleted": "Lesson deleted.",
+    "lessonDeletedNamed": "Lesson \"{title}\" deleted.",
+    "itemSaved": "\"{title}\" saved.",
+    "itemCreated": "\"{title}\" created.",
+    "itemDeleted": "Deleted.",
+    "itemDeletedNamed": "\"{title}\" deleted.",
+    "itemNotFound": "Chapter or assignment not found.",
+    "itemDuplicated": "\"{title}\" duplicated as a draft.",
+    "statusUpdated": "Status updated: {status}.",
+    "bulkPartial": "{ok}/{total} succeeded, {failed} failed.",
+    "bulkDone": "{count} items processed.",
+    "departmentSaveFailed": "Couldn't save the department.",
+    "departmentDeleteFailed": "Couldn't delete the department.",
+    "departmentUpdated": "Updated {name}.",
+    "departmentAdded": "Added {name}.",
+    "departmentDeleted": "Department deleted.",
+    "copySuffix": "(Copy)"
+  },
+  "lightbox": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "close": "Close (Esc)",
+    "previous": "Previous image (←)",
+    "next": "Next image (→)",
+    "expandedImage": "Expanded image"
+  }
+}

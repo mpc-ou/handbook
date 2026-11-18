@@ -1,0 +1,81 @@
+{
+  "aria": {
+    "foxButton": "Cáo MPC — bấm để xem mẹo sử dụng",
+    "closeBubble": "Đóng lời thoại",
+    "hideMascot": "Ẩn linh vật",
+    "showMascot": "Hiện linh vật cáo MPC"
+  },
+  "actions": {
+    "hide": "Ẩn linh vật",
+    "nextTip": "Mẹo tiếp theo"
+  },
+  "greeting": {
+    "morning": "Chào buổi sáng! ☀️",
+    "noon": "Trưa rồi, nhớ nghỉ ngơi chút nhé! 🍚",
+    "afternoon": "Chào buổi chiều! 🌤️",
+    "evening": "Chào buổi tối! 🌆",
+    "late": "Khuya rồi mà vẫn chăm học thế! 🌙",
+    "firstVisit": "Mình là cáo MPC 🦊 Bấm vào mình bất cứ lúc nào để xem mẹo dùng sổ tay nha!",
+    "welcomeBack": "Mừng bạn quay lại! Bấm vào mình nếu cần gợi ý nhé 🦊"
+  },
+  "tips": {
+    "1": "Mẹo nhỏ: nhấn Ctrl+K (hoặc ⌘K) để tìm nhanh mọi khóa học, bài học và chương.",
+    "2": "Đang đọc chương dài? Nhấn phím F để bật chế độ đọc tập trung, ẩn gọn thanh bên.",
+    "3": "Quên phím tắt ư? Nhấn phím ? bất cứ lúc nào để mở bảng phím tắt nhé!",
+    "4": "Hoàn thành ít nhất một mục mỗi ngày để giữ chuỗi ngày học liên tiếp không bị đứt nha 🔥",
+    "5": "Cuộn đọc hết nội dung chương là hệ thống tự động đánh dấu hoàn thành cho bạn đó!",
+    "6": "Nếu mình làm bạn vướng mắt khi đọc, cứ bấm \"Ẩn linh vật\" để mình thu gọn vào mép màn hình nhé 🦊"
+  },
+  "nudges": {
+    "1": "Đang ngẫm nghĩ gì đó hả? Nhấn Ctrl+K nếu bạn muốn tìm nhanh một chủ đề nha!",
+    "2": "Nghỉ mắt vài giây rồi đọc tiếp một chương ngắn để giữ chuỗi ngày học nhé 🦊"
+  },
+  "events": {
+    "itemCompleted": {
+      "1": "Xong thêm một mục rồi, cứ đà này mà tiến nhé! ✨",
+      "2": "Tốt lắm! Kiến thức tích lũy từng chút một 🦊",
+      "3": "Gọn gàng! Sẵn sàng qua mục tiếp theo chưa nào?"
+    },
+    "itemCompletedQuiz": {
+      "1": "Vượt qua bài trắc nghiệm mượt mà luôn! 🎯",
+      "2": "Trắc nghiệm xong xuôi, nắm bài chắc quá!"
+    },
+    "itemCompletedAssignment": {
+      "1": "Hoàn thành bài tập rồi, làm tốt lắm! 🛠️",
+      "2": "Thêm một bài tập nữa được giải quyết gọn gàng!"
+    },
+    "quizPassed": {
+      "1": "Đỉnh quá! Bạn đạt {score}% bài trắc nghiệm luôn 🎉",
+      "2": "{score}%! Cáo MPC ngả mũ thán phục 🦊✨",
+      "3": "Qua bài gọn gàng với {score}%! Quá xuất sắc."
+    },
+    "quizPassedNoScore": {
+      "1": "Đỉnh quá! Bạn vượt qua bài trắc nghiệm rồi 🎉",
+      "2": "Qua bài trắc nghiệm gọn gàng! Cáo MPC ngả mũ thán phục 🦊"
+    },
+    "quizFailed": {
+      "1": "Đạt {score}% rồi, thiếu một chút nữa thôi — xem lại bài rồi thử sức tiếp nhé! 💪",
+      "2": "Mới {score}% thôi, đừng nản nha! Ôn lại chút là vượt qua ngay 🦊",
+      "3": "Sai ở đâu mình chắc ở đó ({score}%)! Thử lại lần nữa nào."
+    },
+    "quizFailedNoScore": {
+      "1": "Chưa đủ điểm qua rồi, đọc lại bài một chút rồi thử lại nhé! 💪",
+      "2": "Thiếu một chút thôi, bình tĩnh làm lại nha 🦊"
+    },
+    "assignmentSubmitted": {
+      "1": "Đã nộp bài tập! Giờ thì chờ phản hồi chấm bài nhé 📬",
+      "2": "Bài nộp đã lên đường! Nghỉ ngơi chút hoặc đọc tiếp chương sau nha 🦊",
+      "3": "Gửi bài tập thành công! Chăm chỉ quá đi ✨"
+    },
+    "courseCompleted": {
+      "1": "Chúc mừng bạn đã hoàn thành trọn vẹn khóa học! 🎓🦊",
+      "2": "Tuyệt vời! Lại thêm một khóa học nữa về đích hoàn hảo 🏆",
+      "3": "Phá đảo khóa học rồi! Tự thưởng cho mình một tràng pháo tay nào 🎉"
+    },
+    "streak": {
+      "1": "Chuỗi {days} ngày học liên tiếp rồi kìa! Giữ lửa nha 🔥",
+      "2": "{days} ngày bền bỉ không nghỉ! Cáo MPC tự hào về bạn 🦊🔥",
+      "3": "Phong độ đỉnh cao: chuỗi {days} ngày học liên tục! ⚡"
+    }
+  }
+}

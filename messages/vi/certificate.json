@@ -1,0 +1,25 @@
+{
+  "backToCourse": "Về khóa học",
+  "printBtn": "In / Lưu PDF",
+  "notFoundTitle": "Không tìm thấy khóa học",
+  "notFoundDesc": "Khóa học bạn yêu cầu không tồn tại.",
+  "backToHome": "Về trang chủ",
+  "locked": {
+    "loginTitle": "Đăng nhập để nhận chứng nhận",
+    "loginDesc": "Vui lòng đăng nhập bằng tài khoản MPC để kiểm tra tiến độ và nhận chứng nhận khóa học.",
+    "loginBtn": "Đăng nhập MPC",
+    "incompleteTitle": "Chưa hoàn thành khóa học",
+    "incompleteDesc": "Bạn đã hoàn thành {completed}/{total} mục bắt buộc ({percent}%) trong khóa học \"{title}\". Hãy hoàn thành toàn bộ để nhận chứng nhận.",
+    "continueCourseBtn": "Tiếp tục học"
+  },
+  "card": {
+    "organization": "MPClub Handbook",
+    "badge": "Chứng nhận hoàn thành",
+    "presentedTo": "Trân trọng trao cho",
+    "completedCourse": "đã hoàn thành toàn bộ chương trình học của khóa",
+    "dateLabel": "Ngày hoàn thành",
+    "codeLabel": "Mã xác nhận",
+    "issuerLabel": "Đơn vị cấp",
+    "issuerValue": "Mobile Programming Club"
+  }
+}

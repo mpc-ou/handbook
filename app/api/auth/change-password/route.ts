@@ -3,36 +3,25 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isEmailLoginEnabled } from "@/lib/constants";
+import { apiError } from "@/lib/api-errors";
 
 export async function POST(req: NextRequest) {
   try {
     // If EMAIL_LOGIN is disabled, password operations are also disabled
     if (!isEmailLoginEnabled()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Tính năng quản lý và đổi mật khẩu hiện đang bị vô hiệu hóa.",
-        },
-        { status: 403 }
-      );
+      return apiError("passwordFeatureDisabled", 403);
     }
 
     const session = await auth();
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized. Please log in first." },
-        { status: 401 }
-      );
+      return apiError("unauthenticated", 401);
     }
 
     const body = await req.json();
     const { currentPassword, newPassword } = body;
 
     if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
-      return NextResponse.json(
-        { success: false, error: "New password must be at least 6 characters long." },
-        { status: 400 }
-      );
+      return apiError("passwordTooShort", 400);
     }
 
     const user = await prisma.user.findUnique({
@@ -40,28 +29,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found." },
-        { status: 404 }
-      );
+      return apiError("accountNotFound", 404);
     }
 
     // If user already has a password (noPassword is false or passwordHash exists),
     // require current password verification
     if (!user.noPassword && user.passwordHash) {
       if (!currentPassword) {
-        return NextResponse.json(
-          { success: false, error: "Current password is required." },
-          { status: 400 }
-        );
+        return apiError("currentPasswordRequired", 400);
       }
 
       const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!isMatch) {
-        return NextResponse.json(
-          { success: false, error: "Current password is incorrect." },
-          { status: 400 }
-        );
+        return apiError("currentPasswordIncorrect", 400);
       }
     }
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteCloudinaryAsset } from "@/lib/cloudinary-server";
 import { isSuperAdminEmail } from "@/lib/constants";
 import { auth } from "@/lib/auth";
+import { apiError } from "@/lib/api-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +26,7 @@ export async function POST(req: NextRequest) {
       isSuperAdminEmail(session?.user?.email);
 
     if (!isCronAuthorized && !isAdmin) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized. Admin or valid Cron Secret required." },
-        { status: 401 }
-      );
+      return apiError("cleanupUnauthorized", 401);
     }
 
     // Default threshold: files uploaded more than 2 hours ago that were never attached/saved

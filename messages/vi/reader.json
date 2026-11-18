@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "notFoundTitle": "Không tìm thấy nội dung | MPC Handbook",
+    "notFoundDescription": "Nội dung bạn yêu cầu không tồn tại trong sổ tay MPC.",
+    "fallbackTitle": "Chương học | MPC Handbook",
+    "fallbackDescription": "Sổ tay nội bộ và lộ trình đào tạo dành cho thành viên CLB Lập trình Di động MPC.",
+    "siteName": "MPC Handbook"
+  },
+  "readingTime": "~{minutes} phút đọc",
+  "updatedAt": "Cập nhật {date}",
+  "views": "{count} lượt xem",
+  "progressBarLabel": "Tiến độ đọc chương",
+  "focusMode": {
+    "enable": "Bật chế độ tập trung (F)",
+    "disable": "Tắt chế độ tập trung (F)",
+    "label": "Tập trung"
+  },
+  "settings": {
+    "trigger": "Hiển thị",
+    "tooltip": "Tùy chỉnh hiển thị",
+    "fontSize": "Cỡ chữ",
+    "fontSizeSm": "S",
+    "fontSizeMd": "M",
+    "fontSizeLg": "L",
+    "columnWidth": "Độ rộng cột",
+    "widthSm": "Hẹp",
+    "widthMd": "Vừa",
+    "widthLg": "Rộng"
+  },
+  "shortcuts": {
+    "triggerTooltip": "Phím tắt (?)",
+    "title": "Phím tắt",
+    "description": "Dùng bàn phím để thao tác nhanh khi đọc chương.",
+    "prevNext": "Chương trước / Chương sau",
+    "focusMode": "Bật / tắt chế độ đọc tập trung",
+    "search": "Mở tìm kiếm nhanh",
+    "help": "Mở hộp thoại phím tắt"
+  },
+  "toc": {
+    "title": "Mục lục"
+  },
+  "content": {
+    "copy": "Sao chép",
+    "copied": "Đã chép",
+    "imageAlt": "Hình minh họa trong bài",
+    "galleryImageAlt": "Ảnh {index}",
+    "videoTitle": "Video bài giảng",
+    "comparisonDo": "Nên làm",
+    "comparisonAvoid": "Cần tránh",
+    "attachmentsTitle": "Tài liệu đính kèm ({count})"
+  },
+  "completion": {
+    "completed": "Đã hoàn thành",
+    "scrollHint": "Cuộn tới cuối bài để hoàn thành chương này",
+    "nextChapter": "Chương tiếp theo",
+    "lessonCompletedHint": "Bạn đã hoàn thành chương cuối của bài học này! Tiếp tục sang bài học kế tiếp.",
+    "courseCompletedHint": "Chúc mừng! Bạn đã hoàn thành toàn bộ khóa học này.",
+    "viewCertificate": "Nhận chứng nhận hoàn thành"
+  },
+  "actions": {
+    "like": "Thích",
+    "liked": "Đã thích",
+    "likeAria": "Thích chương này",
+    "unlikeAria": "Bỏ thích chương này",
+    "share": "Chia sẻ",
+    "linkCopied": "Đã sao chép liên kết vào bộ nhớ tạm",
+    "editInStudio": "Sửa trong Studio",
+    "actionFailed": "Không thể thực hiện thao tác"
+  },
+  "nav": {
+    "previous": "Chương trước",
+    "next": "Chương sau",
+    "backToLesson": "Về bài học",
+    "backToCourse": "Về khóa học",
+    "backToHome": "Về trang chủ"
+  },
+  "gates": {
+    "previewBadge": "Xem trước",
+    "previewNotice": "Nội dung đang ở trạng thái {status}, chỉ quản trị viên và tác giả mới nhìn thấy.",
+    "dbErrorTitle": "Không thể tải dữ liệu",
+    "dbErrorDesc": "Hệ thống chưa kết nối được cơ sở dữ liệu ({error}). Vui lòng thử lại.",
+    "courseNotFoundTitle": "Không tìm thấy khóa học",
+    "courseNotFoundDesc": "Khóa học này không tồn tại hoặc đã bị gỡ.",
+    "itemNotFoundTitle": "Không tìm thấy nội dung",
+    "itemNotFoundDesc": "Chương hoặc bài tập này không tồn tại hoặc đã bị gỡ.",
+    "unpublishedTitle": "Nội dung chưa xuất bản",
+    "unpublishedDesc": "Mục \"{title}\" đang được biên soạn và chưa mở công khai.",
+    "loginRequiredTitle": "Nội dung nội bộ MPC",
+    "loginRequiredDesc": "Vui lòng đăng nhập bằng tài khoản MPC để xem khóa học \"{title}\".",
+    "loginButton": "Đăng nhập MPC",
+    "groupRestrictedTitle": "Giới hạn theo ban chuyên môn",
+    "groupRestrictedDesc": "Khóa học \"{title}\" chỉ dành cho thành viên thuộc các nhóm sau:",
+    "lockedTitle": "Chương chưa mở khóa",
+    "lockedDesc": "Bạn cần hoàn thành mục bắt buộc trước đó để mở khóa \"{title}\".",
+    "goToBlockingItem": "Đi tới: {title}"
+  },
+  "comments": {
+    "title": "Thảo luận",
+    "placeholder": "Đặt câu hỏi hoặc chia sẻ ghi chú của bạn…",
+    "replyPlaceholder": "Viết phản hồi…",
+    "replyPlaceholderUser": "Phản hồi @{name}…",
+    "submit": "Gửi bình luận",
+    "submitReply": "Gửi phản hồi",
+    "reply": "Trả lời",
+    "replyingTo": "Đang trả lời",
+    "removeTag": "Bỏ gắn thẻ",
+    "deleteTooltip": "Xóa bình luận",
+    "deleteDialogTitle": "Xóa bình luận?",
+    "deleteDialogDesc": "Bình luận này và các phản hồi đi kèm sẽ bị xóa vĩnh viễn.",
+    "empty": "Chưa có bình luận nào. Hãy mở đầu cuộc thảo luận!",
+    "signInPrompt": "Đăng nhập để tham gia thảo luận cùng các thành viên khác.",
+    "signInRequired": "Vui lòng đăng nhập để bình luận.",
+    "postedSuccess": "Đã đăng bình luận",
+    "replySuccess": "Đã gửi phản hồi",
+    "deletedSuccess": "Đã xóa bình luận",
+    "postError": "Không thể gửi bình luận",
+    "deleteError": "Không thể xóa bình luận",
+    "roleAdmin": "Quản trị",
+    "roleEditor": "Biên tập",
+    "fallbackMember": "Thành viên"
+  }
+}

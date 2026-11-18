@@ -1,0 +1,56 @@
+{
+  "language": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "header": {
+    "openCurriculum": "Mở mục lục khóa học",
+    "coursesBreadcrumb": "Khóa học",
+    "searchPlaceholder": "Tìm kiếm…",
+    "searchShortcut": "Tìm kiếm (Ctrl+K)",
+    "studio": "Studio",
+    "toggleTheme": "Đổi giao diện sáng/tối",
+    "themeToLight": "Chuyển sang chế độ sáng",
+    "themeToDark": "Chuyển sang chế độ tối",
+    "profile": "Hồ sơ cá nhân",
+    "toggleCompanion": "Hiện/ẩn linh vật",
+    "signOut": "Đăng xuất",
+    "signIn": "Đăng nhập",
+    "breadcrumbLabel": "Đường dẫn"
+  },
+  "roles": {
+    "ADMIN": "Quản trị viên",
+    "EDITOR": "Biên tập viên",
+    "MEMBER": "Thành viên"
+  },
+  "sidebar": {
+    "sheetTitle": "Mục lục khóa học",
+    "sheetDescription": "Danh sách bài học và chương trong khóa học hiện tại",
+    "courseProgress": "Tiến độ khóa học",
+    "toggleLesson": "Mở/đóng bài học",
+    "emptyLessons": "Chưa có bài học",
+    "emptyItems": "Chưa có chương",
+    "previousChapter": "chương trước",
+    "lockedTooltip": "Hoàn thành \"{title}\" để mở khóa",
+    "allCourses": "Tất cả khóa học"
+  },
+  "footer": {
+    "tagline": "Sổ tay nội bộ và lộ trình đào tạo của Câu lạc bộ Lập trình Di động (MPC).",
+    "home": "Tất cả khóa học",
+    "github": "Mã nguồn GitHub",
+    "website": "Trang chủ CLB",
+    "copyright": "© {year} Mobile Programming Club (MPC). Mã nguồn mở theo giấy phép MIT."
+  },
+  "error": {
+    "title": "Đã xảy ra lỗi",
+    "description": "Không thể tải trang này. Vui lòng thử lại hoặc quay về trang chủ.",
+    "digest": "Mã lỗi: {id}",
+    "backHome": "Về trang chủ"
+  },
+  "notFound": {
+    "title": "Không tìm thấy trang",
+    "description": "Trang bạn tìm không tồn tại hoặc đã được chuyển sang địa chỉ khác.",
+    "backHome": "Về trang chủ"
+  }
+}

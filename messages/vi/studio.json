@@ -1,0 +1,311 @@
+{
+  "nav": {
+    "studio": "Studio",
+    "overview": "Tổng quan",
+    "curriculum": "Giáo trình",
+    "items": "Chương & bài tập",
+    "progress": "Tiến độ học viên",
+    "quizzes": "Bài làm",
+    "members": "Thành viên",
+    "settings": "Cài đặt",
+    "roleAdmin": "Quản trị",
+    "roleEditor": "Biên tập",
+    "defaultDepartment": "Ban Chủ Nhiệm",
+    "logout": "Đăng xuất",
+    "mobileTitle": "Điều hướng Studio",
+    "openMenu": "Mở menu điều hướng",
+    "toggleSidebar": "Đóng / mở thanh bên (Ctrl+B)",
+    "quickSearch": "Tìm kiếm nhanh...",
+    "toggleTheme": "Đổi giao diện sáng / tối",
+    "backToLearn": "Về trang học"
+  },
+  "accessDenied": {
+    "title": "Không có quyền truy cập Studio",
+    "description": "Chỉ Quản trị viên và Biên tập viên được phân quyền mới có thể truy cập khu vực quản trị.",
+    "login": "Đăng nhập",
+    "backHome": "Về trang học"
+  },
+  "confirmDialog": {
+    "processing": "Đang xử lý…"
+  },
+  "table": {
+    "selectedCount": "Đã chọn {count} mục",
+    "deselect": "Bỏ chọn",
+    "emptyTitle": "Chưa có dữ liệu",
+    "showing": "Hiển thị {from}–{to} trong số {total}",
+    "rowsPerPage": "Số dòng:",
+    "rowsOption": "{size} dòng"
+  },
+  "dashboard": {
+    "title": "Tổng quan",
+    "description": "Theo dõi số lượng học liệu, các mục cần xử lý và những cập nhật gần đây.",
+    "openCurriculum": "Mở giáo trình",
+    "stats": {
+      "courses": "Khóa học",
+      "coursesSub": "{published} đã xuất bản · {categories} danh mục",
+      "lessons": "Bài học",
+      "lessonsSub": "{published} đang mở · {hidden} đang ẩn",
+      "items": "Chương & bài tập",
+      "itemsSub": "{published} đã xuất bản · {draft} bản nháp",
+      "pendingReview": "Chờ duyệt",
+      "pendingReviewSub": "{items} nội dung · {attempts} bài làm"
+    },
+    "needsAction": {
+      "title": "Cần xử lý",
+      "empty": "Không có mục nào cần xử lý.",
+      "pendingItemMeta": "{course} › {lesson} · {author}",
+      "pendingAttemptBadge": "Chờ chấm",
+      "pendingAttemptMeta": "{learner} · {date}",
+      "view": "Xem"
+    },
+    "recentEdits": {
+      "title": "Chỉnh sửa gần đây",
+      "viewAll": "Xem tất cả",
+      "empty": "Chưa có chương hoặc bài tập nào.",
+      "itemMeta": "{course} › {lesson}"
+    }
+  },
+  "curriculum": {
+    "title": "Giáo trình",
+    "description": "Quản lý cấu trúc khóa học, bài học, chương và bài tập.",
+    "categoriesButton": "Danh mục ({count})",
+    "createCourseButton": "Tạo khóa học",
+    "allCoursesFilter": "Tất cả khóa học",
+    "expandAll": "Mở tất cả",
+    "collapseAll": "Thu gọn tất cả",
+    "emptyAll": "Chưa có khóa học nào. Hãy tạo khóa học đầu tiên để bắt đầu xây dựng giáo trình.",
+    "emptyCategory": "Không có khóa học nào thuộc danh mục này.",
+    "createFirstCourse": "Tạo khóa học đầu tiên",
+    "actions": {
+      "dragCourse": "Kéo để đổi thứ tự khóa học",
+      "dragLesson": "Kéo để đổi thứ tự bài học",
+      "dragItem": "Kéo để đổi thứ tự mục",
+      "expand": "Mở rộng",
+      "collapse": "Thu gọn",
+      "moreActions": "Thao tác khác",
+      "changeStatus": "Đổi trạng thái",
+      "moveUp": "Di chuyển lên",
+      "moveDown": "Di chuyển xuống"
+    },
+    "sequential": {
+      "inherit": "Theo khóa học (kế thừa)",
+      "locked": "Bắt buộc theo thứ tự",
+      "free": "Học tự do",
+      "lockedShort": "Theo thứ tự",
+      "freeShort": "Tự do",
+      "courseLocked": "Học theo thứ tự",
+      "courseFree": "Học tự do",
+      "courseLockedHint": "Người học phải hoàn thành lần lượt từng mục theo thứ tự (trừ khi bài học hoặc chương ghi đè).",
+      "courseFreeHint": "Người học có thể mở bất kỳ bài học hoặc chương nào trong khóa (trừ khi bài học hoặc chương ghi đè).",
+      "effectiveLocked": "Học theo thứ tự",
+      "effectiveFree": "Học tự do",
+      "lessonOverrideLocked": "Ghi đè ở bài học: yêu cầu hoàn thành theo thứ tự.",
+      "lessonOverrideFree": "Ghi đè ở bài học: cho phép mở tự do.",
+      "itemOverrideLocked": "Ghi đè riêng: yêu cầu hoàn thành mục trước.",
+      "itemOverrideFree": "Ghi đè riêng: cho phép mở tự do.",
+      "inheritFromLesson": "Kế thừa từ bài học \"{title}\" ({mode}).",
+      "inheritFromCourse": "Kế thừa từ khóa học \"{title}\" ({mode})."
+    },
+    "course": {
+      "internalBadge": "Nội bộ",
+      "counts": "{lessons} bài học · {items} mục",
+      "addLesson": "Thêm bài học",
+      "viewCourse": "Xem trang khóa học",
+      "emptyLessons": "Khóa học này chưa có bài học nào.",
+      "addFirstLesson": "Thêm bài học đầu tiên"
+    },
+    "lesson": {
+      "hiddenBadge": "Đang ẩn",
+      "itemCount": "{count} mục",
+      "addItem": "Thêm mục",
+      "hideLesson": "Ẩn bài học",
+      "showLesson": "Hiện bài học",
+      "emptyItems": "Bài học này chưa có chương hoặc bài tập nào.",
+      "addFirstItem": "Thêm mục đầu tiên"
+    },
+    "item": {
+      "editContent": "Soạn nội dung",
+      "duplicate": "Nhân bản",
+      "moveLesson": "Chuyển bài học…"
+    },
+    "confirmDeleteCourse": {
+      "title": "Xóa khóa học",
+      "description": "Khóa học \"{title}\" đang có {lessons} bài học và {items} chương/bài tập. Toàn bộ nội dung và tiến độ học liên quan sẽ bị xóa vĩnh viễn. Bạn có chắc chắn muốn xóa?"
+    },
+    "confirmDeleteLesson": {
+      "title": "Xóa bài học",
+      "description": "Bài học \"{title}\" đang có {items} chương/bài tập. Toàn bộ nội dung bên trong sẽ bị xóa vĩnh viễn. Bạn có chắc chắn muốn xóa?"
+    },
+    "confirmDeleteItem": {
+      "title": "Xóa chương / bài tập",
+      "description": "Bạn có chắc chắn muốn xóa vĩnh viễn \"{title}\"? Hành động này không thể hoàn tác."
+    },
+    "toasts": {
+      "reorderCourseFailed": "Không thể đổi thứ tự khóa học.",
+      "reorderLessonFailed": "Không thể đổi thứ tự bài học.",
+      "reorderItemFailed": "Không thể đổi thứ tự mục.",
+      "updateCourseFailed": "Không thể cập nhật khóa học.",
+      "deleteCourseFailed": "Không thể xóa khóa học.",
+      "updateLessonFailed": "Không thể cập nhật bài học.",
+      "deleteLessonFailed": "Không thể xóa bài học.",
+      "updateItemFailed": "Không thể cập nhật mục.",
+      "duplicateItemFailed": "Không thể nhân bản mục này.",
+      "deleteItemFailed": "Không thể xóa mục này."
+    },
+    "categoryManager": {
+      "title": "Quản lý danh mục",
+      "description": "Danh mục dùng để gắn nhãn và lọc khóa học. Một khóa học có thể gắn nhiều danh mục.",
+      "editingLabel": "Đang sửa: {name}",
+      "addLabel": "Thêm danh mục mới",
+      "nameField": "Tên danh mục",
+      "namePlaceholder": "VD: Nội quy CLB, Kỹ thuật...",
+      "slugField": "Đường dẫn (slug)",
+      "slugPlaceholder": "noi-quy-clb",
+      "descriptionField": "Mô tả ngắn",
+      "descriptionPlaceholder": "Mô tả ngắn gọn về nhóm khóa học này...",
+      "createButton": "Tạo danh mục",
+      "adminOnlyHint": "Chỉ Quản trị viên mới có quyền thêm, sửa hoặc xóa danh mục.",
+      "listHeading": "Danh mục hiện có ({count})",
+      "empty": "Chưa có danh mục nào.",
+      "courseCount": "{count} khóa học",
+      "deleteTitle": "Xóa danh mục",
+      "deleteDescription": "Bạn có chắc chắn muốn xóa danh mục \"{name}\"? Thao tác này chỉ gỡ nhãn khỏi {count} khóa học, không xóa bất kỳ khóa học nào.",
+      "nameRequired": "Vui lòng nhập tên danh mục.",
+      "saveFailed": "Không thể lưu danh mục.",
+      "deleteFailed": "Không thể xóa danh mục."
+    },
+    "courseDialog": {
+      "editTitle": "Chỉnh sửa khóa học",
+      "createTitle": "Tạo khóa học mới",
+      "description": "Thiết lập thông tin chung, ảnh bìa, danh mục, thứ tự học và quyền truy cập.",
+      "coverField": "Ảnh bìa khóa học",
+      "defaultCoverTitle": "Khóa học",
+      "titleField": "Tên khóa học",
+      "titlePlaceholder": "VD: Nội quy & Văn hóa CLB MPC",
+      "slugField": "Đường dẫn (slug)",
+      "slugPlaceholder": "noi-quy-van-hoa-clb-mpc",
+      "regenerateSlug": "Tự tạo lại",
+      "summaryField": "Tóm tắt khóa học",
+      "summaryPlaceholder": "Giới thiệu mục tiêu và nội dung chính của khóa học...",
+      "categoriesField": "Danh mục ({count} đã chọn)",
+      "categoriesEmpty": "Chưa có danh mục nào. Bạn có thể tạo ở mục Danh mục.",
+      "sequentialField": "Học theo thứ tự",
+      "sequentialHint": "Yêu cầu hoàn thành mục trước mới mở mục tiếp theo",
+      "statusField": "Trạng thái",
+      "audienceField": "Đối tượng xem",
+      "audienceFree": "Công khai (mọi người)",
+      "audienceInternal": "Nội bộ CLB (thành viên)",
+      "audienceFreeHint": "Khách và mọi thành viên đều có thể xem khóa học",
+      "audienceInternalHint": "Yêu cầu đăng nhập tài khoản thành viên CLB",
+      "allowedGroupsField": "Giới hạn theo ban (để trống = toàn bộ thành viên)",
+      "clearGroups": "Bỏ chọn tất cả",
+      "departmentsEmpty": "Chưa có danh sách ban.",
+      "createButton": "Tạo khóa học",
+      "titleRequired": "Vui lòng nhập tên khóa học.",
+      "invalidSlug": "Đường dẫn (slug) của khóa học không hợp lệ.",
+      "saveFailed": "Không thể lưu khóa học."
+    },
+    "lessonDialog": {
+      "editTitle": "Chỉnh sửa bài học",
+      "createTitle": "Thêm bài học mới",
+      "description": "Thiết lập thông tin, ảnh bìa và thứ tự học cho bài học.",
+      "descriptionWithCourse": "Thuộc khóa học \"{courseTitle}\".",
+      "coverField": "Ảnh bìa bài học",
+      "defaultCoverTitle": "Bài học",
+      "titleField": "Tên bài học",
+      "titlePlaceholder": "VD: Bài 1: Quy tắc ứng xử",
+      "slugField": "Đường dẫn (slug)",
+      "slugPlaceholder": "quy-tac-ung-xu",
+      "regenerateSlug": "Tự tạo lại",
+      "summaryField": "Tóm tắt bài học",
+      "summaryPlaceholder": "Mô tả ngắn gọn nội dung của bài học...",
+      "sequentialField": "Thứ tự học",
+      "publishField": "Hiển thị bài học",
+      "publishedHint": "Đang hiển thị cho người học trong khóa",
+      "hiddenHint": "Đang ẩn khỏi danh sách bài học",
+      "createButton": "Tạo bài học",
+      "courseMissing": "Không xác định được khóa học chứa bài học này.",
+      "titleRequired": "Vui lòng nhập tên bài học.",
+      "invalidSlug": "Đường dẫn (slug) của bài học không hợp lệ.",
+      "saveFailed": "Không thể lưu bài học."
+    },
+    "itemQuickDialog": {
+      "title": "Thêm mục mới",
+      "description": "Chọn loại mục và đặt tên để bắt đầu soạn thảo.",
+      "descriptionWithLesson": "Tạo trong bài học \"{lessonTitle}\".",
+      "descriptionWithCourse": "Tạo trong bài học \"{lessonTitle}\" ({courseTitle}).",
+      "typeField": "Loại mục",
+      "types": {
+        "CONTENT": {
+          "label": "Chương (đọc)",
+          "description": "Bài đọc lý thuyết, hình ảnh, video và tài liệu đính kèm.",
+          "placeholder": "VD: Chương 1: Giới thiệu quy trình làm việc"
+        },
+        "QUIZ": {
+          "label": "Trắc nghiệm",
+          "description": "Câu hỏi trắc nghiệm chấm điểm tự động.",
+          "placeholder": "VD: Trắc nghiệm ôn tập cuối bài"
+        },
+        "ASSIGNMENT": {
+          "label": "Bài tập",
+          "description": "Bài tập tự luận, nộp tệp hoặc nộp code chờ người hướng dẫn chấm.",
+          "placeholder": "VD: Bài tập thực hành: Nộp sản phẩm đầu tay"
+        }
+      },
+      "titleField": "Tiêu đề",
+      "submitButton": "Tạo & soạn nội dung",
+      "lessonMissing": "Không xác định được bài học chứa mục này.",
+      "titleRequired": "Vui lòng nhập tiêu đề.",
+      "createFailed": "Không thể tạo mục mới."
+    },
+    "moveItemDialog": {
+      "title": "Chuyển sang bài học khác",
+      "description": "Chọn bài học đích để chuyển mục này.",
+      "descriptionWithItem": "Chọn bài học đích cho \"{title}\".",
+      "targetField": "Bài học đích",
+      "targetPlaceholder": "Chọn bài học...",
+      "currentTag": "Hiện tại",
+      "submitButton": "Chuyển bài học",
+      "targetRequired": "Vui lòng chọn bài học đích.",
+      "moveFailed": "Không thể chuyển sang bài học khác."
+    }
+  },
+  "settings": {
+    "title": "Cài đặt & Lưu trữ",
+    "description": "Theo dõi dung lượng lưu trữ Cloudinary và dọn dẹp các tệp tải lên chưa gắn vào nội dung.",
+    "refresh": "Làm mới",
+    "cloudinary": {
+      "heading": "Lưu trữ đám mây Cloudinary",
+      "plan": "Gói: {plan}",
+      "defaultPlan": "Miễn phí",
+      "cloudName": "Tên miền đám mây: {name}",
+      "connected": "Đã kết nối",
+      "unconfigured": "Chưa cấu hình",
+      "apiError": "Lưu ý từ hệ thống lưu trữ: {error}",
+      "storageLabel": "Dung lượng lưu trữ",
+      "storageHint": "Tổng dung lượng hình ảnh và tệp đang lưu",
+      "bandwidthLabel": "Băng thông",
+      "bandwidthHint": "Lưu lượng truyền tải trong 30 ngày gần nhất",
+      "creditsLabel": "Hạn mức đã dùng"
+    },
+    "orphans": {
+      "heading": "Dọn dẹp tệp mồ côi",
+      "description": "Khi người biên tập tải ảnh lên nhưng đóng trang hoặc chưa lưu bài, các tệp đó trở thành tệp mồ côi (chưa gắn vào khóa học, bài học hay chương nào). Bạn có thể dọn dẹp để giải phóng dung lượng.",
+      "cleaning": "Đang dọn dẹp…",
+      "cleanButton": "Dọn dẹp ngay ({count} tệp)",
+      "totalTracked": "Tổng tệp ghi nhận",
+      "attachedCount": "Đang sử dụng",
+      "orphanCount": "Tệp mồ côi",
+      "trackedVolume": "Dung lượng ghi nhận",
+      "cronTitle": "Tự động dọn dẹp định kỳ",
+      "cronDescription": "Có thể cấu hình bộ lập lịch gọi tự động vào đường dẫn sau:",
+      "cronHint": "Mặc định xóa các tệp mồ côi đã tạo quá 2 giờ mà chưa được gắn vào nội dung."
+    },
+    "toasts": {
+      "loadFailed": "Không thể tải dữ liệu dung lượng lưu trữ.",
+      "serverError": "Không thể kết nối tới máy chủ.",
+      "cleanSuccess": "Đã dọn dẹp {count} tệp mồ côi (giải phóng ~{mb} MB).",
+      "cleanFailed": "Không thể dọn dẹp tệp mồ côi."
+    }
+  }
+}

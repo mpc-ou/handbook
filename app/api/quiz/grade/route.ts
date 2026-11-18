@@ -1,82 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 import { QuizGradeResponse, QuizQuestion } from "@/types";
 
+const fail = apiError;
+
+/**
+ * Chấm bài của một Item (QUIZ/ASSIGNMENT hoặc CONTENT có quiz).
+ * Câu hỏi, đáp án và điểm đạt luôn lấy từ DB; người dùng lấy từ session.
+ * Khách (chưa đăng nhập) vẫn được chấm nhưng không lưu lượt làm bài/tiến độ.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      articleId,
-      userId,
+      itemId,
       userAnswers,
-      passScorePercent,
-      questions: providedQuestions,
       timeSpentSec,
     }: {
-      articleId: string;
-      userId?: string;
+      itemId: string;
       userAnswers: Record<string, string[]>;
-      passScorePercent?: number;
-      questions?: QuizQuestion[];
       timeSpentSec?: number;
     } = body;
 
-    if (!articleId || !userAnswers || typeof userAnswers !== "object") {
-      return NextResponse.json(
-        { error: "Invalid submission data." },
-        { status: 400 }
-      );
+    if (!itemId || !userAnswers || typeof userAnswers !== "object") {
+      return fail("quizInvalidSubmission", 400);
     }
 
-    // Try finding quiz in Postgres
-    let questions: QuizQuestion[] = [];
-    let requiredScore = passScorePercent;
-    let quizRecordId: string | null = null;
-    let maxAttemptsLimit: number | null = null;
-
-    try {
-      const dbQuiz = await prisma.quiz.findUnique({
-        where: { articleId },
-        include: { article: { select: { passScorePercent: true } } },
-      });
-      if (dbQuiz) {
-        maxAttemptsLimit = dbQuiz.maxAttempts;
-        quizRecordId = dbQuiz.id;
-        if (Array.isArray(dbQuiz.questions) && dbQuiz.questions.length > 0) {
-          questions = dbQuiz.questions as any;
-          if (requiredScore === undefined && dbQuiz.article?.passScorePercent != null) {
-            requiredScore = dbQuiz.article.passScorePercent ?? 80;
-          }
-        }
-      }
-    } catch {
-      // Fallback
+    const quiz = await prisma.quiz.findUnique({
+      where: { itemId },
+      include: {
+        item: { select: { type: true, passScorePercent: true, requireScrollToBottom: true } },
+      },
+    });
+    const questions = (quiz?.questions as unknown as QuizQuestion[]) ?? [];
+    if (!quiz || questions.length === 0 || quiz.item?.type === "CONTENT") {
+      return fail("quizMissing", 400);
     }
 
-    // Check max attempts constraint
-    if (quizRecordId && maxAttemptsLimit && maxAttemptsLimit > 0 && userId) {
+    const user = await requireUser().catch(() => null);
+
+    if (user && quiz.maxAttempts && quiz.maxAttempts > 0) {
       const priorCount = await prisma.quizAttempt.count({
-        where: { quizId: quizRecordId, userId },
+        where: { quizId: quiz.id, userId: user.id },
       });
-      if (priorCount >= maxAttemptsLimit) {
-        return NextResponse.json(
-          {
-            error: `You have completed this quiz and reached the maximum allowed attempts (${maxAttemptsLimit}).`,
-          },
-          { status: 403 }
-        );
+      if (priorCount >= quiz.maxAttempts) {
+        return fail("quizNoAttemptsLeft", 403, { max: quiz.maxAttempts });
       }
-    }
-
-    if (questions.length === 0 && providedQuestions && providedQuestions.length > 0) {
-      questions = providedQuestions;
-    }
-
-    if (questions.length === 0) {
-      return NextResponse.json(
-        { error: "This article does not have an attached quiz in the database." },
-        { status: 400 }
-      );
     }
 
     let correctCount = 0;
@@ -88,34 +60,22 @@ export async function POST(req: NextRequest) {
 
       if (q.type === "fill_blank") {
         const submittedText = (submitted[0] || "").trim().toLowerCase();
-        const acceptableAnswers = (q.correctTextAnswer || "")
+        const acceptable = (q.correctTextAnswer || "")
           .split(",")
           .map((s) => s.trim().toLowerCase())
           .filter(Boolean);
 
-        if (acceptableAnswers.length === 0) {
-          isCorrect = submittedText.length > 0;
-        } else {
-          isCorrect = acceptableAnswers.some(
-            (ans) => ans === submittedText || submittedText.includes(ans)
-          );
-        }
-      } else if (q.type === "essay") {
-        // Essay is answered if non-empty text is submitted
+        isCorrect =
+          acceptable.length === 0
+            ? submittedText.length > 0
+            : acceptable.some((ans) => ans === submittedText || submittedText.includes(ans));
+      } else if (q.type === "essay" || q.type === "scale" || q.type === "file_upload" || q.type === "code_submission") {
+        // Các dạng này chỉ cần có câu trả lời; essay/file chờ chấm tay
         isCorrect = (submitted[0] || "").trim().length > 0;
-      } else if (q.type === "scale") {
-        // Scale rating is answered if value is selected
-        isCorrect = Boolean(submitted[0]);
-      } else if (q.type === "file_upload") {
-        // File submission is answered if URL is present
-        isCorrect = Boolean(submitted[0]);
       } else if (q.type === "single" || !q.type) {
-        // Single Choice: strictly match against the single correct option
         const expectedId = q.correctOptionIds?.[0];
-        const submittedId = submitted[0];
-        isCorrect = Boolean(expectedId && submittedId && expectedId === submittedId);
+        isCorrect = Boolean(expectedId && submitted[0] && expectedId === submitted[0]);
       } else {
-        // Multiple Choice: match all selected against all expected
         const subSorted = [...submitted].sort();
         const expSorted = [...(q.correctOptionIds || [])].sort();
         isCorrect =
@@ -124,10 +84,7 @@ export async function POST(req: NextRequest) {
           subSorted.every((val, idx) => val === expSorted[idx]);
       }
 
-      if (isCorrect) {
-        correctCount++;
-      }
-
+      if (isCorrect) correctCount++;
       feedback[q.id] = {
         isCorrect,
         explanation: q.explanation,
@@ -136,78 +93,67 @@ export async function POST(req: NextRequest) {
     }
 
     const scorePercent = Math.round((correctCount / questions.length) * 100);
-    const finalRequired = requiredScore ?? 80;
-    const isPassed = scorePercent >= finalRequired;
+    const requiredScore = quiz.item?.passScorePercent ?? quiz.passScorePercent ?? 80;
+    const isPassed = scorePercent >= requiredScore;
+    const requiresReview = questions.some((q) => q.type === "essay" || q.type === "file_upload");
 
-    // Record attempt & update progress in Postgres if userId is provided
-    if (userId) {
+    if (user) {
       try {
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (user && quizRecordId) {
-          const hasManualReview = questions.some(
-            (q) => q.type === "essay" || q.type === "file_upload"
-          );
-          await prisma.quizAttempt.create({
-            data: {
-              userId: user.id,
-              quizId: quizRecordId,
-              scorePercent,
-              answers: userAnswers as any,
-              isPassed,
-              timeSpentSec: timeSpentSec ? Number(timeSpentSec) : null,
-              status: hasManualReview ? "PENDING_REVIEW" : "COMPLETED",
-            },
-          });
-        }
-
-        // Update progress
-        const existingProg = await prisma.userProgress.findUnique({
-          where: { userId_articleId: { userId, articleId } },
+        await prisma.quizAttempt.create({
+          data: {
+            userId: user.id,
+            quizId: quiz.id,
+            scorePercent,
+            answers: userAnswers as Prisma.InputJsonValue,
+            isPassed,
+            timeSpentSec: timeSpentSec ? Number(timeSpentSec) : null,
+            status: requiresReview ? "PENDING_REVIEW" : "COMPLETED",
+          },
         });
-        const prevHighest = existingProg?.highestQuizScore ?? 0;
-        const newHighest = Math.max(prevHighest, scorePercent);
-        const article = await prisma.article.findUnique({ where: { id: articleId } });
-        const scrollOk = !article?.requireScrollToBottom || Boolean(existingProg?.hasScrolledBottom);
-        const isCompleted = isPassed && scrollOk;
+
+        const existing = await prisma.userProgress.findUnique({
+          where: { userId_itemId: { userId: user.id, itemId } },
+        });
+        const highest = Math.max(existing?.highestQuizScore ?? 0, scorePercent);
+        // Quiz/bài tập là item riêng, không có yêu cầu cuộn đọc: đạt điểm là hoàn thành
+        const completedNow = isPassed;
 
         await prisma.userProgress.upsert({
-          where: { userId_articleId: { userId, articleId } },
+          where: { userId_itemId: { userId: user.id, itemId } },
           update: {
-            highestQuizScore: newHighest,
-            isCompleted: isCompleted || existingProg?.isCompleted || false,
-            completedAt: isCompleted ? (existingProg?.completedAt || new Date()) : existingProg?.completedAt,
+            highestQuizScore: highest,
+            isCompleted: completedNow || existing?.isCompleted || false,
+            completedAt: completedNow ? (existing?.completedAt ?? new Date()) : existing?.completedAt,
             lastAccessedAt: new Date(),
           },
           create: {
-            userId,
-            articleId,
-            hasScrolledBottom: false,
+            userId: user.id,
+            itemId,
             highestQuizScore: scorePercent,
-            isCompleted,
-            completedAt: isCompleted ? new Date() : null,
+            isCompleted: completedNow,
+            completedAt: completedNow ? new Date() : null,
           },
         });
       } catch (err) {
-        console.warn("Could not save quiz attempt to Postgres:", err);
+        console.error("Không lưu được lượt làm bài:", err);
+        return fail("quizSaveFailed", 500);
       }
     }
 
     const response: QuizGradeResponse = {
       scorePercent,
-      requiredScore: finalRequired,
+      requiredScore,
       isPassed,
       isCompleted: isPassed,
+      requiresReview,
+      status: requiresReview ? "PENDING_REVIEW" : "COMPLETED",
       correctCount,
       totalQuestions: questions.length,
       feedback,
     };
-
     return NextResponse.json(response);
   } catch (error) {
     console.error("Quiz grading error:", error);
-    return NextResponse.json(
-      { error: "An error occurred while grading the quiz on server." },
-      { status: 500 }
-    );
+    return fail("quizGradeFailed", 500);
   }
 }

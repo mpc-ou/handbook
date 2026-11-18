@@ -3,6 +3,7 @@ import { cloudinary } from "@/lib/cloudinary-server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isSuperAdminEmail } from "@/lib/constants";
+import { apiError as apiFail } from "@/lib/api-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,7 @@ export async function GET(req: NextRequest) {
       isSuperAdminEmail(session?.user?.email);
 
     if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized. Admin permission required." },
-        { status: 403 }
-      );
+      return apiFail("adminOnly", 403);
     }
 
     // 1. Fetch Cloudinary Account Usage via Admin API

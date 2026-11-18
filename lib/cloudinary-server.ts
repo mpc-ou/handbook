@@ -16,7 +16,8 @@ export { cloudinary };
  */
 export function extractPublicIdFromUrl(url: string): string | null {
   if (!url || typeof url !== "string") return null;
-  const match = url.match(/\/upload\/(?:v\d+\/)?(?:[^\/]+\/)?(mpc_handbook_assets\/[^.]+)/);
+  // Cho phép nhiều đoạn transform (f_auto,q_auto/…) và version (v123/) trước public id
+  const match = url.match(/\/upload\/(?:[^\/]+\/)*?(?:v\d+\/)?(mpc_handbook_assets\/[^.?#]+)/);
   if (match && match[1]) {
     return match[1];
   }
@@ -38,54 +39,62 @@ export async function deleteCloudinaryAsset(publicId: string): Promise<boolean> 
   }
 }
 
-/**
- * Scans article content, attachments, and cover image to extract all active Cloudinary URLs
- */
-export function extractCloudinaryUrlsFromArticle(article: {
-  coverImage?: string | null;
-  content?: any;
-  attachments?: any;
+function scanForCloudinaryUrls(data: unknown, urls: string[]) {
+  if (!data) return;
+  if (typeof data === "string") {
+    if (data.includes("cloudinary.com") && data.includes("mpc_handbook_assets")) {
+      urls.push(data);
+    }
+  } else if (Array.isArray(data)) {
+    for (const entry of data) scanForCloudinaryUrls(entry, urls);
+  } else if (typeof data === "object") {
+    for (const val of Object.values(data)) scanForCloudinaryUrls(val, urls);
+  }
+}
+
+/** URL Cloudinary đang dùng bởi ảnh bìa (Course/Lesson). */
+export function extractCloudinaryUrlsFromCover(coverImage?: string | null): string[] {
+  const urls: string[] = [];
+  scanForCloudinaryUrls(coverImage, urls);
+  return urls;
+}
+
+/** URL Cloudinary đang dùng trong nội dung và tệp đính kèm của Item. */
+export function extractCloudinaryUrlsFromItem(item: {
+  content?: unknown;
+  attachments?: unknown;
 }): string[] {
   const urls: string[] = [];
-  if (article.coverImage) urls.push(article.coverImage);
-
-  const scanJson = (data: any) => {
-    if (!data) return;
-    if (typeof data === "string") {
-      if (data.includes("cloudinary.com") && data.includes("mpc_handbook_assets")) {
-        urls.push(data);
-      }
-    } else if (Array.isArray(data)) {
-      for (const item of data) scanJson(item);
-    } else if (typeof data === "object") {
-      for (const val of Object.values(data)) scanJson(val);
-    }
-  };
-
-  scanJson(article.content);
-  scanJson(article.attachments);
+  scanForCloudinaryUrls(item.content, urls);
+  scanForCloudinaryUrls(item.attachments, urls);
   return Array.from(new Set(urls));
 }
 
+export type AttachmentOwner =
+  | { courseId: string }
+  | { lessonId: string }
+  | { itemId: string };
+
 /**
- * Sync active files for an article: Marks active files as isAttached = true,
- * and if any previous file was removed from the article, marks or cleans it up.
+ * Đồng bộ file của một owner (Course/Lesson/Item):
+ * - file đang dùng: isAttached = true và gắn vào owner;
+ * - file từng gắn vào owner nhưng không còn dùng: gỡ attach để cron cleanup xóa.
  */
-export async function syncArticleAttachments(articleId: string, activeUrls: string[]) {
+export async function syncAttachments(owner: AttachmentOwner, activeUrls: string[]) {
   const activePublicIds = activeUrls
     .map(extractPublicIdFromUrl)
     .filter((id): id is string => Boolean(id));
 
   if (activePublicIds.length > 0) {
     await prisma.uploadedFile.updateMany({
-      where: {
-        publicId: { in: activePublicIds },
-      },
-      data: {
-        isAttached: true,
-        articleId,
-      },
+      where: { publicId: { in: activePublicIds } },
+      data: { isAttached: true, ...owner },
     });
   }
+
+  await prisma.uploadedFile.updateMany({
+    where: { ...owner, publicId: { notIn: activePublicIds } },
+    data: { isAttached: false },
+  });
 }
 

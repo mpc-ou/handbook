@@ -1,0 +1,32 @@
+{
+  "greetingUser": "Hello, {name}",
+  "greetingGuest": "MPC Courses & Handbook",
+  "subtitle": "Pick a course below or pick up where you left off.",
+  "subtitleGuest": "Explore public courses or sign in to unlock internal training tracks.",
+  "continue": {
+    "label": "Continue learning",
+    "cta": "Continue"
+  },
+  "categories": {
+    "all": "All",
+    "ariaLabel": "Filter by category"
+  },
+  "card": {
+    "chaptersCount": "{count, plural, one {# chapter} other {# chapters}}",
+    "sequential": "Sequential",
+    "free": "Free order",
+    "internal": "Internal",
+    "internalTooltip": "Sign in with an MPC account to access this internal course",
+    "groupRestrictedTooltip": "Restricted to: {groups}",
+    "progressLabel": "Progress for {title}"
+  },
+  "states": {
+    "errorTitle": "Couldn't load courses",
+    "emptyAll": "No courses have been published yet.",
+    "emptyAllStaff": "No courses yet. Create your first course in Studio.",
+    "openStudio": "Open Studio",
+    "signIn": "Sign in",
+    "emptyFiltered": "No courses match the selected category.",
+    "resetFilter": "Show all courses"
+  }
+}

@@ -1,65 +1,131 @@
 import {
-  ArticleAccessResult,
-  ArticleRecord,
-  CategoryRecord,
   ClientQuizQuestion,
+  CourseRecord,
+  ItemAccessResult,
+  ItemRecord,
+  LessonRecord,
+  ProgressSummary,
   QuizQuestion,
   UserProfile,
   UserProgressRecord,
 } from "@/types";
 
+type ProgressMap = Record<string, UserProgressRecord>;
+
 /**
- * Checks whether a member is allowed to access an article based on
- * the Sequential Learning configuration (`requirePrevious` and `orderIndex`).
+ * Cờ "học theo thứ tự" hiệu lực của một Item:
+ * item.requirePrevious ?? lesson.requirePrevious ?? course.sequential
  */
-export function checkArticleAccess(
-  articleId: string,
-  articles: ArticleRecord[],
-  userProgressMap: Record<string, UserProgressRecord>
-): ArticleAccessResult {
-  const currentArticle = articles.find((a) => a.id === articleId);
-  if (!currentArticle) {
-    return { allowed: false, reason: "NOT_FOUND", blockingArticle: null };
+export function isSequential(
+  course: Pick<CourseRecord, "sequential">,
+  lesson: Pick<LessonRecord, "requirePrevious">,
+  item: Pick<ItemRecord, "requirePrevious">
+): boolean {
+  return item.requirePrevious ?? lesson.requirePrevious ?? course.sequential;
+}
+
+/**
+ * Danh sách Item đã xuất bản của một khóa theo thứ tự học phẳng:
+ * (lesson.orderIndex, item.orderIndex). Bỏ Lesson chưa xuất bản.
+ */
+export function getCourseItemsInOrder(
+  courseId: string,
+  lessons: LessonRecord[],
+  items: ItemRecord[]
+): ItemRecord[] {
+  const orderedLessons = lessons
+    .filter((l) => l.courseId === courseId && l.isPublished)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  return orderedLessons.flatMap((l) =>
+    items
+      .filter((i) => i.lessonId === l.id && i.status === "PUBLISHED")
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+  );
+}
+
+/**
+ * Kiểm tra thành viên có được mở Item hay không theo cấu hình thứ tự học.
+ * Chặn bởi Item bắt buộc (`isRequired`) đã xuất bản ngay trước đó trong khóa
+ * nếu nó chưa hoàn thành.
+ */
+export function checkItemAccess(
+  itemId: string,
+  courses: CourseRecord[],
+  lessons: LessonRecord[],
+  items: ItemRecord[],
+  userProgressMap: ProgressMap
+): ItemAccessResult {
+  const item = items.find((i) => i.id === itemId);
+  const lesson = item && lessons.find((l) => l.id === item.lessonId);
+  const course = lesson && courses.find((c) => c.id === lesson.courseId);
+  if (!item || !lesson || !course) {
+    return { allowed: false, reason: "NOT_FOUND", blockingItem: null };
   }
 
-  if (!currentArticle.requirePrevious) {
-    return { allowed: true, reason: null, blockingArticle: null };
+  if (!isSequential(course, lesson, item)) {
+    return { allowed: true, reason: null, blockingItem: null };
   }
 
-  // Find immediately preceding published article in the same category
-  const candidates = articles
-    .filter(
-      (a) =>
-        a.categoryId === currentArticle.categoryId &&
-        a.isPublished &&
-        a.orderIndex < currentArticle.orderIndex
-    )
-    .sort((a, b) => b.orderIndex - a.orderIndex);
+  const ordered = getCourseItemsInOrder(course.id, lessons, items);
+  const index = ordered.findIndex((i) => i.id === item.id);
+  const previous = ordered
+    .slice(0, index < 0 ? 0 : index)
+    .reverse()
+    .find((i) => i.isRequired);
 
-  const previousArticle = candidates[0];
-  if (!previousArticle) {
-    return { allowed: true, reason: null, blockingArticle: null };
-  }
-
-  const prevProgress = userProgressMap[previousArticle.id];
-  if (!prevProgress?.isCompleted) {
+  if (previous && !userProgressMap[previous.id]?.isCompleted) {
     return {
       allowed: false,
       reason: "PREVIOUS_INCOMPLETE",
-      blockingArticle: {
-        id: previousArticle.id,
-        title: previousArticle.title,
-        slug: previousArticle.slug,
+      blockingItem: {
+        id: previous.id,
+        title: previous.title,
+        slug: previous.slug,
+        lessonId: previous.lessonId,
       },
     };
   }
 
-  return { allowed: true, reason: null, blockingArticle: null };
+  return { allowed: true, reason: null, blockingItem: null };
+}
+
+function summarize(items: ItemRecord[], progress: ProgressMap): ProgressSummary {
+  const required = items.filter((i) => i.isRequired);
+  const completed = required.filter((i) => progress[i.id]?.isCompleted).length;
+  const total = required.length;
+  return {
+    completed,
+    total,
+    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+}
+
+/** Tiến độ một bài học (suy ra từ Item, không lưu DB). */
+export function getLessonProgress(
+  lessonId: string,
+  items: ItemRecord[],
+  progress: ProgressMap
+): ProgressSummary {
+  return summarize(
+    items.filter((i) => i.lessonId === lessonId && i.status === "PUBLISHED"),
+    progress
+  );
+}
+
+/** Tiến độ một khóa học (suy ra từ Item, không lưu DB). */
+export function getCourseProgress(
+  courseId: string,
+  lessons: LessonRecord[],
+  items: ItemRecord[],
+  progress: ProgressMap
+): ProgressSummary {
+  return summarize(getCourseItemsInOrder(courseId, lessons, items), progress);
 }
 
 /**
- * Strips `correctOptionIds` and `explanation` from QuizQuestion[] before
- * rendering in the client reader view so answers are not exposed in DOM/state.
+ * Loại `correctOptionIds` và `explanation` khỏi QuizQuestion[] trước khi render
+ * phía client để đáp án không lộ trong DOM/state.
  */
 export function stripQuizAnswersForClient(
   questions: QuizQuestion[]
@@ -84,112 +150,50 @@ export function stripQuizAnswersForClient(
 }
 
 /**
- * Checks if a user (`ADMIN` or `EDITOR`) has permission to manage articles in a category.
- * - Both ADMIN and EDITOR have full permissions across all categories.
- * - MEMBER does not have permission.
+ * Quyền quản lý khóa học phía client (chỉ để ẩn/hiện UI; server vẫn kiểm tra
+ * bằng `requireCourseEditor` trong `lib/authz.ts`).
+ * ADMIN: mọi khóa. EDITOR: khóa được gán. MEMBER: không.
  */
-export function canUserManageCategory(
+export function canUserManageCourse(
   user: UserProfile | null,
-  categoryId: string,
-  categories: CategoryRecord[]
+  courseId: string
 ): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN" || user.role === "EDITOR") return true;
-
+  if (user.role === "ADMIN") return true;
+  if (user.role === "EDITOR") return (user.managedCourseIds || []).includes(courseId);
   return false;
 }
 
 /**
- * Validates the 2-level category hierarchy constraint.
- * Throws an informative Vietnamese error if attempting to create depth > 2.
+ * Quyền xem khóa học:
+ * - audience FREE: khách xem được không cần đăng nhập.
+ * - audience INTERNAL: cần đăng nhập, rồi kiểm `allowedGroups`.
  */
-export function validateTwoLevelCategoryDepth(
-  parentId: string | null | undefined,
-  categories: CategoryRecord[]
-): 1 | 2 {
-  if (!parentId || parentId.trim() === "") {
-    return 1;
-  }
-
-  const parentCategory = categories.find((c) => c.id === parentId);
-  if (!parentCategory) {
-    throw new Error("Parent category does not exist.");
-  }
-
-  if (parentCategory.depth >= 2) {
-    throw new Error(
-      "The system only allows a maximum of 2 category levels (Level 1 > Level 2 > Articles)."
-    );
-  }
-
-  return 2;
-}
-
-/**
- * Checks whether a user is allowed to view an article based on group privacy (`allowedGroups`).
- * - If allowedGroups is empty: Public to everyone.
- * - If user is ADMIN: Always allowed.
- * - If user is not logged in: Disallowed if article has restricted groups.
- * - If user.department is in allowedGroups or user.managedGroups overlaps: Allowed.
- */
-/**
- * Check article viewing permission:
- * - audience === "FREE": Guest access permitted without login.
- * - audience === "INTERNAL": Sign-in required. Evaluates allowedGroups.
- */
-export function canUserViewArticle(
-  user: UserProfile | null,
-  article: ArticleRecord
+export function canUserViewCourse(
+  user: Pick<UserProfile, "role" | "department" | "managedGroups"> | null,
+  course: Pick<CourseRecord, "audience" | "allowedGroups">
 ): {
   allowed: boolean;
   reason?: "LOGIN_REQUIRED" | "GROUP_RESTRICTED";
   allowedGroups?: string[];
 } {
-  const groups = article.allowedGroups || [];
-  const audience = (
-    article.audience || (groups.length > 0 ? "INTERNAL" : "FREE")
-  ).toUpperCase();
+  const groups = course.allowedGroups || [];
 
-  // 1. Free/Public audience: No login required
-  if (audience === "FREE") {
-    return { allowed: true };
-  }
+  if (course.audience === "FREE") return { allowed: true };
 
-  // 2. Internal audience: Sign-in required
   if (!user) {
-    return {
-      allowed: false,
-      reason: "LOGIN_REQUIRED",
-      allowedGroups: groups,
-    };
+    return { allowed: false, reason: "LOGIN_REQUIRED", allowedGroups: groups };
   }
 
-  // Admins can always view all internal documents
-  if (user.role === "ADMIN") {
-    return { allowed: true };
-  }
+  if (user.role === "ADMIN") return { allowed: true };
+  if (groups.length === 0) return { allowed: true };
 
-  // If allowedGroups is empty: All signed-in members can view
-  if (groups.length === 0) {
-    return { allowed: true };
-  }
-
-  // If departments are specified: Check member department
   const userDept = user.department?.trim();
-  if (userDept && groups.includes(userDept)) {
+  if (userDept && groups.includes(userDept)) return { allowed: true };
+
+  if ((user.managedGroups || []).some((g) => groups.includes(g))) {
     return { allowed: true };
   }
 
-  // Check member managedGroups
-  const userManaged = user.managedGroups || [];
-  const hasManagedGroup = userManaged.some((g) => groups.includes(g));
-  if (hasManagedGroup) {
-    return { allowed: true };
-  }
-
-  return {
-    allowed: false,
-    reason: "GROUP_RESTRICTED",
-    allowedGroups: groups,
-  };
+  return { allowed: false, reason: "GROUP_RESTRICTED", allowedGroups: groups };
 }

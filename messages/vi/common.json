@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "MPC Handbook — Sổ tay nội bộ & Lộ trình đào tạo",
+    "description": "Sổ tay nội bộ và hệ thống đào tạo theo lộ trình của Câu lạc bộ Lập trình Di động (MPC), tích hợp MPC-SSO, trình soạn thảo khối và bài kiểm tra."
+  },
+  "actions": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "create": "Tạo mới",
+    "confirm": "Xác nhận",
+    "close": "Đóng",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước đó",
+    "search": "Tìm kiếm",
+    "retry": "Thử lại",
+    "loading": "Đang tải…"
+  },
+  "status": {
+    "DRAFT": "Bản nháp",
+    "PENDING_REVIEW": "Chờ duyệt",
+    "PUBLISHED": "Đã xuất bản"
+  },
+  "itemType": {
+    "CONTENT": "Chương",
+    "QUIZ": "Trắc nghiệm",
+    "ASSIGNMENT": "Bài tập"
+  },
+  "toast": {
+    "loadFailed": "Không thể tải dữ liệu. Vui lòng thử lại.",
+    "connectionError": "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.",
+    "connectionLost": "Mất kết nối với máy chủ.",
+    "loggedOut": "Đã đăng xuất.",
+    "signedInAs": "Đã đăng nhập với tên {name}.",
+    "chapterCompleted": "Hoàn thành chương! Nội dung tiếp theo đã được mở khóa.",
+    "guestNotSaved": "Bạn đang làm bài với tư cách khách, kết quả sẽ không được lưu.",
+    "loginRequired": "Vui lòng đăng nhập.",
+    "likeLoginRequired": "Vui lòng đăng nhập để thích nội dung này.",
+    "adminOnlyPermissions": "Chỉ quản trị viên mới được phân quyền thành viên.",
+    "memberUpdated": "Đã cập nhật vai trò và quyền của thành viên.",
+    "categoryNameRequired": "Tên danh mục không được để trống.",
+    "categoryCreated": "Đã tạo danh mục \"{name}\".",
+    "categoryUpdated": "Đã cập nhật danh mục.",
+    "categoryDeleted": "Đã xóa danh mục.",
+    "courseSaved": "Đã lưu khóa học \"{title}\".",
+    "courseCreated": "Đã tạo khóa học \"{title}\".",
+    "courseDeleted": "Đã xóa khóa học.",
+    "courseDeletedNamed": "Đã xóa khóa học \"{title}\".",
+    "courseStatus": "Trạng thái khóa học: {status}.",
+    "lessonSaved": "Đã lưu bài học \"{title}\".",
+    "lessonCreated": "Đã tạo bài học \"{title}\".",
+    "lessonDeleted": "Đã xóa bài học.",
+    "lessonDeletedNamed": "Đã xóa bài học \"{title}\".",
+    "itemSaved": "Đã lưu \"{title}\".",
+    "itemCreated": "Đã tạo \"{title}\".",
+    "itemDeleted": "Đã xóa.",
+    "itemDeletedNamed": "Đã xóa \"{title}\".",
+    "itemNotFound": "Không tìm thấy chương/bài tập.",
+    "itemDuplicated": "Đã nhân bản \"{title}\" thành bản nháp.",
+    "statusUpdated": "Đã cập nhật trạng thái: {status}.",
+    "bulkPartial": "{ok}/{total} thành công, {failed} thất bại.",
+    "bulkDone": "Đã xử lý {count} mục.",
+    "departmentSaveFailed": "Không lưu được phòng ban.",
+    "departmentDeleteFailed": "Không xóa được phòng ban.",
+    "departmentUpdated": "Đã cập nhật {name}.",
+    "departmentAdded": "Đã thêm {name}.",
+    "departmentDeleted": "Đã xóa phòng ban.",
+    "copySuffix": "(Bản sao)"
+  },
+  "lightbox": {
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ",
+    "close": "Đóng (Esc)",
+    "previous": "Ảnh trước (←)",
+    "next": "Ảnh sau (→)",
+    "expandedImage": "Ảnh phóng to"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "siteName": "MPC Handbook",
+  "domain": "handbook.mpclub.dev",
+  "tagline": "Sổ tay nội bộ & lộ trình đào tạo của Câu lạc bộ Lập trình Di động",
+  "titleTemplate": "{title} · MPC Handbook",
+  "private": {
+    "title": "Nội dung nội bộ · MPC Handbook",
+    "description": "Nội dung này chỉ dành cho thành viên. Đăng nhập để xem.",
+    "badge": "Nội dung nội bộ"
+  },
+  "kind": {
+    "course": "Khóa học",
+    "lesson": "Bài học",
+    "CONTENT": "Chương",
+    "QUIZ": "Trắc nghiệm",
+    "ASSIGNMENT": "Bài tập"
+  },
+  "pages": {
+    "login": "Đăng nhập",
+    "profile": "Hồ sơ của tôi",
+    "studio": "Studio",
+    "certificate": "Chứng nhận hoàn thành",
+    "notFound": "Không tìm thấy trang"
+  }
+}

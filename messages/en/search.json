@@ -1,0 +1,17 @@
+{
+  "dialogTitle": "Search learning materials",
+  "dialogDescription": "Search courses, lessons, chapters, and assignments in MPC Handbook",
+  "placeholder": "Search courses, lessons, chapters, or content…",
+  "empty": "No matching results found.",
+  "groups": {
+    "recent": "Recent",
+    "courses": "Courses",
+    "lessons": "Lessons",
+    "items": "Chapters & Assignments"
+  },
+  "clearRecent": "Clear",
+  "footer": {
+    "navigate": "↑↓ navigate · Enter open",
+    "close": "Esc close"
+  }
+}

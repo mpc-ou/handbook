@@ -1,0 +1,17 @@
+{
+  "dialogTitle": "Tìm kiếm học liệu",
+  "dialogDescription": "Tìm khóa học, bài học, chương và bài tập trong MPC Handbook",
+  "placeholder": "Tìm khóa học, bài học, chương hoặc nội dung…",
+  "empty": "Không tìm thấy nội dung phù hợp.",
+  "groups": {
+    "recent": "Gần đây",
+    "courses": "Khóa học",
+    "lessons": "Bài học",
+    "items": "Chương & Bài tập"
+  },
+  "clearRecent": "Xóa lịch sử",
+  "footer": {
+    "navigate": "↑↓ di chuyển · Enter mở",
+    "close": "Esc đóng"
+  }
+}

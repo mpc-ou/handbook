@@ -1,0 +1,56 @@
+{
+  "language": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "header": {
+    "openCurriculum": "Open course outline",
+    "coursesBreadcrumb": "Courses",
+    "searchPlaceholder": "Search…",
+    "searchShortcut": "Search (Ctrl+K)",
+    "studio": "Studio",
+    "toggleTheme": "Toggle light/dark theme",
+    "themeToLight": "Switch to light mode",
+    "themeToDark": "Switch to dark mode",
+    "profile": "Profile",
+    "toggleCompanion": "Show/hide mascot",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "breadcrumbLabel": "Breadcrumb"
+  },
+  "roles": {
+    "ADMIN": "Admin",
+    "EDITOR": "Editor",
+    "MEMBER": "Member"
+  },
+  "sidebar": {
+    "sheetTitle": "Course outline",
+    "sheetDescription": "Lessons and chapters in the current course",
+    "courseProgress": "Course progress",
+    "toggleLesson": "Toggle lesson",
+    "emptyLessons": "No lessons yet",
+    "emptyItems": "No chapters yet",
+    "previousChapter": "the previous chapter",
+    "lockedTooltip": "Complete \"{title}\" to unlock",
+    "allCourses": "All courses"
+  },
+  "footer": {
+    "tagline": "Internal handbook and training roadmap of the Mobile Programming Club (MPC).",
+    "home": "All courses",
+    "github": "GitHub",
+    "website": "Club website",
+    "copyright": "© {year} Mobile Programming Club (MPC). Open-source under the MIT License."
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "Couldn't load this page. Please try again or return to the home page.",
+    "digest": "Error ID: {id}",
+    "backHome": "Back to home"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "backHome": "Back to home"
+  }
+}

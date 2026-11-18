@@ -1,0 +1,466 @@
+{
+  "list": {
+    "breadcrumb": "Chapters & Assignments",
+    "title": "Chapters & Assignments",
+    "description": "Manage reading chapters, quizzes, and assignments across courses.",
+    "curriculumLink": "Curriculum tree",
+    "searchPlaceholder": "Search by title or slug...",
+    "filters": {
+      "allCourses": "All courses",
+      "coursePlaceholder": "Course",
+      "allLessons": "All lessons",
+      "allLessonsInCourse": "All lessons in course",
+      "lessonPlaceholder": "Lesson",
+      "allTypes": "All types",
+      "typePlaceholder": "Type",
+      "allStatuses": "All statuses",
+      "statusPlaceholder": "Status",
+      "reset": "Reset"
+    },
+    "columns": {
+      "selectAll": "Select all",
+      "selectRow": "Select row",
+      "title": "Title",
+      "courseLesson": "Course › Lesson",
+      "status": "Status",
+      "unassignedLesson": "Unassigned lesson",
+      "optionalBadge": "Optional",
+      "actionsAria": "Actions"
+    },
+    "actions": {
+      "editItem": "Open editor",
+      "viewReader": "View in reader",
+      "copyLink": "Copy link",
+      "duplicate": "Duplicate",
+      "publish": "Publish",
+      "submitReview": "Submit for review",
+      "moveToDraft": "Move to draft"
+    },
+    "bulk": {
+      "publishCount": "Publish ({count})",
+      "draftCount": "Move to draft ({count})",
+      "deleteCount": "Delete ({count})",
+      "selectedCountLabel": "{count, plural, one {# selected item} other {# selected items}}"
+    },
+    "empty": {
+      "title": "No chapters or assignments yet",
+      "filteredDescription": "No items match the current filters.",
+      "defaultDescription": "Create your first chapter or assignment to start building content.",
+      "resetFilters": "Reset filters"
+    },
+    "createDialog": {
+      "title": "Create chapter or assignment",
+      "description": "Choose a course, lesson, and item type to start editing.",
+      "courseLabel": "Course",
+      "coursePlaceholder": "Select a course...",
+      "lessonLabel": "Lesson",
+      "lessonPlaceholder": "Select a lesson...",
+      "noLessonsHint": "This course has no lessons yet. Please create a lesson in the Curriculum tree first.",
+      "openCurriculum": "Open Curriculum tree",
+      "typeLabel": "Item type",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. Chapter 1 — Code of Conduct",
+      "creating": "Creating...",
+      "submit": "Create & edit"
+    },
+    "deleteDialog": {
+      "title": "Confirm deletion",
+      "description": "Are you sure you want to delete {target}? Its content and related submission history will be permanently removed.",
+      "confirm": "Delete permanently"
+    },
+    "toast": {
+      "lessonRequired": "Please select a lesson.",
+      "titleRequired": "Please enter a title.",
+      "createFailed": "Failed to create item.",
+      "linkCopied": "Copied link: {path}",
+      "duplicateFailed": "Failed to duplicate item.",
+      "publishFailed": "Failed to publish item.",
+      "submitReviewFailed": "Failed to submit for review.",
+      "draftFailed": "Failed to move to draft.",
+      "deleteFailed": "Failed to delete selected items."
+    }
+  },
+  "editor": {
+    "backToList": "Chapters & Assignments",
+    "untitled": "Untitled",
+    "readingTime": "~{minutes} min read",
+    "draftSavedAt": "Draft saved {time}",
+    "unsavedChanges": "Unsaved changes",
+    "saved": "Saved",
+    "saving": "Saving...",
+    "lockedBadge": "Published (Locked)",
+    "lockedBanner": {
+      "adminText": "This item is published and locked for editing. Roll back to Pending review to make changes.",
+      "editorText": "This item is published and locked for editing. Only an Administrator can unlock it.",
+      "unlockButton": "Unlock to edit"
+    },
+    "localDraftBanner": {
+      "message": "An auto-saved draft was found in this browser.",
+      "restore": "Restore",
+      "discard": "Discard"
+    },
+    "noPermission": {
+      "pageTitle": "Access denied",
+      "pageDescription": "You need Administrator or Editor permissions to edit content.",
+      "backHome": "Back to home",
+      "readOnlyPrefix": "Read-only:",
+      "memberReason": "Members do not have permission to edit content.",
+      "unassignedReason": "You are not assigned to manage this course.",
+      "assignedCourses": "Assigned courses: {courses}.",
+      "noAssignedCourses": "You have no assigned courses yet. Please contact an Administrator."
+    },
+    "notFound": {
+      "title": "Item not found",
+      "description": "The item with ID {id} does not exist or has been deleted.",
+      "backButton": "Back to list"
+    },
+    "newLessonPicker": {
+      "title": "Select course and lesson for the new item",
+      "courseLabel": "Course",
+      "coursePlaceholder": "Select a course...",
+      "lessonLabel": "Lesson",
+      "lessonPlaceholder": "Select a lesson...",
+      "noLessons": "No lessons in this course",
+      "createLessonLink": "Create lesson in Curriculum tree",
+      "unselectedHint": "No lesson selected",
+      "changeLesson": "Change lesson"
+    },
+    "actions": {
+      "preview": "Preview",
+      "settings": "Settings",
+      "moreActions": "More actions",
+      "saveDraft": "Save as draft",
+      "submitReview": "Submit for review",
+      "publish": "Publish now",
+      "rollbackReview": "Move to Pending review",
+      "copyReaderLink": "Copy reader link"
+    },
+    "typeSwitch": {
+      "label": "Type:",
+      "descriptions": {
+        "CONTENT": "Reading chapter with rich content and attachments only.",
+        "QUIZ": "Auto-graded quiz with multiple choice, fill-in-the-blank, or scale questions.",
+        "ASSIGNMENT": "Assignment with essay, file upload, or code submission, graded manually."
+      },
+      "warnings": {
+        "toContent": "Switching to a reading Chapter will remove all existing questions when saved.",
+        "fromContent": "Switching to {type} will initialize a question set for this item when saved.",
+        "incompatibleQuestions": "There {count, plural, one {is # question} other {are # questions}} incompatible with {type}. Remove or convert them before saving.",
+        "removeIncompatible": "Remove incompatible questions"
+      }
+    },
+    "canvas": {
+      "titlePlaceholder": "Chapter or assignment title...",
+      "summaryPlaceholder": "Brief summary of objectives or key takeaways (1–2 sentences)...",
+      "defaultHeading": "1. Main content",
+      "defaultParagraph": "Write detailed content here...",
+      "attachmentsTitle": "Attachments & reference links",
+      "attachmentsDescription": "Attach Google Drive, Figma, GitHub, YouTube links or upload files.",
+      "instructionsTitle": "Instructions (optional)",
+      "instructionsToggleShow": "Add introductory instructions",
+      "instructionsToggleHide": "Hide instructions",
+      "assignmentManualGradeNote": "This assignment is manually graded. After a member submits their work (essay, file, or code), an Administrator or Editor will grade and leave feedback in Submissions."
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Lesson location, slug, and completion rules.",
+      "typeLabel": "Item type",
+      "lessonLabel": "Lesson",
+      "lessonPlaceholder": "Select Course › Lesson...",
+      "lessonSearchPlaceholder": "Search course or lesson...",
+      "lessonEmpty": "No matching lessons",
+      "lessonDisabledReason": "No permission to edit this course",
+      "lessonMoveHint": "Selecting another lesson moves this item immediately.",
+      "titleLabel": "Title",
+      "summaryLabel": "Summary",
+      "slugLabel": "Slug",
+      "slugPlaceholder": "code-of-conduct",
+      "orderLabel": "Order",
+      "copyLink": "Copy",
+      "completionSection": "Unlock & completion rules",
+      "sequentialLabel": "Sequential unlock",
+      "sequentialDescription": "Require completing the previous required item before unlocking this one.",
+      "sequentialInherit": "Inherit ({mode})",
+      "sequentialInheritTrue": "Sequential",
+      "sequentialInheritFalse": "Free",
+      "sequentialTrue": "Require previous item",
+      "sequentialFalse": "Always unlocked",
+      "scrollLabel": "Require scrolling to bottom",
+      "scrollDescription": "Members must scroll to the bottom of the chapter to mark it complete.",
+      "requiredLabel": "Required in roadmap",
+      "requiredDescription": "Counts toward lesson and course completion progress.",
+      "requiredBadge": "Required",
+      "optionalBadge": "Optional",
+      "quizSection": "Grading & attempt settings",
+      "passScoreLabel": "Passing score (%)",
+      "durationLabel": "Time limit (minutes, 0 = unlimited)",
+      "maxAttemptsLabel": "Max attempts (0 = unlimited)",
+      "isExamLabel": "Exam mode (hide answers after submission)"
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "How this item appears to members."
+    },
+    "dialogs": {
+      "leaveTitle": "Unsaved changes",
+      "leaveDescription": "Your unsaved edits will be lost if you leave this page now.",
+      "leaveConfirm": "Leave page",
+      "leaveCancel": "Stay",
+      "rollbackTitle": "Move to Pending review",
+      "rollbackDescription": "This item is locked because it is published. Moving it to Pending review unlocks it for editing.",
+      "rollbackConfirm": "Unlock"
+    },
+    "toast": {
+      "restoredDraft": "Restored auto-saved draft.",
+      "adminOnlyUnlock": "Only Administrators can unlock published content.",
+      "adminOnlyPublish": "Only Administrators can publish directly.",
+      "lessonRequired": "Please select a lesson for this item.",
+      "titleRequired": "Please enter a title.",
+      "moveFailed": "Failed to move item to another lesson.",
+      "rollbackFailed": "Failed to move item to Pending review.",
+      "saveFailed": "Failed to save item.",
+      "conflictHasAttempts": "Cannot change item type or remove questions because submissions already exist.",
+      "linkCopied": "Copied link: {url}"
+    }
+  },
+  "quizzes": {
+    "breadcrumb": "Submissions & Grading",
+    "title": "Submissions & Grading",
+    "description": "Grade assignment submissions, review quiz attempts, and export scoreboards.",
+    "exportCsv": "Export CSV",
+    "noAccess": {
+      "title": "Access restricted",
+      "description": "Only Administrators and Editors can view and grade submissions."
+    },
+    "stats": {
+      "pendingReview": "Pending grading",
+      "totalSubmissions": "Total submissions",
+      "passRate": "Pass rate",
+      "avgScore": "Average score"
+    },
+    "pendingSection": {
+      "title": "Assignments awaiting grading ({count})",
+      "subtitle": "Select a submission to inspect answers and grade inline.",
+      "gradeNow": "Grade now",
+      "empty": "All assignments have been graded."
+    },
+    "tabs": {
+      "submissions": "All submissions ({count})",
+      "assessments": "Quizzes & assignments ({count})"
+    },
+    "filters": {
+      "searchPlaceholder": "Search member or item...",
+      "statusPlaceholder": "Status",
+      "statusAll": "All results",
+      "statusPending": "Pending grading",
+      "statusPassed": "Passed",
+      "statusFailed": "Not passed",
+      "itemPlaceholder": "Filter by item",
+      "itemAll": "All quizzes & assignments"
+    },
+    "table": {
+      "member": "Member",
+      "item": "Assessment",
+      "score": "Score",
+      "result": "Result",
+      "submittedAt": "Submitted",
+      "actions": "Actions",
+      "passedBadge": "Passed",
+      "failedBadge": "Not passed",
+      "pendingBadge": "Pending",
+      "inspectAndGrade": "Grade / View",
+      "deleteAttempt": "Delete submission",
+      "fallbackMember": "Member"
+    },
+    "assessmentsList": {
+      "passThreshold": "Pass ≥{score}%",
+      "questionCount": "{count, plural, one {# question} other {# questions}}",
+      "submissionCount": "{count, plural, one {# submission} other {# submissions}}",
+      "passedCount": "{count} passed",
+      "viewSubmissions": "View submissions",
+      "viewReader": "View in reader",
+      "editQuestions": "Edit questions",
+      "emptyTitle": "No quizzes or assignments yet",
+      "emptyDescription": "Create a Quiz or Assignment item in Chapters & Assignments."
+    },
+    "emptySubmissions": {
+      "title": "No matching submissions",
+      "description": "Member quiz and assignment submissions will appear here."
+    },
+    "gradingPanel": {
+      "emptySelection": "Select a submission from the list to view answers and grade inline.",
+      "title": "Submission details & Grading",
+      "memberLabel": "Member:",
+      "itemLabel": "Item:",
+      "timeSpent": "{seconds}s",
+      "editItemLink": "Edit item",
+      "viewReaderLink": "View item",
+      "submittedAnswersHeading": "Submitted answers ({count})",
+      "questionNumber": "Q{index}: {text}",
+      "questionTypes": {
+        "single": "Single choice",
+        "multiple": "Multiple choice",
+        "fill_blank": "Fill in the blank",
+        "scale": "Scale",
+        "essay": "Essay",
+        "file_upload": "File upload",
+        "code_submission": "Code submission"
+      },
+      "noAnswer": "(No answer)",
+      "filledAnswer": "Entered: \"{answer}\"",
+      "correctAnswerHint": "Correct answer: {answer}",
+      "scaleValue": "Rating: {value}/{max}",
+      "attachedFile": "Attached file",
+      "noFileUrl": "No file URL",
+      "openFile": "Open file",
+      "pickedBadge": "Selected",
+      "gradingHeading": "Score & Feedback",
+      "scoreLabel": "Score (%)",
+      "meetsThreshold": "Pass (≥{pass}%)",
+      "belowThreshold": "Below pass (<{pass}%)",
+      "feedbackLabel": "Feedback",
+      "feedbackPlaceholder": "Write feedback for the member's submission...",
+      "savingGrade": "Saving...",
+      "saveGrade": "Save grade & feedback",
+      "deleteAttempt": "Delete submission"
+    },
+    "deleteDialog": {
+      "title": "Confirm submission deletion",
+      "description": "Are you sure you want to delete this submission? The member will be able to retake it and progress will be recalculated.",
+      "confirm": "Delete submission"
+    },
+    "csv": {
+      "headers": {
+        "fullName": "Full name",
+        "email": "Email",
+        "department": "Department",
+        "item": "Assessment",
+        "score": "Score (%)",
+        "result": "Result",
+        "submittedAt": "Submitted at",
+        "feedback": "Feedback"
+      }
+    },
+    "toast": {
+      "gradeSaved": "Saved score and feedback.",
+      "gradeFailed": "Failed to update score.",
+      "deleteSuccess": "Deleted submission.",
+      "deleteFailed": "Failed to delete submission.",
+      "noDataExport": "No submissions to export.",
+      "exportSuccess": "Exported scoreboard CSV."
+    }
+  },
+  "members": {
+    "breadcrumb": "Members & Departments",
+    "title": "Members & Departments",
+    "description": "Track learning progress, assign course editing permissions, and manage club departments.",
+    "addDepartment": "Add department",
+    "noAccess": {
+      "title": "Access restricted",
+      "description": "Only Administrators can manage members and course permissions."
+    },
+    "tabs": {
+      "members": "Members",
+      "departments": "Departments"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name or email...",
+      "allDepartments": "All departments",
+      "allRoles": "All roles",
+      "allProgress": "All progress",
+      "reset": "Reset"
+    },
+    "roles": {
+      "SUPER_ADMIN": "Super Admin",
+      "ADMIN": "Administrator",
+      "EDITOR": "Editor",
+      "MEMBER": "Member",
+      "ADMIN_DESC": "Administrator — Full publishing & admin access",
+      "EDITOR_DESC": "Editor — Edit assigned courses",
+      "MEMBER_DESC": "Member — Read, submit assessments, comment"
+    },
+    "progressStatus": {
+      "COMPLETED": "Completed",
+      "IN_PROGRESS": "In progress",
+      "NOT_STARTED": "Not started"
+    },
+    "columns": {
+      "member": "Member",
+      "department": "Department",
+      "unassignedDept": "Unassigned",
+      "viewGroupsPrefix": "View groups:",
+      "role": "Role",
+      "assignedCoursesCount": "{count, plural, one {# assigned course} other {# assigned courses}}",
+      "progress": "Progress",
+      "avgQuizScore": "Avg score",
+      "detailsSr": "Details",
+      "viewProfile": "Details"
+    },
+    "empty": {
+      "title": "No matching members",
+      "description": "Try another keyword or reset the filters.",
+      "resetFilters": "Reset filters"
+    },
+    "departmentsGrid": {
+      "editAria": "Edit department",
+      "deleteAria": "Delete department",
+      "deleteDisabledHint": "Cannot delete a department with {count} members.",
+      "noDescription": "No description provided for this department.",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "restrictedCoursesCount": "{count, plural, one {# internal course} other {# internal courses}}",
+      "viewMembers": "View members ({count})"
+    },
+    "sheet": {
+      "tabProgress": "Learning progress",
+      "tabPermissions": "Role & Permissions",
+      "completedItems": "Completed items",
+      "completionRate": "Completion rate",
+      "avgScore": "Average score",
+      "itemsDetailHeading": "Published items ({count})",
+      "readDone": "Read",
+      "readPending": "Unread",
+      "scoreValue": "Score: {score}%",
+      "scoreNotTaken": "Not attempted",
+      "attemptHistoryHeading": "Submission history",
+      "noAttempts": "This member has not submitted any assessments yet.",
+      "passed": "Passed",
+      "failed": "Not passed",
+      "superAdminNotice": "This is a system Super Admin account protected by environment configuration.",
+      "adminProtectedNotice": "Only a Super Admin can modify another Administrator's role.",
+      "departmentLabel": "Department",
+      "departmentPlaceholder": "Select department",
+      "roleLabel": "System role",
+      "rolePlaceholder": "Select role",
+      "managedGroupsLabel": "Internal content access groups",
+      "managedGroupsDescription": "Select additional departments whose internal courses this member can access.",
+      "assignedCoursesLabel": "Assigned courses for editing",
+      "assignedCoursesDescription": "Editors can create and edit lessons, chapters, and assignments in the selected courses.",
+      "noCourses": "No courses in the system yet.",
+      "savingPermissions": "Saving...",
+      "savePermissions": "Save permissions"
+    },
+    "deptDialog": {
+      "editTitle": "Edit department",
+      "createTitle": "Add department",
+      "description": "Update department details for member management and internal course access.",
+      "nameLabel": "Department name",
+      "namePlaceholder": "e.g. Technical Department",
+      "descLabel": "Description",
+      "descPlaceholder": "Main responsibilities of the department...",
+      "colorLabel": "Accent color",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "deleteDeptDialog": {
+      "title": "Confirm department deletion",
+      "description": "Are you sure you want to delete this department? It can only be deleted when it has no members.",
+      "confirm": "Delete department"
+    },
+    "toast": {
+      "savePermsFailed": "Failed to save permissions.",
+      "deptNameRequired": "Please enter a department name.",
+      "saveDeptFailed": "Failed to save department.",
+      "deleteDeptFailed": "Failed to delete department."
+    }
+  }
+}

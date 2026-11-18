@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { handleApiError, requireUser } from "@/lib/authz";
 
+/**
+ * Người dùng đã đăng nhập được ký upload lên Cloudinary (soạn nội dung hoặc nộp file bài tập).
+ * File của học viên không được `register`, nên cron dọn dẹp không xóa chúng.
+ */
 export async function POST() {
+  try {
+    await requireUser();
+  } catch (error) {
+    return handleApiError(error);
+  }
+
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;

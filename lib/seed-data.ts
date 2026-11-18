@@ -1,8 +1,12 @@
 import {
-  ArticleRecord,
-  ArticleStatus,
   CategoryRecord,
+  ContentAudience,
+  ContentStatus,
+  ContentVisibility,
   EditorBlock,
+  ItemAttachment,
+  ItemType,
+  QuizQuestion,
 } from "@/types";
 
 export function slugify(input: string): string {
@@ -50,7 +54,7 @@ export function extractPlainTextFromBlocks(blocks: EditorBlock[]): string {
 export function estimateReadingTime(plainText: string, blocksCount = 0): number {
   const words = plainText.trim().split(/\s+/).filter(Boolean).length;
   // Standard reading speed ~200 wpm plus visual inspection time for media blocks
-  const minutes = Math.ceil(words / 200 + (blocksCount * 0.05));
+  const minutes = Math.ceil(words / 200 + blocksCount * 0.05);
   return Math.max(1, Math.min(300, minutes));
 }
 
@@ -61,6 +65,8 @@ export interface ArticleTemplateDefinition {
   defaultSummary: string;
   blocks: EditorBlock[];
 }
+
+export type ItemTemplateDefinition = ArticleTemplateDefinition;
 
 export const ARTICLE_TEMPLATES: ArticleTemplateDefinition[] = [
   {
@@ -253,120 +259,306 @@ export const ARTICLE_TEMPLATES: ArticleTemplateDefinition[] = [
   },
 ];
 
+export const ITEM_TEMPLATES = ARTICLE_TEMPLATES;
+
 const NOW = "2026-10-24T08:00:00.000Z";
 
+export type SeedCategory = CategoryRecord;
+
+export interface SeedCourse {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  coverImage: string;
+  status: ContentStatus;
+  orderIndex: number;
+  sequential: boolean;
+  visibility: ContentVisibility;
+  audience: ContentAudience;
+  allowedGroups: string[];
+  categorySlugs: string[];
+  editorEmails?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeedLesson {
+  id: string;
+  courseSlug: string;
+  title: string;
+  slug: string;
+  summary: string;
+  coverImage: string;
+  orderIndex: number;
+  isPublished: boolean;
+  requirePrevious: boolean | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeedItem {
+  id: string;
+  courseSlug: string;
+  lessonSlug: string;
+  type: ItemType;
+  title: string;
+  slug: string;
+  summary: string;
+  orderIndex: number;
+  status: ContentStatus;
+  isRequired: boolean;
+  requirePrevious: boolean | null;
+  requireScrollToBottom: boolean;
+  passScorePercent: number;
+  content: EditorBlock[];
+  plainText: string;
+  readingTime: number;
+  attachments: ItemAttachment[];
+  quizTitle?: string;
+  quizDescription?: string;
+  quizDurationMinutes?: number;
+  quizMaxAttempts?: number;
+  quizIsExam?: boolean;
+  quizQuestions: QuizQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Danh mục phẳng (tag) dùng để phân loại Course.
+ * Không có parentId hay depth.
+ */
 export const INITIAL_CATEGORIES: CategoryRecord[] = [
   {
     id: "cat_rules",
-    name: "1. Nội quy và văn hóa CLB",
-    slug: "noi-quy-clb",
+    name: "Nội quy",
+    slug: "noi-quy",
     description: "Quy tắc ứng xử, quy trình họp định kỳ và cơ chế đánh giá thành viên MPC",
     icon: "ShieldCheck",
-    orderIndex: 1,
-    isPublished: true,
-    depth: 1,
-    parentId: "",
+    orderIndex: 0,
     createdAt: NOW,
     updatedAt: NOW,
   },
   {
     id: "cat_events",
-    name: "2. Cẩm nang tổ chức sự kiện",
-    slug: "su-kien-clb",
+    name: "Sự kiện",
+    slug: "su-kien",
     description: "Quy trình chuẩn tổ chức các sự kiện học thuật và hoạt động lớn của CLB",
     icon: "CalendarRange",
-    orderIndex: 2,
-    isPublished: true,
-    depth: 1,
-    parentId: "",
-    createdAt: NOW,
-    updatedAt: NOW,
-  },
-  {
-    id: "cat_webdesign",
-    name: "2.1 Sự kiện WebDesign",
-    slug: "su-kien-webdesign",
-    description: "Tài liệu tổ chức cuộc thi thiết kế và lập trình giao diện WebDesign thường niên",
-    icon: "Code2",
     orderIndex: 1,
-    isPublished: true,
-    depth: 2,
-    parentId: "cat_events",
-    createdAt: NOW,
-    updatedAt: NOW,
-  },
-  {
-    id: "cat_recruitment",
-    name: "2.2 Tuyển cộng tác viên",
-    slug: "tuyen-ctv",
-    description: "Kịch bản truyền thông, chấm đơn và phỏng vấn tuyển thành viên mới",
-    icon: "Users",
-    orderIndex: 2,
-    isPublished: true,
-    depth: 2,
-    parentId: "cat_events",
     createdAt: NOW,
     updatedAt: NOW,
   },
   {
     id: "cat_skills",
-    name: "3. Đào tạo kỹ năng các ban",
+    name: "Đào tạo kỹ năng",
     slug: "dao-tao-ky-nang",
     description: "Tài liệu hướng dẫn chuyên môn lập trình, truyền thông, chụp ảnh và thiết kế",
     icon: "GraduationCap",
+    orderIndex: 2,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: "cat_recruitment",
+    name: "Tuyển CTV",
+    slug: "tuyen-ctv",
+    description: "Kịch bản truyền thông, chấm đơn và phỏng vấn tuyển thành viên mới",
+    icon: "Users",
     orderIndex: 3,
-    isPublished: true,
-    depth: 1,
-    parentId: "",
     createdAt: NOW,
     updatedAt: NOW,
   },
   {
     id: "cat_tech_dept",
-    name: "3.1 Ban Chuyên môn",
+    name: "Ban chuyên môn",
     slug: "ban-chuyen-mon",
-    description: "Tiêu chuẩn Git Flow, kiến trúc dự án và duyệt code nội bộ",
+    description: "Tiêu chuẩn Git Flow, kiến trúc dự án, ra đề thi và duyệt code nội bộ",
     icon: "Terminal",
-    orderIndex: 1,
-    isPublished: true,
-    depth: 2,
-    parentId: "cat_skills",
+    orderIndex: 4,
     createdAt: NOW,
     updatedAt: NOW,
   },
   {
     id: "cat_media_dept",
-    name: "3.2 Ban Truyền thông và Sự kiện",
+    name: "Ban truyền thông",
     slug: "ban-truyen-thong",
     description: "Cẩm nang chụp ảnh sự kiện, viết bài fanpage và nhận diện thương hiệu MPC",
     icon: "Camera",
-    orderIndex: 2,
-    isPublished: true,
-    depth: 2,
-    parentId: "cat_skills",
+    orderIndex: 5,
     createdAt: NOW,
     updatedAt: NOW,
   },
 ];
 
-const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "status">[] = [
+/**
+ * Danh sách Khóa học mẫu (Course).
+ * - Course 1 (`noi-quy-clb`): sequential = true (học theo thứ tự)
+ * - Course 2 (`cam-nang-su-kien`): sequential = true (học theo thứ tự)
+ * - Course 3 (`dao-tao-ky-nang`): sequential = false (học tự do)
+ */
+export const INITIAL_COURSES: SeedCourse[] = [
   {
-    id: "art_code_of_conduct",
-    title: "Quy tắc ứng xử và văn hóa làm việc tại MPC",
+    id: "crs_club_rules",
+    title: "Nội quy & Văn hóa CLB",
+    slug: "noi-quy-clb",
+    summary:
+      "Lộ trình hội nhập bắt buộc dành cho mọi thành viên và cộng tác viên MPC: từ quy tắc ứng xử, giao tiếp nội bộ, quy trình họp định kỳ đến hệ thống tính điểm MPC Point.",
+    coverImage: "preset:pattern-galaxy",
+    status: "PUBLISHED",
+    orderIndex: 0,
+    sequential: true,
+    visibility: "PUBLIC",
+    audience: "FREE",
+    allowedGroups: [],
+    categorySlugs: ["noi-quy"],
+    editorEmails: ["editor.quan@mpclub.dev"],
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: "crs_event_playbook",
+    title: "Cẩm nang Tổ chức Sự kiện CLB",
+    slug: "cam-nang-su-kien",
+    summary:
+      "Quy trình vận hành chuẩn cho các sự kiện trọng điểm của CLB MPC: cuộc thi học thuật WebDesign thường niên và chiến dịch tuyển Cộng tác viên mới.",
+    coverImage: "preset:pattern-code",
+    status: "PUBLISHED",
+    orderIndex: 1,
+    sequential: true,
+    visibility: "PUBLIC",
+    audience: "INTERNAL",
+    allowedGroups: [],
+    categorySlugs: ["su-kien", "tuyen-ctv", "ban-chuyen-mon"],
+    editorEmails: ["editor.quan@mpclub.dev", "editor.linh@mpclub.dev"],
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: "crs_skill_training",
+    title: "Đào tạo Kỹ năng Chuyên môn & Truyền thông",
+    slug: "dao-tao-ky-nang",
+    summary:
+      "Kho học liệu mở giúp thành viên các ban rèn luyện kỹ năng chụp ảnh sự kiện, sáng tạo nội dung truyền thông, thiết kế thương hiệu và quy trình kỹ thuật.",
+    coverImage: "preset:pattern-mesh",
+    status: "PUBLISHED",
+    orderIndex: 2,
+    sequential: false, // Học tự do
+    visibility: "PUBLIC",
+    audience: "FREE",
+    allowedGroups: [],
+    categorySlugs: ["dao-tao-ky-nang", "ban-truyen-thong", "ban-chuyen-mon"],
+    editorEmails: ["editor.linh@mpclub.dev"],
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+];
+
+/**
+ * Danh sách Bài học mẫu (Lesson) thuộc các Course.
+ * Có ảnh bìa (`preset:<id>`).
+ */
+export const INITIAL_LESSONS: SeedLesson[] = [
+  // Course 1: noi-quy-clb (2 Lessons)
+  {
+    id: "les_code_of_conduct",
+    courseSlug: "noi-quy-clb",
+    title: "Quy tắc ứng xử",
+    slug: "quy-tac-ung-xu",
+    summary:
+      "Nền tảng văn hóa Tôn trọng - Chủ động - Chia sẻ, quy trình họp định kỳ và cơ chế khen thưởng kỷ luật tại CLB MPC.",
+    coverImage: "preset:pattern-cube",
+    orderIndex: 0,
+    isPublished: true,
+    requirePrevious: null, // Kế thừa Course.sequential = true
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: "les_onboarding_guide",
+    courseSlug: "noi-quy-clb",
+    title: "Giới thiệu & Hướng dẫn",
+    slug: "gioi-thieu-va-huong-dan",
+    summary:
+      "Hướng dẫn thiết lập tài khoản MPC-SSO, làm quen hệ sinh thái công cụ làm việc chung và lộ trình hoạt động học kỳ.",
+    coverImage: "preset:pattern-terminal",
+    orderIndex: 1,
+    isPublished: true,
+    requirePrevious: false, // Ghi đè Course.sequential = true: cho phép mở bài học này tự do để demo
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+
+  // Course 2: cam-nang-su-kien (2 Lessons)
+  {
+    id: "les_webdesign_event",
+    courseSlug: "cam-nang-su-kien",
+    title: "Sự kiện WebDesign",
+    slug: "su-kien-webdesign",
+    summary:
+      "Tài liệu toàn diện về quy trình ra đề bài, bảo mật đề thi, tiêu chí chấm điểm và điều phối đêm Chung kết WebDesign.",
+    coverImage: "preset:pattern-circuit",
+    orderIndex: 0,
+    isPublished: true,
+    requirePrevious: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: "les_recruitment_event",
+    courseSlug: "cam-nang-su-kien",
+    title: "Tuyển cộng tác viên",
+    slug: "tuyen-ctv",
+    summary:
+      "Kịch bản truyền thông, quy trình 3 vòng tuyển chọn và tiêu chí phỏng vấn đánh giá thái độ ứng viên MPC.",
+    coverImage: "preset:pattern-mesh",
+    orderIndex: 1,
+    isPublished: true,
+    requirePrevious: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+
+  // Course 3: dao-tao-ky-nang (1 Lesson)
+  {
+    id: "les_media_skills",
+    courseSlug: "dao-tao-ky-nang",
+    title: "Ban Truyền thông và Sự kiện",
+    slug: "ban-truyen-thong",
+    summary:
+      "Cẩm nang chụp ảnh sự kiện, công thức viết bài truyền thông fanpage và quy chuẩn nhận diện thương hiệu MPC.",
+    coverImage: "preset:pattern-code",
+    orderIndex: 0,
+    isPublished: true,
+    requirePrevious: null, // Kế thừa Course.sequential = false (học tự do)
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+];
+
+type RawSeedItem = Omit<SeedItem, "plainText" | "readingTime">;
+
+const RAW_INITIAL_ITEMS: RawSeedItem[] = [
+  // ───────────────────────────────────────────────────────────────────────────
+  // COURSE 1: noi-quy-clb → LESSON 1: quy-tac-ung-xu
+  // Gồm 3 Item CONTENT (tái sử dụng 3 bài nội quy cũ) + 1 Item QUIZ (≥ 3 câu)
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    id: "itm_code_of_conduct",
+    courseSlug: "noi-quy-clb",
+    lessonSlug: "quy-tac-ung-xu",
+    type: "CONTENT",
+    title: "Chương 1: Quy tắc ứng xử và văn hóa làm việc tại MPC",
     slug: "quy-tac-ung-xu-mpc",
     summary:
       "Nền tảng văn hóa Tôn trọng - Chủ động - Chia sẻ, quy định giao tiếp trên kênh chung và bảo mật hệ sinh thái công nghệ.",
-    categoryId: "cat_rules",
-    orderIndex: 1,
-    isPublished: true,
-    audience: "FREE",
-    visibility: "PUBLIC",
+    orderIndex: 0,
+    status: "PUBLISHED",
+    isRequired: true,
     requirePrevious: false,
     requireScrollToBottom: true,
-    passScorePercent: 80,
-    authorId: "system_bcn",
-    authorName: "Ban Chủ Nhiệm MPC",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -444,10 +636,30 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
           tableData: {
             headers: ["Kênh liên lạc", "Mục đích sử dụng", "Thời hạn phản hồi tối đa", "Ghi chú"],
             rows: [
-              ["Discord Server", "Thảo luận chuyên môn, họp ban và điều phối dự án", "Trong vòng 12 giờ", "Cần gắn thẻ đúng vai trò"],
-              ["Zalo Thông báo", "Thông báo khẩn cấp từ Ban Chủ Nhiệm", "Trong vòng 6 giờ", "Thả biểu cảm xác nhận đã đọc"],
-              ["Email @mpclub.dev", "Biên bản họp chính thức và đối tác ngoài", "Trong vòng 24 giờ", "Kiểm tra hòm thư định kỳ"],
-              ["GitHub Pull Request", "Kiểm duyệt mã nguồn và đóng góp tài liệu", "Trong vòng 48 giờ", "Ít nhất 1 duyệt viên chấp thuận"],
+              [
+                "Discord Server",
+                "Thảo luận chuyên môn, họp ban và điều phối dự án",
+                "Trong vòng 12 giờ",
+                "Cần gắn thẻ đúng vai trò",
+              ],
+              [
+                "Zalo Thông báo",
+                "Thông báo khẩn cấp từ Ban Chủ Nhiệm",
+                "Trong vòng 6 giờ",
+                "Thả biểu cảm xác nhận đã đọc",
+              ],
+              [
+                "Email @mpclub.dev",
+                "Biên bản họp chính thức và đối tác ngoài",
+                "Trong vòng 24 giờ",
+                "Kiểm tra hòm thư định kỳ",
+              ],
+              [
+                "GitHub Pull Request",
+                "Kiểm duyệt mã nguồn và đóng góp tài liệu",
+                "Trong vòng 48 giờ",
+                "Ít nhất 1 duyệt viên chấp thuận",
+              ],
             ],
           },
         },
@@ -501,67 +713,23 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         props: { variant: "warning" },
       },
     ],
-    quizQuestions: [
-      {
-        id: "q_coc_1",
-        questionText:
-          "Theo quy chuẩn giao tiếp của CLB MPC, thời gian tối đa cần phản hồi hoặc xác nhận khi được gắn thẻ (@mention) trong thông báo công việc là bao lâu?",
-        type: "single",
-        options: [
-          { id: "opt_1", text: "Trong vòng tối đa 12 giờ" },
-          { id: "opt_2", text: "Trong vòng 48 giờ" },
-          { id: "opt_3", text: "Chỉ cần phản hồi vào cuối tuần" },
-          { id: "opt_4", text: "Không bắt buộc phản hồi nếu bận" },
-        ],
-        correctOptionIds: ["opt_1"],
-        explanation:
-          "Quy định SLA giao tiếp nội bộ yêu cầu xác nhận hoặc phản hồi trong vòng tối đa 12 giờ để không làm chậm tiến độ chung của Ban.",
-      },
-      {
-        id: "q_coc_2",
-        questionText:
-          "Khi gặp sự cố cá nhân không thể hoàn thành đúng hạn đầu việc sự kiện, thành viên cần báo trước cho Trưởng ban tối thiểu bao lâu?",
-        type: "single",
-        options: [
-          { id: "opt_a", text: "Ngay sát giờ diễn ra sự kiện" },
-          { id: "opt_b", text: "Tối thiểu 24 giờ trước hạn chót (deadline)" },
-          { id: "opt_c", text: "Sau khi sự kiện đã kết thúc" },
-        ],
-        correctOptionIds: ["opt_b"],
-        explanation:
-          "Báo sớm tối thiểu 24 giờ giúp Trưởng ban kịp thời điều phối nhân sự hỗ trợ mà không ảnh hưởng tới sự kiện.",
-      },
-      {
-        id: "q_coc_3",
-        questionText:
-          "Những hành động nào sau đây bị NGHIÊM CẤM tại CLB MPC? (Chọn tất cả đáp án đúng)",
-        type: "multiple",
-        options: [
-          { id: "m_1", text: "Chia sẻ tài khoản MPC-SSO cho người ngoài CLB" },
-          { id: "m_2", text: "Đẩy file .env chứa API Key hoặc đề thi chưa công bố lên GitHub public" },
-          { id: "m_3", text: "Viết tài liệu tổng kết kinh nghiệm sau sự kiện lên MPC Handbook" },
-        ],
-        correctOptionIds: ["m_1", "m_2"],
-        explanation:
-          "Chia sẻ tài khoản MPC-SSO và làm lộ khóa bảo mật/đề thi đều vi phạm nghiêm trọng quy định bảo mật của CLB.",
-      },
-    ],
+    quizQuestions: [],
   },
   {
-    id: "art_meeting_process",
-    title: "Quy trình họp định kỳ và viết biên bản",
+    id: "itm_meeting_process",
+    courseSlug: "noi-quy-clb",
+    lessonSlug: "quy-tac-ung-xu",
+    type: "CONTENT",
+    title: "Chương 2: Quy trình họp định kỳ và viết biên bản",
     slug: "quy-trinh-hop-dinh-ky",
     summary:
       "Hướng dẫn chuẩn bị Agenda trước buổi họp 24h, điều phối thảo luận hiệu quả và mẫu biên bản họp chuẩn MPC.",
-    categoryId: "cat_rules",
-    orderIndex: 2,
-    isPublished: true,
-    requirePrevious: true,
+    orderIndex: 1,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null,
     requireScrollToBottom: true,
-    passScorePercent: 80,
-    authorId: "system_bcn",
-    authorName: "Ban Chủ Nhiệm MPC",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -620,49 +788,23 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         props: { variant: "success" },
       },
     ],
-    quizQuestions: [
-      {
-        id: "q_meet_1",
-        questionText: "Agenda của buổi họp định kỳ cần được gửi trước cho thành viên tối thiểu bao lâu?",
-        type: "single",
-        options: [
-          { id: "o1", text: "Tối thiểu 24 giờ trước buổi họp" },
-          { id: "o2", text: "5 phút trước khi họp" },
-          { id: "o3", text: "Không cần Agenda" },
-        ],
-        correctOptionIds: ["o1"],
-        explanation: "Gửi Agenda trước 24h giúp các thành viên chuẩn bị sẵn ý kiến và số liệu báo cáo.",
-      },
-      {
-        id: "q_meet_2",
-        questionText: "Mỗi Action Item chốt ở cuối buổi họp bắt buộc phải bao gồm những yếu tố nào?",
-        type: "single",
-        options: [
-          { id: "a1", text: "Chỉ cần ghi tên công việc chung chung" },
-          { id: "a2", text: "Người phụ trách + Hạn chót + Kết quả đầu ra cụ thể" },
-          { id: "a3", text: "Chỉ cần ghi tên Trưởng ban" },
-        ],
-        correctOptionIds: ["a2"],
-        explanation:
-          "Mọi đầu việc phải gắn rõ người phụ trách, hạn chót và kết quả đầu ra để theo dõi nghiệm thu minh bạch.",
-      },
-    ],
+    quizQuestions: [],
   },
   {
-    id: "art_reward_discipline",
-    title: "Cơ chế đánh giá, khen thưởng và kỷ luật",
+    id: "itm_reward_discipline",
+    courseSlug: "noi-quy-clb",
+    lessonSlug: "quy-tac-ung-xu",
+    type: "CONTENT",
+    title: "Chương 3: Cơ chế đánh giá, khen thưởng và kỷ luật",
     slug: "ky-luat-va-khen-thuong",
     summary:
       "Hệ thống tính điểm đóng góp học kỳ (MPC Point), tiêu chí xét thưởng và quy định xử lý vi phạm.",
-    categoryId: "cat_rules",
-    orderIndex: 3,
-    isPublished: true,
-    requirePrevious: true,
+    orderIndex: 2,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null,
     requireScrollToBottom: true,
     passScorePercent: 0,
-    authorId: "system_bcn",
-    authorName: "Ban Chủ Nhiệm MPC",
-    updaterId: "system_bcn",
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -705,29 +847,189 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         id: "b_rew_6",
         type: "callout",
         content:
-          "Bài viết này không yêu cầu làm bài tập trắc nghiệm. Bạn chỉ cần đọc kỹ và cuộn tới cuối bài viết để hoàn thành trọn vẹn chương Nội quy CLB!",
+          "Sau khi đọc xong 3 chương nội quy, hãy bước sang Bài tập cuối chương bên dưới để hoàn thành bài học Quy tắc ứng xử!",
         props: { variant: "info" },
       },
     ],
     quizQuestions: [],
   },
   {
-    id: "art_webdesign_prompt",
-    title: "Quy trình lên đề bài và thể lệ cuộc thi WebDesign",
+    id: "itm_rules_quiz",
+    courseSlug: "noi-quy-clb",
+    lessonSlug: "quy-tac-ung-xu",
+    type: "QUIZ",
+    title: "Bài tập cuối chương: Kiểm tra Nội quy & Văn hóa MPC",
+    slug: "bai-tap-noi-quy-mpc",
+    summary:
+      "Bài kiểm tra trắc nghiệm tổng hợp kiến thức về quy tắc ứng xử, giao tiếp nội bộ, bảo mật tài nguyên và quy trình họp định kỳ tại MPC.",
+    orderIndex: 3,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: true,
+    requireScrollToBottom: false,
+    passScorePercent: 80,
+    quizTitle: "Bài kiểm tra Nội quy & Văn hóa CLB MPC",
+    quizDescription: "Hoàn thành tối thiểu 80% số câu đúng để vượt qua bài học Quy tắc ứng xử.",
+    quizDurationMinutes: 10,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_rq_1",
+        type: "callout",
+        content:
+          "Hãy trả lời các câu hỏi trắc nghiệm bên dưới dựa trên nội dung 3 chương Quy tắc ứng xử, Quy trình họp định kỳ và Cơ chế đánh giá MPC Point.",
+        props: { variant: "info" },
+      },
+    ],
+    quizQuestions: [
+      {
+        id: "q_coc_1",
+        questionText:
+          "Theo quy chuẩn giao tiếp của CLB MPC, thời gian tối đa cần phản hồi hoặc xác nhận khi được gắn thẻ (@mention) trong thông báo công việc là bao lâu?",
+        type: "single",
+        options: [
+          { id: "opt_1", text: "Trong vòng tối đa 12 giờ" },
+          { id: "opt_2", text: "Trong vòng 48 giờ" },
+          { id: "opt_3", text: "Chỉ cần phản hồi vào cuối tuần" },
+          { id: "opt_4", text: "Không bắt buộc phản hồi nếu bận" },
+        ],
+        correctOptionIds: ["opt_1"],
+        explanation:
+          "Quy định SLA giao tiếp nội bộ yêu cầu xác nhận hoặc phản hồi trong vòng tối đa 12 giờ để không làm chậm tiến độ chung của Ban.",
+      },
+      {
+        id: "q_coc_2",
+        questionText:
+          "Khi gặp sự cố cá nhân không thể hoàn thành đúng hạn đầu việc sự kiện, thành viên cần báo trước cho Trưởng ban tối thiểu bao lâu?",
+        type: "single",
+        options: [
+          { id: "opt_a", text: "Ngay sát giờ diễn ra sự kiện" },
+          { id: "opt_b", text: "Tối thiểu 24 giờ trước hạn chót (deadline)" },
+          { id: "opt_c", text: "Sau khi sự kiện đã kết thúc" },
+        ],
+        correctOptionIds: ["opt_b"],
+        explanation:
+          "Báo sớm tối thiểu 24 giờ giúp Trưởng ban kịp thời điều phối nhân sự hỗ trợ mà không ảnh hưởng tới sự kiện.",
+      },
+      {
+        id: "q_coc_3",
+        questionText:
+          "Những hành động nào sau đây bị NGHIÊM CẤM tại CLB MPC? (Chọn tất cả đáp án đúng)",
+        type: "multiple",
+        options: [
+          { id: "m_1", text: "Chia sẻ tài khoản MPC-SSO cho người ngoài CLB" },
+          { id: "m_2", text: "Đẩy file .env chứa API Key hoặc đề thi chưa công bố lên GitHub public" },
+          { id: "m_3", text: "Viết tài liệu tổng kết kinh nghiệm sau sự kiện lên MPC Handbook" },
+        ],
+        correctOptionIds: ["m_1", "m_2"],
+        explanation:
+          "Chia sẻ tài khoản MPC-SSO và làm lộ khóa bảo mật/đề thi đều vi phạm nghiêm trọng quy định bảo mật của CLB.",
+      },
+      {
+        id: "q_meet_1",
+        questionText: "Agenda của buổi họp định kỳ cần được gửi trước cho thành viên tối thiểu bao lâu?",
+        type: "single",
+        options: [
+          { id: "o1", text: "Tối thiểu 24 giờ trước buổi họp" },
+          { id: "o2", text: "5 phút trước khi họp" },
+          { id: "o3", text: "Không cần Agenda" },
+        ],
+        correctOptionIds: ["o1"],
+        explanation: "Gửi Agenda trước 24h giúp các thành viên chuẩn bị sẵn ý kiến và số liệu báo cáo.",
+      },
+      {
+        id: "q_meet_2",
+        questionText: "Mỗi Action Item chốt ở cuối buổi họp bắt buộc phải bao gồm những yếu tố nào?",
+        type: "single",
+        options: [
+          { id: "a1", text: "Chỉ cần ghi tên công việc chung chung" },
+          { id: "a2", text: "Người phụ trách + Hạn chót + Kết quả đầu ra cụ thể" },
+          { id: "a3", text: "Chỉ cần ghi tên Trưởng ban" },
+        ],
+        correctOptionIds: ["a2"],
+        explanation:
+          "Mọi đầu việc phải gắn rõ người phụ trách, hạn chót và kết quả đầu ra để theo dõi nghiệm thu minh bạch.",
+      },
+    ],
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // COURSE 1: noi-quy-clb → LESSON 2: gioi-thieu-va-huong-dan
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    id: "itm_onboarding_ecosystem",
+    courseSlug: "noi-quy-clb",
+    lessonSlug: "gioi-thieu-va-huong-dan",
+    type: "CONTENT",
+    title: "Chương 1: Hướng dẫn thiết lập tài khoản MPC-SSO và công cụ làm việc",
+    slug: "thiet-lap-cong-cu-mpc",
+    summary:
+      "Danh mục các nền tảng làm việc chính thức của CLB MPC gồm cổng đăng nhập một lần MPC-SSO, Discord, Google Drive và GitHub Organization.",
+    orderIndex: 0,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null,
+    requireScrollToBottom: true,
+    passScorePercent: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_onb_1",
+        type: "heading_2",
+        content: "1. Đăng nhập một lần với tài khoản MPC-SSO",
+      },
+      {
+        id: "b_onb_2",
+        type: "paragraph",
+        content:
+          "Mỗi thành viên chính thức và Cộng tác viên của CLB được cấp một tài khoản định danh thống nhất trên hệ thống MPC-SSO để truy cập Sổ tay nội bộ, hệ thống chấm bài và kho tài nguyên CLB.",
+      },
+      {
+        id: "b_onb_3",
+        type: "checklist",
+        content: "Đăng nhập thành công vào MPC Handbook qua cổng MPC-SSO",
+        props: { checked: true },
+      },
+      {
+        id: "b_onb_4",
+        type: "checklist",
+        content: "Cập nhật đúng tên hiển thị theo cú pháp [Ban] Họ và Tên trên Discord Server CLB",
+        props: { checked: true },
+      },
+      {
+        id: "b_onb_5",
+        type: "callout",
+        content:
+          "Bài học này được cấu hình requirePrevious = false để bạn có thể tra cứu nhanh hướng dẫn công cụ bất cứ lúc nào ngay cả khi chưa hoàn thành bài học trước.",
+        props: { variant: "info" },
+      },
+    ],
+    quizQuestions: [],
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // COURSE 2: cam-nang-su-kien → LESSON 1: su-kien-webdesign
+  // Tái sử dụng 2 bài WebDesign cũ + 1 Item QUIZ
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    id: "itm_webdesign_prompt",
+    courseSlug: "cam-nang-su-kien",
+    lessonSlug: "su-kien-webdesign",
+    type: "CONTENT",
+    title: "Chương 1: Quy trình lên đề bài và thể lệ cuộc thi WebDesign",
     slug: "webdesign-len-de-bai",
     summary:
       "Cách xây dựng chủ đề cuộc thi, bộ tiêu chí kỹ thuật và quy trình bảo mật đề thi cho sự kiện WebDesign.",
-    categoryId: "cat_webdesign",
-    orderIndex: 1,
-    isPublished: true,
-    audience: "FREE",
-    visibility: "PUBLIC",
+    orderIndex: 0,
+    status: "PUBLISHED",
+    isRequired: true,
     requirePrevious: false,
     requireScrollToBottom: true,
-    passScorePercent: 80,
-    authorId: "system_bcn",
-    authorName: "Trưởng Ban Chuyên Môn",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -780,38 +1082,23 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         props: { variant: "warning" },
       },
     ],
-    quizQuestions: [
-      {
-        id: "q_wd_1",
-        questionText:
-          "Trước khi công bố đề thi vòng Chung kết WebDesign, Ban Chuyên môn bắt buộc phải thực hiện bước kiểm tra nào?",
-        type: "single",
-        options: [
-          { id: "wd_o1", text: "Đăng công khai đề thi lên Fanpage trước 1 tuần" },
-          { id: "wd_o2", text: "Cho ít nhất 2 thành viên Ban Chuyên môn làm thử độc lập để căn chỉnh thời gian" },
-          { id: "wd_o3", text: "Không cần kiểm tra trước" },
-        ],
-        correctOptionIds: ["wd_o2"],
-        explanation:
-          "Làm thử độc lập giúp phát hiện các điểm mơ hồ trong đề bài và đảm bảo độ khó vừa sức với thời gian quy định.",
-      },
-    ],
+    quizQuestions: [],
   },
   {
-    id: "art_webdesign_judging",
-    title: "Tiêu chí chấm điểm và tổ chức đêm chung kết WebDesign",
+    id: "itm_webdesign_judging",
+    courseSlug: "cam-nang-su-kien",
+    lessonSlug: "su-kien-webdesign",
+    type: "CONTENT",
+    title: "Chương 2: Tiêu chí chấm điểm và tổ chức đêm chung kết WebDesign",
     slug: "webdesign-cham-diem-chung-ket",
     summary:
       "Thang điểm 100 cho Ban Giám khảo, quy trình điều phối phòng thuyết trình và kịch bản kỹ thuật đêm trao giải.",
-    categoryId: "cat_webdesign",
-    orderIndex: 2,
-    isPublished: true,
-    requirePrevious: true,
+    orderIndex: 1,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null,
     requireScrollToBottom: true,
-    passScorePercent: 80,
-    authorId: "system_bcn",
-    authorName: "Trưởng Ban Sự Kiện",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -847,10 +1134,60 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         props: { variant: "info" },
       },
     ],
+    quizQuestions: [],
+  },
+  {
+    id: "itm_webdesign_quiz",
+    courseSlug: "cam-nang-su-kien",
+    lessonSlug: "su-kien-webdesign",
+    type: "QUIZ",
+    title: "Bài tập cuối chương: Nghiệp vụ tổ chức WebDesign",
+    slug: "bai-tap-to-chuc-webdesign",
+    summary:
+      "Kiểm tra quy trình nghiệm thu đề bài, yêu cầu hiệu năng kỹ thuật và cơ cấu thang điểm vòng Chung kết WebDesign.",
+    orderIndex: 2,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: true,
+    requireScrollToBottom: false,
+    passScorePercent: 80,
+    quizTitle: "Kiểm tra quy trình tổ chức WebDesign",
+    quizDescription: "Đạt tối thiểu 80% để hoàn thành bài học Sự kiện WebDesign.",
+    quizDurationMinutes: 10,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_wdq_1",
+        type: "callout",
+        content:
+          "Hoàn thành bài trắc nghiệm ngắn dưới đây để xác nhận bạn đã nắm vững quy trình ra đề và chấm điểm sự kiện WebDesign.",
+        props: { variant: "info" },
+      },
+    ],
     quizQuestions: [
       {
+        id: "q_wd_1",
+        questionText:
+          "Trước khi công bố đề thi vòng Chung kết WebDesign, Ban Chuyên môn bắt buộc phải thực hiện bước kiểm tra nào?",
+        type: "single",
+        options: [
+          { id: "wd_o1", text: "Đăng công khai đề thi lên Fanpage trước 1 tuần" },
+          {
+            id: "wd_o2",
+            text: "Cho ít nhất 2 thành viên Ban Chuyên môn làm thử độc lập để căn chỉnh thời gian",
+          },
+          { id: "wd_o3", text: "Không cần kiểm tra trước" },
+        ],
+        correctOptionIds: ["wd_o2"],
+        explanation:
+          "Làm thử độc lập giúp phát hiện các điểm mơ hồ trong đề bài và đảm bảo độ khó vừa sức với thời gian quy định.",
+      },
+      {
         id: "q_wdj_1",
-        questionText: "Trong thang điểm 100 của vòng Chung kết WebDesign, hạng mục Kỹ thuật lập trình và tính năng chiếm bao nhiêu điểm?",
+        questionText:
+          "Trong thang điểm 100 của vòng Chung kết WebDesign, hạng mục Kỹ thuật lập trình và tính năng chiếm bao nhiêu điểm?",
         type: "single",
         options: [
           { id: "j1", text: "20 điểm" },
@@ -860,23 +1197,41 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         correctOptionIds: ["j2"],
         explanation: "Kỹ thuật lập trình và tính năng chiếm trọng số lớn nhất là 40/100 điểm.",
       },
+      {
+        id: "q_wd_2",
+        questionText:
+          "Theo yêu cầu kỹ thuật bắt buộc trong đề bài WebDesign, điểm hiệu năng tối thiểu ở mục hiệu suất và khả năng tiếp cận là bao nhiêu?",
+        type: "single",
+        options: [
+          { id: "wd2_1", text: "Tối thiểu 50 điểm" },
+          { id: "wd2_2", text: "Tối thiểu 85 điểm" },
+          { id: "wd2_3", text: "Không yêu cầu điểm hiệu năng" },
+        ],
+        correctOptionIds: ["wd2_2"],
+        explanation:
+          "Sản phẩm dự thi phải đạt điểm hiệu năng tối thiểu 85 ở mục hiệu suất và khả năng tiếp cận, đồng thời tương thích đa thiết bị.",
+      },
     ],
   },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // COURSE 2: cam-nang-su-kien → LESSON 2: tuyen-ctv
+  // Tái sử dụng bài Tuyển CTV cũ + 1 Item QUIZ
+  // ───────────────────────────────────────────────────────────────────────────
   {
-    id: "art_recruitment_playbook",
-    title: "Kịch bản truyền thông và phỏng vấn tuyển thành viên",
+    id: "itm_recruitment_playbook",
+    courseSlug: "cam-nang-su-kien",
+    lessonSlug: "tuyen-ctv",
+    type: "CONTENT",
+    title: "Chương 1: Kịch bản truyền thông và phỏng vấn tuyển thành viên",
     slug: "kich-ban-tuyen-thanh-vien",
-    summary:
-      "Quy trình 3 vòng tuyển cộng tác viên và bộ câu hỏi đánh giá thái độ.",
-    categoryId: "cat_recruitment",
-    orderIndex: 1,
-    isPublished: true,
-    requirePrevious: false,
+    summary: "Quy trình 3 vòng tuyển cộng tác viên và bộ câu hỏi đánh giá thái độ.",
+    orderIndex: 0,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null,
     requireScrollToBottom: true,
-    passScorePercent: 75,
-    authorId: "system_bcn",
-    authorName: "Trưởng Ban Nhân Sự",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -911,6 +1266,37 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
           "Luôn tạo không khí cởi mở, thân thiện để ứng viên thể hiện tốt nhất năng lực.\nĐiền điểm và nhận xét chi tiết vào phiếu đánh giá ngay sau mỗi ca phỏng vấn.\nGửi email thông báo kết quả đúng hẹn trong vòng 48 giờ sau ngày phỏng vấn cuối.",
       },
     ],
+    quizQuestions: [],
+  },
+  {
+    id: "itm_recruitment_quiz",
+    courseSlug: "cam-nang-su-kien",
+    lessonSlug: "tuyen-ctv",
+    type: "QUIZ",
+    title: "Bài tập cuối chương: Quy trình phỏng vấn & Tuyển chọn CTV",
+    slug: "bai-tap-tuyen-ctv",
+    summary:
+      "Kiểm tra nguyên tắc đánh giá ứng viên và quy chuẩn phản hồi kết quả của hội đồng phỏng vấn CLB MPC.",
+    orderIndex: 1,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: true,
+    requireScrollToBottom: false,
+    passScorePercent: 75,
+    quizTitle: "Kiểm tra nghiệp vụ Tuyển CTV",
+    quizDescription: "Hoàn thành bài kiểm tra về tiêu chí và quy trình phỏng vấn Cộng tác viên mới.",
+    quizDurationMinutes: 10,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_recq_1",
+        type: "callout",
+        content: "Trả lời các câu hỏi dưới đây để hoàn thành bài học Tuyển cộng tác viên.",
+        props: { variant: "info" },
+      },
+    ],
     quizQuestions: [
       {
         id: "q_rec_1",
@@ -925,25 +1311,56 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         explanation:
           "Thái độ cầu thị và sự cam kết là nền tảng quan trọng nhất; chuyên môn sẽ được CLB đào tạo bài bản.",
       },
+      {
+        id: "q_rec_2",
+        questionText:
+          "Hội đồng phỏng vấn cần gửi email thông báo kết quả cho ứng viên trong vòng bao lâu sau ngày phỏng vấn cuối?",
+        type: "single",
+        options: [
+          { id: "r2_1", text: "Trong vòng 48 giờ" },
+          { id: "r2_2", text: "Sau 1 tháng" },
+          { id: "r2_3", text: "Không cần gửi email thông báo" },
+        ],
+        correctOptionIds: ["r2_1"],
+        explanation:
+          "Gửi email thông báo kết quả đúng hẹn trong vòng 48 giờ thể hiện sự tôn trọng ứng viên và tác phong chuyên nghiệp của CLB.",
+      },
+      {
+        id: "q_rec_3",
+        questionText:
+          "Thời điểm nào giám khảo cần điền điểm và nhận xét chi tiết vào phiếu đánh giá ứng viên?",
+        type: "single",
+        options: [
+          { id: "r3_1", text: "Ngay sau mỗi ca phỏng vấn" },
+          { id: "r3_2", text: "Đợi hết tuần mới ghi nhớ lại" },
+          { id: "r3_3", text: "Chỉ chấm điểm cảm tính, không cần ghi nhận xét" },
+        ],
+        correctOptionIds: ["r3_1"],
+        explanation:
+          "Điền điểm và nhận xét ngay sau mỗi ca phỏng vấn giúp đánh giá chính xác, khách quan và công bằng giữa các ứng viên.",
+      },
     ],
   },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // COURSE 3: dao-tao-ky-nang (sequential = false) → LESSON 1: ban-truyen-thong
+  // Tái sử dụng bài Truyền thông cũ + 1 Item QUIZ (ghi đè requirePrevious = true) + 1 Item DRAFT
+  // ───────────────────────────────────────────────────────────────────────────
   {
-    id: "art_media_photography_guide",
-    title: "Hướng dẫn chụp ảnh sự kiện, viết content và nhận diện thương hiệu MPC",
+    id: "itm_media_photography_guide",
+    courseSlug: "dao-tao-ky-nang",
+    lessonSlug: "ban-truyen-thong",
+    type: "CONTENT",
+    title: "Chương 1: Hướng dẫn chụp ảnh sự kiện, viết content và nhận diện thương hiệu MPC",
     slug: "cam-nang-chup-anh-content-mpc",
     summary:
       "Danh sách góc chụp bắt buộc khi đi sự kiện, công thức viết bài truyền thông thu hút và quy chuẩn lọc ảnh trong 24h.",
-    categoryId: "cat_media_dept",
-    orderIndex: 1,
-    isPublished: true,
-    audience: "FREE",
-    visibility: "PUBLIC",
-    requirePrevious: false,
+    orderIndex: 0,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: null, // Kế thừa Course.sequential = false
     requireScrollToBottom: true,
-    passScorePercent: 80,
-    authorId: "system_bcn",
-    authorName: "Trưởng Ban Truyền Thông",
-    updaterId: "system_bcn",
+    passScorePercent: 0,
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [
@@ -985,6 +1402,38 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         props: { variant: "success" },
       },
     ],
+    quizQuestions: [],
+  },
+  {
+    id: "itm_media_quiz",
+    courseSlug: "dao-tao-ky-nang",
+    lessonSlug: "ban-truyen-thong",
+    type: "QUIZ",
+    title: "Bài tập cuối chương: Tiêu chuẩn hình ảnh & Truyền thông MPC",
+    slug: "bai-tap-truyen-thong-mpc",
+    summary:
+      "Kiểm tra kiến thức về Shot-list sự kiện và quy trình bàn giao ảnh Highlight cho đội Content.",
+    orderIndex: 1,
+    status: "PUBLISHED",
+    isRequired: true,
+    requirePrevious: true, // Ghi đè Course.sequential = false: bắt buộc hoàn thành Chương 1 trước khi làm bài tập
+    requireScrollToBottom: false,
+    passScorePercent: 80,
+    quizTitle: "Kiểm tra kỹ năng Ban Truyền thông",
+    quizDescription: "Đạt tối thiểu 80% để hoàn thành bài tập kỹ năng truyền thông sự kiện.",
+    quizDurationMinutes: 10,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_medq_1",
+        type: "callout",
+        content:
+          "Mặc dù khóa Đào tạo kỹ năng cho phép học tự do (sequential = false), bài tập kiểm tra này đặt requirePrevious = true để yêu cầu bạn đọc xong Chương 1 trước khi làm bài.",
+        props: { variant: "info" },
+      },
+    ],
     quizQuestions: [
       {
         id: "q_med_1",
@@ -1000,18 +1449,83 @@ const RAW_INITIAL_ARTICLES: Omit<ArticleRecord, "plainText" | "readingTime" | "s
         explanation:
           "Bộ 10-15 ảnh Highlight cần được gửi trong vòng 2 giờ sau sự kiện để giữ độ nóng truyền thông cho bài Recap.",
       },
+      {
+        id: "q_med_2",
+        questionText:
+          "Đâu là các góc chụp nằm trong Shot-list bắt buộc tại mọi sự kiện của CLB MPC? (Chọn tất cả đáp án đúng)",
+        type: "multiple",
+        options: [
+          { id: "ms1", text: "Ảnh toàn cảnh hội trường (Wide shot) thể hiện quy mô sự kiện" },
+          { id: "ms2", text: "Ảnh cận cảnh diễn giả / Ban Giám khảo và ảnh tương tác của thí sinh" },
+          { id: "ms3", text: "Ảnh tập thể Ban Tổ Chức cùng khách mời tại Backdrop cuối chương trình" },
+        ],
+        correctOptionIds: ["ms1", "ms2", "ms3"],
+        explanation:
+          "Cả 3 nhóm góc chụp trên đều nằm trong Shot-list bắt buộc để đảm bảo tư liệu truyền thông đầy đủ cho sự kiện.",
+      },
+      {
+        id: "q_med_3",
+        questionText:
+          "Khi sử dụng logo của CLB MPC trên các ấn phẩm truyền thông, nguyên tắc nào sau đây cần tuân thủ tuyệt đối?",
+        type: "single",
+        options: [
+          { id: "mb1", text: "Giữ đúng tỷ lệ và màu sắc thương hiệu theo Brand Guideline trên Figma" },
+          { id: "mb2", text: "Tự ý kéo giãn chiều ngang hoặc chiều dọc logo cho vừa khung trống" },
+          { id: "mb3", text: "Sử dụng ảnh chụp màn hình độ phân giải thấp bị vỡ nét" },
+        ],
+        correctOptionIds: ["mb1"],
+        explanation:
+          "Mọi ấn phẩm phải tuân thủ đúng tỷ lệ và màu sắc chuẩn trong bộ nhận diện thương hiệu MPC.",
+      },
     ],
+  },
+  {
+    id: "itm_media_video_draft",
+    courseSlug: "dao-tao-ky-nang",
+    lessonSlug: "ban-truyen-thong",
+    type: "CONTENT",
+    title: "Chương 2: Quy chuẩn dựng video Recap Reels & TikTok CLB (Bản nháp)",
+    slug: "quy-chuan-video-recap-draft",
+    summary:
+      "Bản nháp hướng dẫn thông số xuất file 9:16, nhịp cắt video sự kiện và kho nhạc bản quyền của Ban Truyền thông.",
+    orderIndex: 2,
+    status: "DRAFT", // Để 1 Item DRAFT để demo theo yêu cầu
+    isRequired: false,
+    requirePrevious: null,
+    requireScrollToBottom: true,
+    passScorePercent: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    attachments: [],
+    content: [
+      {
+        id: "b_mvd_1",
+        type: "callout",
+        content:
+          "Tài liệu này đang ở trạng thái Bản nháp (DRAFT) và đang được Trưởng Ban Truyền thông hoàn thiện trước khi gửi duyệt xuất bản.",
+        props: { variant: "warning" },
+      },
+      {
+        id: "b_mvd_2",
+        type: "heading_2",
+        content: "1. Thông số kỹ thuật xuất video dọc (9:16)",
+      },
+      {
+        id: "b_mvd_3",
+        type: "bullet_list",
+        content:
+          "Độ phân giải: Full HD 1080x1920, tốc độ khung hình 60fps.\nThời lượng khuyến nghị: 30 - 60 giây với 3 giây đầu (Hook) ấn tượng nhất của sự kiện.\nLuôn đính kèm Intro/Outro chuyển động chính thức của CLB MPC.",
+      },
+    ],
+    quizQuestions: [],
   },
 ];
 
-export const INITIAL_ARTICLES: ArticleRecord[] = RAW_INITIAL_ARTICLES.map((art) => {
-  const plainText = extractPlainTextFromBlocks(art.content);
-  const readingTime = estimateReadingTime(plainText);
+export const INITIAL_ITEMS: SeedItem[] = RAW_INITIAL_ITEMS.map((item) => {
+  const plainText = extractPlainTextFromBlocks(item.content);
+  const readingTime = estimateReadingTime(plainText, item.content.length);
   return {
-    ...art,
-    status: (art.isPublished ? "PUBLISHED" : "DRAFT") as ArticleStatus,
-    visibility: art.visibility || "PUBLIC",
-    audience: art.audience || "INTERNAL",
+    ...item,
     plainText,
     readingTime,
   };

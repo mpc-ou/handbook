@@ -1,0 +1,81 @@
+{
+  "aria": {
+    "foxButton": "MPC Fox — click for a handbook tip",
+    "closeBubble": "Close speech bubble",
+    "hideMascot": "Hide mascot",
+    "showMascot": "Show MPC Fox mascot"
+  },
+  "actions": {
+    "hide": "Hide mascot",
+    "nextTip": "Next tip"
+  },
+  "greeting": {
+    "morning": "Good morning! ☀️",
+    "noon": "It's noon — remember to take a little break! 🍚",
+    "afternoon": "Good afternoon! 🌤️",
+    "evening": "Good evening! 🌆",
+    "late": "Still studying this late? Impressive! 🌙",
+    "firstVisit": "I'm the MPC Fox 🦊 Click me anytime for handy tips while reading the handbook!",
+    "welcomeBack": "Welcome back! Click me whenever you want a quick tip 🦊"
+  },
+  "tips": {
+    "1": "Quick tip: press Ctrl+K (or ⌘K) to search across all courses, lessons, and chapters.",
+    "2": "Reading a long chapter? Press F to toggle focus mode and hide the sidebars.",
+    "3": "Forgot a shortcut? Press ? anytime to bring up the keyboard shortcuts sheet!",
+    "4": "Complete at least one item a day to keep your study streak alive 🔥",
+    "5": "Scroll to the bottom of a chapter and it'll automatically mark itself as completed!",
+    "6": "Need more screen space? Click \"Hide mascot\" and I'll tuck neatly into the side edge 🦊"
+  },
+  "nudges": {
+    "1": "Lost in thought? Press Ctrl+K if you're looking for a specific topic!",
+    "2": "Rest your eyes for a moment, then knock out one short chapter to keep your streak going 🦊"
+  },
+  "events": {
+    "itemCompleted": {
+      "1": "Another item done — keep that momentum going! ✨",
+      "2": "Nice work! Step by step, it all adds up 🦊",
+      "3": "Clean finish! Ready for the next one?"
+    },
+    "itemCompletedQuiz": {
+      "1": "Breezed right through that quiz! 🎯",
+      "2": "Quiz complete — solid grasp of the material!"
+    },
+    "itemCompletedAssignment": {
+      "1": "Assignment completed — great job! 🛠️",
+      "2": "Another assignment checked off the list!"
+    },
+    "quizPassed": {
+      "1": "Awesome! You scored {score}% on the quiz 🎉",
+      "2": "{score}%! Hats off from the MPC Fox 🦊✨",
+      "3": "Passed with a crisp {score}%! Nailed it."
+    },
+    "quizPassedNoScore": {
+      "1": "Awesome! You passed the quiz 🎉",
+      "2": "Quiz passed! Hats off from the MPC Fox 🦊"
+    },
+    "quizFailed": {
+      "1": "You got {score}% — so close! Review the lesson and give it another shot 💪",
+      "2": "{score}% this round — don't sweat it! A quick review and you'll ace it 🦊",
+      "3": "Every mistake is a clue ({score}%)! Ready for a rematch?"
+    },
+    "quizFailedNoScore": {
+      "1": "Not quite passing yet — review the lesson a bit and try again! 💪",
+      "2": "So close! Take a breath and give it another go 🦊"
+    },
+    "assignmentSubmitted": {
+      "1": "Assignment submitted! Sit tight while it's reviewed 📬",
+      "2": "Your submission is on its way! Take a breather or hop to the next chapter 🦊",
+      "3": "Submission sent! Love the dedication ✨"
+    },
+    "courseCompleted": {
+      "1": "Congratulations on completing the entire course! 🎓🦊",
+      "2": "Amazing! Another course across the finish line 🏆",
+      "3": "Course complete! Give yourself a well-earned round of applause 🎉"
+    },
+    "streak": {
+      "1": "{days}-day study streak! Keep that fire burning 🔥",
+      "2": "{days} days in a row without missing a beat! Proud of you 🦊🔥",
+      "3": "Peak consistency: {days}-day study streak! ⚡"
+    }
+  }
+}

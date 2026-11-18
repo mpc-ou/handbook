@@ -1,256 +1,181 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { handleApiError, requireStaff, requireUser } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 
+const attemptInclude = {
+  user: {
+    select: { id: true, fullName: true, email: true, avatarUrl: true, department: true, role: true },
+  },
+  quiz: {
+    select: {
+      id: true,
+      title: true,
+      isExam: true,
+      durationMinutes: true,
+      passScorePercent: true,
+      item: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          passScorePercent: true,
+          lesson: { select: { slug: true, course: { select: { slug: true } } } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.QuizAttemptInclude;
+
+const bad = apiError;
+
+/** Thành viên chỉ xem được lượt làm của chính mình; ADMIN/EDITOR xem tất cả. */
 export async function GET(req: NextRequest) {
   try {
+    const user = await requireUser();
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const quizId = searchParams.get("quizId");
-    const articleId = searchParams.get("articleId");
+    const isStaff = user.role !== "MEMBER";
 
-    const where: any = {};
-    if (userId) where.userId = userId;
+    const where: Prisma.QuizAttemptWhereInput = {
+      userId: isStaff ? (searchParams.get("userId") ?? undefined) : user.id,
+    };
+    const quizId = searchParams.get("quizId");
+    const itemId = searchParams.get("itemId");
     if (quizId) where.quizId = quizId;
-    if (articleId) {
-      where.quiz = { articleId };
-    }
+    if (itemId) where.quiz = { itemId };
 
     const attempts = await prisma.quizAttempt.findMany({
       where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            avatarUrl: true,
-            department: true,
-            role: true,
-          },
-        },
-        quiz: {
-          select: {
-            id: true,
-            title: true,
-            isExam: true,
-            durationMinutes: true,
-            passScorePercent: true,
-            article: {
-              select: {
-                id: true,
-                title: true,
-                slug: true,
-              },
-            },
-          },
-        },
-      },
+      include: attemptInclude,
       orderBy: { createdAt: "desc" },
     });
 
-    const formatted = attempts.map((a) => ({
-      id: a.id,
-      userId: a.userId,
-      userFullName: a.user?.fullName || "Member",
-      userEmail: a.user?.email || "",
-      userAvatarUrl: a.user?.avatarUrl || undefined,
-      userDepartment: a.user?.department || "",
-      quizId: a.quizId,
-      quizTitle: a.quiz?.title || a.quiz?.article?.title || "Quiz Assessment",
-      articleId: a.quiz?.article?.id || a.quizId,
-      articleTitle: a.quiz?.article?.title || "Lesson Article",
-      articleSlug: a.quiz?.article?.slug || "",
-      scorePercent: a.scorePercent,
-      isPassed: a.isPassed,
-      timeSpentSec: a.timeSpentSec ?? undefined,
-      status: a.status || "COMPLETED",
-      answers: a.answers,
-      feedback: a.feedback || undefined,
-      gradedBy: a.gradedBy || undefined,
-      gradedAt: a.gradedAt ? a.gradedAt.toISOString() : undefined,
-      createdAt: a.createdAt.toISOString(),
-    }));
-
-    return NextResponse.json({ success: true, attempts: formatted });
-  } catch (error: any) {
-    console.error("Error fetching quiz attempts:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      attempts: attempts.map((a) => ({
+        id: a.id,
+        userId: a.userId,
+        userFullName: a.user?.fullName || "Member",
+        userEmail: a.user?.email || "",
+        userAvatarUrl: a.user?.avatarUrl || undefined,
+        userDepartment: a.user?.department || "",
+        quizId: a.quizId,
+        quizTitle: a.quiz.title || a.quiz.item?.title || "Bài kiểm tra",
+        itemId: a.quiz.item?.id || a.quizId,
+        itemTitle: a.quiz.item?.title || "Chương/bài tập",
+        itemSlug: a.quiz.item?.slug || "",
+        lessonSlug: a.quiz.item?.lesson.slug || "",
+        courseSlug: a.quiz.item?.lesson.course.slug || "",
+        scorePercent: a.scorePercent,
+        isPassed: a.isPassed,
+        timeSpentSec: a.timeSpentSec ?? undefined,
+        status: a.status,
+        answers: a.answers,
+        feedback: a.feedback || undefined,
+        gradedBy: a.gradedBy || undefined,
+        gradedAt: a.gradedAt ? a.gradedAt.toISOString() : undefined,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
+/** Chấm tay bài tự luận/nộp file — chỉ ADMIN/EDITOR; người chấm lấy từ session. */
 export async function PUT(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { attemptId, scorePercent, feedback, gradedBy } = body;
-
-    if (!attemptId) {
-      return NextResponse.json(
-        { success: false, error: "Missing submission ID" },
-        { status: 400 }
-      );
-    }
+    const grader = await requireStaff();
+    const { attemptId, scorePercent, feedback } = await req.json();
+    if (!attemptId) return bad("missingAttemptId");
+    const score = Number(scorePercent);
+    if (!Number.isFinite(score) || score < 0 || score > 100) return bad("scoreRange");
 
     const attempt = await prisma.quizAttempt.findUnique({
       where: { id: attemptId },
-      include: {
-        quiz: {
-          include: {
-            article: true,
-          },
-        },
-      },
+      include: { quiz: { include: { item: { select: { passScorePercent: true } } } } },
     });
+    if (!attempt) return bad("attemptNotFound", 404);
 
-    if (!attempt) {
-      return NextResponse.json(
-        { success: false, error: "Quiz submission not found" },
-        { status: 404 }
-      );
-    }
-
-    const requiredScore =
-      attempt.quiz.passScorePercent ??
-      attempt.quiz.article?.passScorePercent ??
-      80;
-    const isPassed = Number(scorePercent) >= requiredScore;
+    const requiredScore = attempt.quiz.item?.passScorePercent ?? attempt.quiz.passScorePercent ?? 80;
+    const isPassed = score >= requiredScore;
 
     const updated = await prisma.quizAttempt.update({
       where: { id: attemptId },
       data: {
-        scorePercent: Number(scorePercent),
+        scorePercent: score,
         isPassed,
         feedback: feedback || null,
-        gradedBy: gradedBy || "Tech Board Evaluator",
+        gradedBy: grader.fullName,
         gradedAt: new Date(),
         status: "GRADED",
       },
     });
 
-    // Also update UserProgress highest score if needed
-    if (attempt.quiz.articleId) {
-      const existingProg = await prisma.userProgress.findUnique({
-        where: {
-          userId_articleId: {
-            userId: attempt.userId,
-            articleId: attempt.quiz.articleId,
-          },
-        },
+    const itemId = attempt.quiz.itemId;
+    if (itemId && attempt.quiz.item) {
+      const existing = await prisma.userProgress.findUnique({
+        where: { userId_itemId: { userId: attempt.userId, itemId } },
       });
-
-      const newHighest = Math.max(
-        existingProg?.highestQuizScore ?? 0,
-        Number(scorePercent)
-      );
-      const isCompleted = isPassed && Boolean(existingProg?.hasScrolledBottom);
+      const highest = Math.max(existing?.highestQuizScore ?? 0, score);
+      const completedNow = isPassed;
 
       await prisma.userProgress.upsert({
-        where: {
-          userId_articleId: {
-            userId: attempt.userId,
-            articleId: attempt.quiz.articleId,
-          },
-        },
+        where: { userId_itemId: { userId: attempt.userId, itemId } },
         update: {
-          highestQuizScore: newHighest,
-          isCompleted: isCompleted || existingProg?.isCompleted || false,
-          completedAt:
-            isCompleted && !existingProg?.completedAt
-              ? new Date()
-              : existingProg?.completedAt,
+          highestQuizScore: highest,
+          isCompleted: completedNow || existing?.isCompleted || false,
+          completedAt: completedNow ? (existing?.completedAt ?? new Date()) : existing?.completedAt,
         },
         create: {
           userId: attempt.userId,
-          articleId: attempt.quiz.articleId,
-          highestQuizScore: Number(scorePercent),
-          isCompleted,
-          completedAt: isCompleted ? new Date() : null,
+          itemId,
+          highestQuizScore: score,
+          isCompleted: completedNow,
+          completedAt: completedNow ? new Date() : null,
         },
       });
     }
 
-    return NextResponse.json({ success: true, attempt: updated });
-  } catch (error: any) {
-    console.error("Error updating quiz grade:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, attempt: { ...updated, createdAt: updated.createdAt.toISOString(), gradedAt: updated.gradedAt?.toISOString() } });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
+/** Xóa lượt làm bài và tính lại điểm cao nhất — chỉ ADMIN/EDITOR. */
 export async function DELETE(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Missing submission ID to delete" },
-        { status: 400 }
-      );
-    }
+    await requireStaff();
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) return bad("missingAttemptId");
 
     const attempt = await prisma.quizAttempt.findUnique({
       where: { id },
-      include: {
-        quiz: {
-          select: {
-            id: true,
-            articleId: true,
-            passScorePercent: true,
-          },
-        },
-      },
+      include: { quiz: { select: { itemId: true, passScorePercent: true, item: { select: { passScorePercent: true } } } } },
     });
+    if (!attempt) return bad("attemptNotFound", 404);
 
-    if (!attempt) {
-      return NextResponse.json(
-        { success: false, error: "Quiz submission not found" },
-        { status: 404 }
-      );
-    }
+    await prisma.quizAttempt.delete({ where: { id } });
 
-    // Delete the attempt record
-    await prisma.quizAttempt.delete({
-      where: { id },
-    });
-
-    // Recalculate user progress highest quiz score if articleId exists
-    if (attempt.quiz?.articleId) {
-      const remainingAttempts = await prisma.quizAttempt.findMany({
-        where: {
-          userId: attempt.userId,
-          quizId: attempt.quizId,
-        },
+    if (attempt.quiz.itemId) {
+      const best = await prisma.quizAttempt.findFirst({
+        where: { userId: attempt.userId, quizId: attempt.quizId },
         orderBy: { scorePercent: "desc" },
+        select: { scorePercent: true },
       });
-
-      const newHighest = remainingAttempts[0]?.scorePercent ?? 0;
-      const requiredScore = attempt.quiz.passScorePercent ?? 80;
-      const isPassed = newHighest >= requiredScore;
+      const highest = best?.scorePercent ?? 0;
+      const requiredScore = attempt.quiz.item?.passScorePercent ?? attempt.quiz.passScorePercent ?? 80;
 
       await prisma.userProgress.updateMany({
-        where: {
-          userId: attempt.userId,
-          articleId: attempt.quiz.articleId,
-        },
-        data: {
-          highestQuizScore: newHighest,
-          isCompleted: isPassed,
-        },
+        where: { userId: attempt.userId, itemId: attempt.quiz.itemId },
+        data: { highestQuizScore: highest, isCompleted: highest >= requiredScore },
       });
     }
 
-    return NextResponse.json({ success: true, message: "Submission deleted successfully." });
-  } catch (error: any) {
-    console.error("Error deleting quiz attempt:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, message: "Đã xóa bài nộp." });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
-

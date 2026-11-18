@@ -1,0 +1,32 @@
+{
+  "greetingUser": "Xin chào, {name}",
+  "greetingGuest": "Khóa học & Sổ tay MPC",
+  "subtitle": "Chọn khóa học bên dưới hoặc tiếp tục chương đang học dở.",
+  "subtitleGuest": "Khám phá các khóa học công khai hoặc đăng nhập để mở toàn bộ lộ trình nội bộ.",
+  "continue": {
+    "label": "Tiếp tục học",
+    "cta": "Học tiếp"
+  },
+  "categories": {
+    "all": "Tất cả",
+    "ariaLabel": "Lọc theo danh mục"
+  },
+  "card": {
+    "chaptersCount": "{count} chương",
+    "sequential": "Học theo thứ tự",
+    "free": "Học tự do",
+    "internal": "Nội bộ",
+    "internalTooltip": "Đăng nhập tài khoản MPC để học khóa nội bộ này",
+    "groupRestrictedTooltip": "Dành cho: {groups}",
+    "progressLabel": "Tiến độ khóa học {title}"
+  },
+  "states": {
+    "errorTitle": "Không thể tải danh sách khóa học",
+    "emptyAll": "Chưa có khóa học nào được xuất bản.",
+    "emptyAllStaff": "Chưa có khóa học nào. Hãy tạo khóa học đầu tiên trong Studio.",
+    "openStudio": "Mở Studio",
+    "signIn": "Đăng nhập",
+    "emptyFiltered": "Không có khóa học nào thuộc danh mục đã chọn.",
+    "resetFilter": "Xem tất cả khóa học"
+  }
+}

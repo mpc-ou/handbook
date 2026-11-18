@@ -1,48 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { extractPublicIdFromUrl } from "@/lib/cloudinary-server";
+import { handleApiError, requireStaff } from "@/lib/authz";
+import { apiError } from "@/lib/api-errors";
 
+/**
+ * Ghi nhận file vừa upload để cron dọn dẹp theo dõi (isAttached=false cho tới khi
+ * được lưu vào Course/Lesson/Item). Chỉ ADMIN/EDITOR; `publicId` phải khớp URL và
+ * nằm trong thư mục được quản lý, và không ghi đè file đã đăng ký trước đó.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    const body = await req.json();
-    const { publicId, url, bytes, format } = body;
+    const user = await requireStaff();
+    const { publicId, url, bytes, format } = await req.json();
 
     if (!publicId || !url) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+      return apiError("missingUploadFields");
     }
-
-    let uploaderId: string | undefined;
-    if (session?.user?.email) {
-      const u = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true },
-      });
-      if (u) uploaderId = u.id;
+    if (extractPublicIdFromUrl(url) !== publicId) {
+      return apiError("publicIdMismatch");
     }
 
     const file = await prisma.uploadedFile.upsert({
       where: { publicId },
-      update: {
-        url,
-        bytes: bytes || null,
-        format: format || null,
-        uploaderId,
-      },
+      update: {},
       create: {
         publicId,
         url,
         bytes: bytes || null,
         format: format || null,
-        uploaderId,
-        isAttached: false, // Initially unattached until article or draft is saved
+        uploaderId: user.id,
+        isAttached: false,
       },
     });
 
     return NextResponse.json({ success: true, file });
-  } catch (error: any) {
-    console.error("Failed to register uploaded file:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
-
