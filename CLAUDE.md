@@ -55,6 +55,12 @@ Upload trực tiếp có ký: `POST /api/upload/sign` → upload Cloudinary → 
 ## Item: chương và bài tập là hai thứ tách biệt
 - `CONTENT` (chương) chỉ để đọc, **không có quiz**. `QUIZ` = trắc nghiệm (câu: single/multiple/fill_blank/scale, chấm tự động). `ASSIGNMENT` = bài tập (câu: essay/file_upload/code_submission, chấm tay). Quy tắc nằm ở `lib/quiz-rules.ts` và được server ép (`/api/items`, `/api/quiz/grade`); đổi giữa chương ↔ bài tập bị chặn (409) nếu đã có lượt làm.
 - QUIZ/ASSIGNMENT là một trang làm bài riêng (giới thiệu → từng câu → kết quả), **không dùng modal**.
+- **Loại item được chọn lúc tạo và khóa cứng sau đó.** `POST /api/items` bắt buộc có `type`; `PUT` đổi loại trả 409 (`itemTypeLocked`). Trình soạn hỏi loại ở bước đầu (`/studio/items/new`), khi sửa chỉ hiện huy hiệu loại chỉ-đọc.
+
+## Thông báo và quản trị
+- **Thông báo** (bảng `Notification`, `lib/notifications.ts`): COMMENT (tác giả chương, người được giao khóa và **mọi ADMIN**), REPLY, MENTION (`<@userId>` trong bình luận), COURSE_COMPLETED (admin) + CERTIFICATE_READY (học viên), ASSIGNMENT_SUBMITTED (staff), ASSIGNMENT_GRADED (học viên). Mỗi người chỉ nhận một thông báo cho một bình luận (ưu tiên MENTION > REPLY > COMMENT); người gây ra không tự nhận. Tạo bằng `fireAndForget` sau khi request chính xong (không bao giờ làm hỏng request); chỉ lưu `type` + `data` (snapshot), **câu chữ dựng ở client theo ngôn ngữ người xem**. UI: `components/notifications/` (chuông, popover, polling 60s) và `/notifications`. API: `/api/notifications` (GET, PATCH đánh dấu đã đọc, DELETE), chỉ tác động thông báo của chính mình.
+- **Quản lý thành viên** (`/studio/members`, chỉ ADMIN): sửa vai trò/phòng ban/khóa được giao, xóa dữ liệu học tập (`POST /api/members/cleanup`: tiến độ, lượt làm bài, bình luận; toàn bộ hoặc theo khóa), xóa thành viên (`DELETE /api/members`: nội dung họ tạo được chuyển cho người xóa; không xóa được chính mình hoặc Super Admin; chỉ Super Admin xóa được ADMIN khác).
+- **Kiểm duyệt bình luận** (`/studio/comments`, ADMIN + EDITOR của khóa đó): `GET /api/comments/manage`, xóa bằng `DELETE /api/comments?id=` (kéo theo các trả lời).
 
 ## i18n (next-intl, vi + en, cookie `NEXT_LOCALE`, không tiền tố URL)
 - Mọi chuỗi UI qua `useTranslations`/`getTranslations`; không viết chuỗi cứng. Message ở `messages/<locale>/<namespace>.json`, danh sách namespace cố định trong `i18n/config.ts` (thêm namespace = thêm vào đó + tạo file cho cả hai ngôn ngữ). Hai ngôn ngữ phải có CÙNG bộ key và cùng biến ICU.

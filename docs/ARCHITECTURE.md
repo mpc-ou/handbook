@@ -12,9 +12,11 @@ Category ──< CourseCategory >── Course ──< Lesson ──< Item ─�
                                         (EDITOR scope)  ├── ItemLike
                                                         ├── Comment (2 levels)
                                                         └── UploadedFile (course / lesson / item)
+
+User ──< Notification (type + data snapshot, readAt)
 ```
 
-- **Item types**: `CONTENT` (read-only chapter), `QUIZ` (auto-graded), `ASSIGNMENT` (manually graded). Allowed question types per item type live in `lib/quiz-rules.ts` and are enforced by the API.
+- **Item types**: `CONTENT` (read-only chapter), `QUIZ` (auto-graded), `ASSIGNMENT` (manually graded). Allowed question types per item type live in `lib/quiz-rules.ts` and are enforced by the API. **The type is chosen at creation and locked afterwards** (`PUT` with a different type returns 409).
 - **Learning order**: `item.requirePrevious ?? lesson.requirePrevious ?? course.sequential`. Course/lesson progress is derived from item progress, never stored.
 - **Status**: `ContentStatus` (`DRAFT → PENDING_REVIEW → PUBLISHED`); only `ADMIN` publishes.
 - Source of truth: [`prisma/schema.prisma`](../prisma/schema.prisma). Schema changes use `pnpm db:push` (no migration files yet).
@@ -39,7 +41,8 @@ Category ──< CourseCategory >── Course ──< Lesson ──< Item ─�
 | Home (course grid) | `/` |
 | Course / lesson / chapter | `/learn/[course]`, `/learn/[course]/[lesson]`, `/learn/[course]/[lesson]/[item]` |
 | Certificate | `/learn/[course]/certificate` |
-| Studio | `/studio`, `/studio/curriculum`, `/studio/items`, `/studio/items/[id]`, `/studio/progress`, `/studio/quizzes`, `/studio/members`, `/studio/settings` |
+| Studio | `/studio`, `/studio/curriculum`, `/studio/items`, `/studio/items/[id]`, `/studio/progress`, `/studio/quizzes`, `/studio/comments`, `/studio/members`, `/studio/settings` |
+| Notifications | `/notifications` (inbox) and the bell in the header |
 | Legacy (redirected) | `/docs/*`, `/studio/articles/*`, `/editor/*` |
 
 ## Internationalisation
@@ -65,6 +68,12 @@ Direct signed upload (`/api/upload/sign` → Cloudinary → `/api/upload/registe
 | Search (MiniSearch, diacritic-insensitive) | `lib/search.ts`, `components/layout/CommandSearch.tsx` |
 | Fox companion | `components/companion/` (listens to `window` events `mpc:companion` and `mpc:companion-toggle`) |
 | Admin learner progress | `app/studio/progress/`, `components/studio/progress/` |
+| Notifications | `lib/notifications.ts` (server), `components/notifications/` (bell, polling every 60 s), `/api/notifications` |
+| Member admin and moderation | `app/studio/members/`, `app/studio/comments/`, `/api/members` (PUT, DELETE), `/api/members/cleanup`, `/api/comments/manage` |
+
+## Notifications
+
+Created server-side right after the action that causes them (comment, reply, @mention, last required item of a course, assignment submitted or graded) and never allowed to fail the request. Admins receive every comment and every course completion. Only a type and a data snapshot are stored; the sentence is rendered in the viewer's language on the client. Delivery is polling (60 s, plus on tab focus), not push, so a notification can arrive up to a minute late.
 
 ## Known gaps
 

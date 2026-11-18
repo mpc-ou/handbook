@@ -29,6 +29,7 @@
 - **Flexible learning order**: `Course.sequential` is the default (ordered vs free); a lesson or item can override it.
 - **Focused reading**: focus mode, font size/width settings, keyboard shortcuts (`←` `→` `F` `?` `Ctrl+K`), reading progress bar.
 - **Motivation**: learning streak, achievements, animated progress rings, a hideable fox companion, and a printable completion certificate per course.
+- **Notifications**: a bell and inbox for comments on your chapters (admins get all), replies, @mentions, course completions, and assignments to grade or already graded.
 - **Admin progress dashboard** (`/studio/progress`): overall learner progress, a learner × lesson heat-matrix per course, chapter drop-off funnel, CSV export.
 - **Search**: instant, typo-tolerant, diacritic-insensitive Vietnamese search (MiniSearch, `Ctrl+K`).
 - **Bilingual UI**: Vietnamese and English (cookie-based, no URL prefix). Course content itself is not translated.
@@ -46,8 +47,8 @@
 - **Flexible Learning Order**: `Course.sequential` sets the default (ordered vs free); a lesson or item can override it with `requirePrevious`.
 - **Flat Categories**: A course can carry one or many categories (tags) for browsing and filtering.
 - **Role & Course Permissions**:
-  - `ADMIN`: Full operational authority over all courses, categories, publishing, and member appointments.
-  - `EDITOR`: Edit privileges limited to the courses assigned to them; cannot publish.
+  - `ADMIN`: Full operational authority over all courses, categories, publishing, member management (edit, reset learning data, delete) and comment moderation.
+  - `EDITOR`: Edit privileges and comment moderation limited to the courses assigned to them; cannot publish.
   - `MEMBER`: Read-only curriculum navigation, assessment submission, commenting, and personal progress tracking.
 
 ### 4. ☁️ Cloudinary Asset Tracking & Automated Garbage Collection

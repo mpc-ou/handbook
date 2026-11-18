@@ -16,7 +16,8 @@ All test accounts below are created by `pnpm db:seed`. They are ready for testin
 | Create courses | ✅ | ✅ (draft only) | ❌ |
 | Edit lessons/items | all courses | assigned courses only | ❌ |
 | Publish / roll back published content | ✅ | ❌ | ❌ |
-| Delete courses, manage categories, departments, members | ✅ | ❌ | ❌ |
+| Delete courses, manage categories, departments, members (edit, reset learning data, delete) | ✅ | ❌ | ❌ |
+| Moderate (delete) comments | all | assigned courses only | own comments only |
 | Grade assignments, view learner progress | ✅ | ✅ (own courses) | ❌ |
 
 ---
