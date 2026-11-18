@@ -106,7 +106,7 @@ export default function StudioItemsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newCourseId, setNewCourseId] = useState<string>("");
   const [newLessonId, setNewLessonId] = useState<string>("");
-  const [newType, setNewType] = useState<ItemType>("CONTENT");
+  const [newType, setNewType] = useState<ItemType | null>(null);
   const [newTitle, setNewTitle] = useState<string>("");
   const [creating, setCreating] = useState(false);
 
@@ -235,7 +235,7 @@ export default function StudioItemsPage() {
         ? lessonFilter
         : courseLessons[0]?.id || "";
     setNewLessonId(defaultLessonId);
-    setNewType("CONTENT");
+    setNewType(null);
     setNewTitle("");
     setCreateOpen(true);
   };
@@ -252,6 +252,10 @@ export default function StudioItemsPage() {
     e.preventDefault();
     if (!newLessonId) {
       showToast(t("toast.lessonRequired"), "error");
+      return;
+    }
+    if (!newType) {
+      showToast(t("toast.typeRequired"), "error");
       return;
     }
     const trimmedTitle = newTitle.trim();
@@ -913,9 +917,14 @@ export default function StudioItemsPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">
-                  {t("createDialog.typeLabel")}
+                  {t("createDialog.typeLabel")}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
-                <div className="grid grid-cols-3 gap-2">
+                <div
+                  role="radiogroup"
+                  aria-label={t("createDialog.typeLabel")}
+                  className="grid grid-cols-1 gap-2"
+                >
                   {(["CONTENT", "QUIZ", "ASSIGNMENT"] as ItemType[]).map(
                     (typeOpt) => {
                       const Icon = ITEM_TYPE_ICONS[typeOpt];
@@ -924,20 +933,44 @@ export default function StudioItemsPage() {
                         <button
                           key={typeOpt}
                           type="button"
+                          role="radio"
+                          aria-checked={active}
                           onClick={() => setNewType(typeOpt)}
-                          className={`flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                          className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors cursor-pointer ${
                             active
-                              ? "border-primary bg-primary/10 text-primary font-semibold"
+                              ? "border-primary bg-primary/10 text-foreground"
                               : "border-border hover:bg-muted/50 text-muted-foreground"
                           }`}
                         >
-                          <Icon className="size-4" />
-                          <span>{tc(`itemType.${typeOpt}`)}</span>
+                          <div
+                            className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md ${
+                              active
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className={`text-xs font-medium ${
+                                active ? "text-primary font-semibold" : "text-foreground"
+                              }`}
+                            >
+                              {tc(`itemType.${typeOpt}`)}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                              {t(`createDialog.typeDescriptions.${typeOpt}`)}
+                            </p>
+                          </div>
                         </button>
                       );
                     }
                   )}
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("createDialog.typeLockedHint")}
+                </p>
               </div>
 
               <div className="space-y-1.5">
@@ -969,7 +1002,7 @@ export default function StudioItemsPage() {
               <Button
                 type="submit"
                 size="sm"
-                disabled={creating || !newLessonId || !newTitle.trim()}
+                disabled={creating || !newLessonId || !newType || !newTitle.trim()}
                 className="cursor-pointer"
               >
                 {creating

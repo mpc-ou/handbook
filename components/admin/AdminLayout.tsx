@@ -8,6 +8,7 @@ import { useHandbook } from "@/context/HandbookContext";
 import { CommandSearch } from "@/components/layout/CommandSearch";
 import { Footer } from "@/components/layout/Footer";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -56,6 +58,7 @@ export function AdminLayout({
 }: AdminLayoutProps) {
   const pathname = usePathname();
   const t = useTranslations("studio");
+  const tModeration = useTranslations("studioModeration");
   const {
     user,
     items,
@@ -161,6 +164,13 @@ export function AdminLayout({
       icon: ClipboardCheck,
       isActive: pathname.startsWith("/studio/quizzes"),
       count: pendingAttemptsCount > 0 ? pendingAttemptsCount : undefined,
+    },
+    {
+      label: tModeration("nav.comments"),
+      href: "/studio/comments",
+      icon: MessageSquare,
+      isActive: pathname.startsWith("/studio/comments"),
+      count: undefined as number | undefined,
     },
     ...(isAdmin
       ? [
@@ -414,6 +424,8 @@ export function AdminLayout({
                   Ctrl K
                 </kbd>
               </Button>
+
+              <NotificationBell />
 
               <LanguageSwitcher />
 

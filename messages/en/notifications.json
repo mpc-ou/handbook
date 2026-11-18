@@ -1,0 +1,54 @@
+{
+  "bell": {
+    "label": "Notifications",
+    "labelWithUnread": "{count, plural, one {Notifications (# unread)} other {Notifications (# unread)}}",
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all",
+    "empty": "You're all caught up — no notifications yet."
+  },
+  "messages": {
+    "COMMENT": "<b>{actor}</b> commented on \"{item}\"",
+    "REPLY": "<b>{actor}</b> replied to your comment on \"{item}\"",
+    "MENTION": "<b>{actor}</b> mentioned you in \"{item}\"",
+    "COURSE_COMPLETED": "<b>{actor}</b> completed the course \"{course}\"",
+    "CERTIFICATE_READY": "Congratulations! You completed \"{course}\" — claim your certificate",
+    "ASSIGNMENT_SUBMITTED": "<b>{actor}</b> submitted \"{item}\" — awaiting review",
+    "ASSIGNMENT_GRADED": "Your assignment \"{item}\" was graded: <b>{score}%</b>"
+  },
+  "fallback": {
+    "actor": "Someone",
+    "item": "an item",
+    "course": "a course"
+  },
+  "item": {
+    "unreadDot": "Unread",
+    "moreActions": "Notification actions",
+    "markRead": "Mark as read",
+    "delete": "Delete notification"
+  },
+  "page": {
+    "title": "Notifications",
+    "subtitle": "{count, plural, =0 {No unread notifications} one {# unread notification} other {# unread notifications}}",
+    "tabs": {
+      "all": "All",
+      "unread": "Unread"
+    },
+    "markAllRead": "Mark all as read",
+    "clearRead": "Clear read notifications",
+    "clearReadConfirm": "Delete all read notifications?",
+    "loadMore": "Load more",
+    "emptyAll": "You don't have any notifications yet.",
+    "emptyUnread": "You have no unread notifications.",
+    "guest": {
+      "title": "Sign in to view notifications",
+      "description": "Get notified about comment replies, mentions, graded assignments, and course certificates.",
+      "signInSso": "Sign in with MPC-SSO",
+      "signInPage": "Go to sign in"
+    }
+  },
+  "toast": {
+    "loadFailed": "Couldn't load notifications.",
+    "updateFailed": "Couldn't update notifications. Please try again."
+  }
+}

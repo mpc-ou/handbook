@@ -133,7 +133,6 @@ export default function StudioItemEditorPage() {
   });
 
   // Lưu loại ban đầu để hiển thị cảnh báo inline khi đổi CONTENT ↔ QUIZ/ASSIGNMENT
-  const initialTypeRef = useRef<ItemType>(type);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -286,7 +285,6 @@ export default function StudioItemEditorPage() {
 
   useEffect(() => {
     if (existingItem) {
-      initialTypeRef.current = existingItem.type;
       setTitle(existingItem.title);
       setSlug(existingItem.slug);
       setSummary(existingItem.summary);
@@ -408,13 +406,32 @@ export default function StudioItemEditorPage() {
     if (!isDirty) setIsDirty(true);
   };
 
-  const handleTypeChange = (nextType: ItemType) => {
-    if (isLocked || nextType === type) return;
-    setType(nextType);
-    if (hasQuiz(nextType) && passScorePercent <= 0) {
-      setPassScorePercent(80);
+  // Loại chỉ được chọn lúc tạo; sau khi lưu lần đầu thì khóa cứng
+  const hasValidQueryType = Boolean(
+    queryType && (["CONTENT", "QUIZ", "ASSIGNMENT"] as string[]).includes(queryType)
+  );
+  const [typeChosen, setTypeChosen] = useState(!isNew || hasValidQueryType);
+  const [confirmRechoose, setConfirmRechoose] = useState(false);
+
+  const chooseType = (next: ItemType) => {
+    setType(next);
+    if (hasQuiz(next) && passScorePercent <= 0) setPassScorePercent(80);
+    setConfirmRechoose(false);
+    setTypeChosen(true);
+  };
+
+  const requestRechoose = () => {
+    if (isDirty) {
+      setConfirmRechoose(true);
+      return;
     }
-    markDirty();
+    setTypeChosen(false);
+  };
+
+  const confirmRechooseType = () => {
+    setQuizQuestions([]);
+    setConfirmRechoose(false);
+    setTypeChosen(false);
   };
 
   const handleMoveToLesson = async (nextLessonId: string) => {
@@ -451,7 +468,7 @@ export default function StudioItemEditorPage() {
       if (d.slug !== undefined) setSlug(d.slug);
       if (d.summary !== undefined) setSummary(d.summary);
       if (d.lessonId !== undefined && !queryLessonId) setLessonId(d.lessonId);
-      if (d.type !== undefined) setType(d.type);
+      if (isNew && d.type !== undefined) setType(d.type);
       if (d.orderIndex !== undefined) setOrderIndex(d.orderIndex);
       if (d.isRequired !== undefined) setIsRequired(d.isRequired);
       if (d.requirePrevious !== undefined)
@@ -463,7 +480,7 @@ export default function StudioItemEditorPage() {
         if (d.blocks.length > 0) setShowInstructions(true);
       }
       if (Array.isArray(d.attachments)) setAttachments(d.attachments);
-      if (d.type && hasQuiz(d.type)) {
+      if (hasQuiz(isNew ? (d.type ?? type) : type)) {
         if (d.passScorePercent !== undefined)
           setPassScorePercent(d.passScorePercent);
         if (Array.isArray(d.quizQuestions)) setQuizQuestions(d.quizQuestions);
@@ -605,7 +622,6 @@ export default function StudioItemEditorPage() {
           : {}),
       });
 
-      initialTypeRef.current = saved.type;
       setStatus(targetStatus);
       try {
         localStorage.removeItem(draftStorageKey);
@@ -673,23 +689,6 @@ export default function StudioItemEditorPage() {
         }`
       : null;
 
-  // Kiểm tra câu hỏi không tương thích khi đổi giữa QUIZ ↔ ASSIGNMENT
-  const invalidQuestionTypes = useMemo(
-    () => (hasQuiz(type) ? findInvalidQuestionTypes(type, quizQuestions) : []),
-    [type, quizQuestions]
-  );
-
-  const invalidQuestionCount = useMemo(() => {
-    if (!hasQuiz(type) || invalidQuestionTypes.length === 0) return 0;
-    const allowed = ALLOWED_QUESTION_TYPES[type];
-    return quizQuestions.filter((q) => !allowed.includes(q.type ?? "single"))
-      .length;
-  }, [type, quizQuestions, invalidQuestionTypes]);
-
-  const origType = existingItem?.type ?? initialTypeRef.current;
-  const switchedToContent = hasQuiz(origType) && type === "CONTENT";
-  const switchedFromContent = origType === "CONTENT" && hasQuiz(type);
-
   const canAccess = user?.role === "ADMIN" || user?.role === "EDITOR";
   if (!canAccess && !dataLoading) {
     return (
@@ -731,6 +730,53 @@ export default function StudioItemEditorPage() {
             <span>{t("notFound.backButton")}</span>
           </Link>
         </Button>
+      </div>
+    );
+  }
+
+  if (isNew && !typeChosen) {
+    const options: ItemType[] = ["CONTENT", "QUIZ", "ASSIGNMENT"];
+    const where = currentCourse && currentLesson ? `${currentCourse.title} › ${currentLesson.title}` : null;
+    return (
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <div className="px-4 sm:px-6 py-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/studio/curriculum">
+              <ArrowLeft className="size-4 mr-1.5" />
+              <span>{tc("actions.back")}</span>
+            </Link>
+          </Button>
+        </div>
+        <main className="flex-1 mx-auto w-full max-w-3xl px-4 sm:px-6 py-8 space-y-8">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">{t("typeChooser.title")}</h1>
+            {where && <p className="text-sm text-muted-foreground">{where}</p>}
+            <p className="text-sm text-muted-foreground">{t("typeChooser.subtitle")}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {options.map((opt) => {
+              const Icon = ITEM_TYPE_ICONS[opt];
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => chooseType(opt)}
+                  className="group flex flex-col items-start gap-3 rounded-xl border border-border p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                >
+                  <span className="rounded-lg bg-muted p-2 text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                    <Icon className="size-5" />
+                  </span>
+                  <span className="space-y-1">
+                    <span className="block font-semibold">{t(`typeChooser.options.${opt}.title`)}</span>
+                    <span className="block text-xs leading-relaxed text-muted-foreground">
+                      {t(`typeChooser.options.${opt}.description`)}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </main>
       </div>
     );
   }
@@ -1109,86 +1155,37 @@ export default function StudioItemEditorPage() {
           isLocked && "pointer-events-none opacity-85 select-text"
         )}
       >
-        {/* Bộ chọn loại Item + cảnh báo inline khi đổi loại */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
-              {(["CONTENT", "QUIZ", "ASSIGNMENT"] as ItemType[]).map(
-                (typeOpt) => {
-                  const Icon = ITEM_TYPE_ICONS[typeOpt];
-                  const active = type === typeOpt;
-                  return (
-                    <button
-                      key={typeOpt}
-                      type="button"
-                      disabled={isLocked}
-                      onClick={() => handleTypeChange(typeOpt)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                        active
-                          ? "bg-background text-foreground shadow-2xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Icon className="size-3.5" />
-                      <span>{tc(`itemType.${typeOpt}`)}</span>
-                    </button>
-                  );
-                }
-              )}
-            </div>
-
-            <span className="text-xs text-muted-foreground">
-              {t(`typeSwitch.descriptions.${type}`)}
+        {/* Loại item: chọn lúc tạo, khóa cứng khi sửa (chỉ sửa nội dung) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1 font-medium"
+              title={isNew ? undefined : t("typeBadge.locked")}
+            >
+              {React.createElement(ITEM_TYPE_ICONS[type], { className: "size-3.5" })}
+              <span>{tc(`itemType.${type}`)}</span>
+              {!isNew && <Lock className="size-3 text-muted-foreground" aria-label={t("typeBadge.locked")} />}
             </span>
+
+            {isNew &&
+              (confirmRechoose ? (
+                <span className="inline-flex flex-wrap items-center gap-2 text-muted-foreground">
+                  <span>{t("typeChooser.changeConfirm")}</span>
+                  <button type="button" onClick={confirmRechooseType} className="font-medium text-destructive hover:underline cursor-pointer">
+                    {t("typeChooser.changeConfirmAction")}
+                  </button>
+                  <button type="button" onClick={() => setConfirmRechoose(false)} className="hover:underline cursor-pointer">
+                    {tc("actions.cancel")}
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={requestRechoose} className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
+                  {t("typeChooser.change")}
+                </button>
+              ))}
           </div>
 
-          {switchedToContent && (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-              <span>{t("typeSwitch.warnings.toContent")}</span>
-            </div>
-          )}
-
-          {switchedFromContent && (
-            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              <Info className="size-4 shrink-0 mt-0.5 text-primary" />
-              <span>
-                {t("typeSwitch.warnings.fromContent", {
-                  type: tc(`itemType.${type}`),
-                })}
-              </span>
-            </div>
-          )}
-
-          {invalidQuestionCount > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="size-4 shrink-0" />
-                <span>
-                  {t("typeSwitch.warnings.incompatibleQuestions", {
-                    count: invalidQuestionCount,
-                    type: tc(`itemType.${type}`),
-                  })}
-                </span>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                onClick={() => {
-                  const allowed = ALLOWED_QUESTION_TYPES[type];
-                  setQuizQuestions((prev) =>
-                    prev.filter((q) => allowed.includes(q.type ?? "single"))
-                  );
-                  markDirty();
-                }}
-                className="cursor-pointer text-xs"
-              >
-                {t("typeSwitch.warnings.removeIncompatible")}
-              </Button>
-            </div>
-          )}
+          <span className="text-xs text-muted-foreground">{t(`typeBadge.descriptions.${type}`)}</span>
         </div>
 
         {/* Tiêu đề & Tóm tắt */}

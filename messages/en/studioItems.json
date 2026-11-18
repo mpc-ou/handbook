@@ -58,6 +58,12 @@
       "noLessonsHint": "This course has no lessons yet. Please create a lesson in the Curriculum tree first.",
       "openCurriculum": "Open Curriculum tree",
       "typeLabel": "Item type",
+      "typeLockedHint": "Item type cannot be changed after creation.",
+      "typeDescriptions": {
+        "CONTENT": "Reading content, completed when read to the end.",
+        "QUIZ": "Multiple choice, fill-in-the-blank, scale — auto-graded.",
+        "ASSIGNMENT": "Essay, file upload, or code submission — manually graded."
+      },
       "titleLabel": "Title",
       "titlePlaceholder": "e.g. Chapter 1 — Code of Conduct",
       "creating": "Creating...",
@@ -70,6 +76,7 @@
     },
     "toast": {
       "lessonRequired": "Please select a lesson.",
+      "typeRequired": "Please select an item type.",
       "titleRequired": "Please enter a title.",
       "createFailed": "Failed to create item.",
       "linkCopied": "Copied link: {path}",
@@ -135,18 +142,26 @@
       "rollbackReview": "Move to Pending review",
       "copyReaderLink": "Copy reader link"
     },
-    "typeSwitch": {
-      "label": "Type:",
+    "typePicker": {
+      "title": "What would you like to create?",
+      "subtitle": "Choose an item type. The type is locked after the first save.",
+      "belongsTo": "In: {course} › {lesson}",
+      "selectLessonFirst": "Select a course and lesson before starting to edit.",
       "descriptions": {
-        "CONTENT": "Reading chapter with rich content and attachments only.",
-        "QUIZ": "Auto-graded quiz with multiple choice, fill-in-the-blank, or scale questions.",
-        "ASSIGNMENT": "Assignment with essay, file upload, or code submission, graded manually."
+        "CONTENT": "Reading content, completed when read to the end.",
+        "QUIZ": "Multiple-choice, fill-in-the-blank, or scale questions, auto-graded.",
+        "ASSIGNMENT": "Essay, file upload, or code submission, manually graded."
       },
-      "warnings": {
-        "toContent": "Switching to a reading Chapter will remove all existing questions when saved.",
-        "fromContent": "Switching to {type} will initialize a question set for this item when saved.",
-        "incompatibleQuestions": "There {count, plural, one {is # question} other {are # questions}} incompatible with {type}. Remove or convert them before saving.",
-        "removeIncompatible": "Remove incompatible questions"
+      "changeType": "Change type",
+      "confirmResetPrompt": "Changing type will clear entered content or questions. Continue?",
+      "confirmResetAction": "Change type"
+    },
+    "typeBadge": {
+      "locked": "The type can’t be changed after creation",
+      "descriptions": {
+        "CONTENT": "Reading content. Completed by reading to the end.",
+        "QUIZ": "Multiple-choice questions, graded automatically.",
+        "ASSIGNMENT": "Essay or file submission, graded manually."
       }
     },
     "canvas": {
@@ -221,6 +236,27 @@
       "saveFailed": "Failed to save item.",
       "conflictHasAttempts": "Cannot change item type or remove questions because submissions already exist.",
       "linkCopied": "Copied link: {url}"
+    },
+    "typeChooser": {
+      "title": "What do you want to create?",
+      "subtitle": "The type can’t be changed after creation, so choose carefully.",
+      "change": "Change type",
+      "changeConfirm": "Changing the type will clear the questions you entered.",
+      "changeConfirmAction": "Change type",
+      "options": {
+        "CONTENT": {
+          "title": "Chapter",
+          "description": "Reading content. Learners finish by reading to the end; no questions."
+        },
+        "QUIZ": {
+          "title": "Quiz",
+          "description": "Multiple choice, fill-in and scale questions. Graded automatically."
+        },
+        "ASSIGNMENT": {
+          "title": "Assignment",
+          "description": "Essay, file or code submissions. Graded manually by staff."
+        }
+      }
     }
   },
   "quizzes": {

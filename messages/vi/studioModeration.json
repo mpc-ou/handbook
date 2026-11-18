@@ -1,0 +1,173 @@
+{
+  "nav": {
+    "comments": "Bình luận"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Quản trị tối cao",
+    "ADMIN": "Quản trị viên",
+    "EDITOR": "Biên tập viên",
+    "MEMBER": "Thành viên",
+    "ADMIN_DESC": "Quản trị viên — Toàn quyền hệ thống",
+    "EDITOR_DESC": "Biên tập viên — Quản lý khóa học được giao",
+    "MEMBER_DESC": "Thành viên — Học tập và thảo luận"
+  },
+  "members": {
+    "breadcrumb": "Thành viên",
+    "title": "Quản lý thành viên",
+    "description": "Quản lý tài khoản, phòng ban và phân quyền biên tập khóa học.",
+    "viewProgressLink": "Xem tiến độ học viên",
+    "departmentsButton": "Phòng ban ({count})",
+    "noAccess": {
+      "title": "Không đủ quyền truy cập",
+      "description": "Chỉ quản trị viên mới được phép quản lý thành viên và phân quyền."
+    },
+    "filters": {
+      "searchPlaceholder": "Tìm theo tên hoặc email…",
+      "allRoles": "Tất cả vai trò",
+      "allDepartments": "Tất cả phòng ban",
+      "unassignedDepartment": "Chưa phân ban",
+      "reset": "Đặt lại",
+      "showingCount": "Hiển thị {shown}/{total} thành viên"
+    },
+    "table": {
+      "member": "Thành viên",
+      "role": "Vai trò",
+      "department": "Phòng ban",
+      "assignedCourses": "Khóa được giao",
+      "joinedAt": "Ngày tham gia",
+      "actionsSr": "Thao tác",
+      "unassigned": "—",
+      "coursesCount": "{count} khóa",
+      "youBadge": "Bạn",
+      "loadMore": "Hiện thêm ({remaining})"
+    },
+    "rowActions": {
+      "openMenu": "Mở menu thao tác",
+      "edit": "Chỉnh sửa",
+      "cleanup": "Xóa dữ liệu học tập…",
+      "delete": "Xóa thành viên…"
+    },
+    "empty": {
+      "title": "Không tìm thấy thành viên",
+      "description": "Thử thay đổi từ khóa hoặc bộ lọc để tìm lại.",
+      "resetFilters": "Xóa bộ lọc"
+    },
+    "editSheet": {
+      "title": "Chỉnh sửa thành viên",
+      "superAdminNotice": "Tài khoản Quản trị tối cao được cấu hình cố định từ hệ thống.",
+      "adminProtectedNotice": "Chỉ Quản trị tối cao mới có thể chỉnh sửa Quản trị viên khác.",
+      "roleLabel": "Vai trò",
+      "rolePlaceholder": "Chọn vai trò",
+      "departmentLabel": "Phòng ban",
+      "departmentPlaceholder": "Chọn phòng ban",
+      "noDepartment": "Chưa phân ban",
+      "managedGroupsLabel": "Nhóm được xem nội dung nội bộ",
+      "managedGroupsHint": "Cho phép xem khóa học giới hạn theo các phòng ban được chọn.",
+      "assignedCoursesLabel": "Khóa học được giao ({count})",
+      "assignedCoursesHint": "Biên tập viên được phép soạn thảo và chấm bài trong các khóa học này.",
+      "searchCoursesPlaceholder": "Tìm khóa học…",
+      "noCourses": "Chưa có khóa học nào.",
+      "noCoursesMatch": "Không tìm thấy khóa học phù hợp.",
+      "saving": "Đang lưu…",
+      "saveFailed": "Không thể cập nhật quyền thành viên."
+    },
+    "cleanupDialog": {
+      "title": "Xóa dữ liệu học tập",
+      "description": "Dọn dữ liệu học tập của {name} ({email}). Hành động này không thể hoàn tác.",
+      "scopeLabel": "Phạm vi khóa học",
+      "allCourses": "Tất cả khóa học",
+      "dataTypesLabel": "Dữ liệu cần xóa",
+      "typeProgress": "Tiến độ học tập (các chương đã hoàn thành)",
+      "typeAttempts": "Lượt làm trắc nghiệm và bài tập",
+      "typeComments": "Bình luận và thảo luận",
+      "consequenceNote": "Các bản ghi đã chọn sẽ bị xóa vĩnh viễn khỏi hệ thống và học viên sẽ phải thực hiện lại từ đầu.",
+      "confirm": "Xóa dữ liệu",
+      "deleting": "Đang xóa…",
+      "failed": "Không thể xóa dữ liệu học tập."
+    },
+    "deleteDialog": {
+      "title": "Xóa thành viên",
+      "description": "Bạn sắp xóa tài khoản của {name} ({email}).",
+      "consequenceProgress": "Toàn bộ tiến độ học, lượt làm bài, bình luận và lượt thích của họ sẽ bị xóa.",
+      "consequenceOwnership": "Các khóa học và chương do họ tạo sẽ được chuyển quyền sở hữu cho bạn.",
+      "consequenceSso": "Tài khoản đăng nhập SSO sẽ được tạo lại (trống) nếu họ đăng nhập lần nữa.",
+      "confirmEmailLabel": "Nhập lại email {email} để xác nhận",
+      "confirmEmailPlaceholder": "Nhập email xác nhận…",
+      "confirm": "Xóa thành viên",
+      "deleting": "Đang xóa…",
+      "failed": "Không thể xóa thành viên."
+    },
+    "departmentsSheet": {
+      "title": "Phòng ban",
+      "description": "Quản lý danh sách phòng ban của câu lạc bộ.",
+      "addButton": "Thêm phòng ban",
+      "createTitle": "Thêm phòng ban mới",
+      "editTitle": "Sửa phòng ban",
+      "nameLabel": "Tên phòng ban",
+      "namePlaceholder": "Ví dụ: Ban Chuyên môn",
+      "descLabel": "Mô tả",
+      "descPlaceholder": "Mô tả ngắn về phòng ban…",
+      "colorLabel": "Màu nhận diện",
+      "memberCount": "{count} thành viên",
+      "empty": "Chưa có phòng ban nào.",
+      "editAria": "Sửa phòng ban",
+      "deleteAria": "Xóa phòng ban",
+      "deleteDisabledHint": "Không thể xóa khi còn {count} thành viên trong ban",
+      "deleteConfirmTitle": "Xóa phòng ban?",
+      "deleteConfirmDescription": "Phòng ban \"{name}\" sẽ bị xóa khỏi hệ thống.",
+      "nameRequired": "Vui lòng nhập tên phòng ban.",
+      "saveFailed": "Không thể lưu phòng ban.",
+      "deleteFailed": "Không thể xóa phòng ban.",
+      "saving": "Đang lưu…"
+    }
+  },
+  "comments": {
+    "breadcrumb": "Bình luận",
+    "title": "Kiểm duyệt bình luận",
+    "description": "Theo dõi và quản lý thảo luận của học viên trong các khóa học.",
+    "totalBadge": "{count} bình luận",
+    "noAccess": {
+      "title": "Không đủ quyền truy cập",
+      "description": "Chỉ quản trị viên và biên tập viên mới được phép kiểm duyệt bình luận."
+    },
+    "filters": {
+      "allCourses": "Tất cả khóa học",
+      "searchPlaceholder": "Tìm theo nội dung hoặc người bình luận…",
+      "authorChip": "Người: {name}",
+      "clearAuthor": "Bỏ lọc người bình luận",
+      "selectAll": "Chọn tất cả ({count})",
+      "selectedCount": "Đã chọn {count}",
+      "deleteSelected": "Xóa đã chọn ({count})"
+    },
+    "row": {
+      "selectAria": "Chọn bình luận của {name}",
+      "filterByAuthorTitle": "Lọc bình luận của {name}",
+      "replyBadge": "Trả lời",
+      "repliesCount": "{count} trả lời",
+      "showMore": "Xem thêm",
+      "showLess": "Thu gọn",
+      "viewInItem": "Xem trong bài",
+      "deleteAria": "Xóa bình luận",
+      "unknownUser": "ẩn danh"
+    },
+    "empty": {
+      "title": "Chưa có bình luận nào",
+      "description": "Không có bình luận nào khớp với bộ lọc hiện tại.",
+      "resetFilters": "Xóa bộ lọc"
+    },
+    "loadMore": "Tải thêm ({shown}/{total})",
+    "loadingMore": "Đang tải…",
+    "deleteConfirm": {
+      "singleTitle": "Xóa bình luận này?",
+      "singleDescription": "Bình luận của {name} và toàn bộ các phản hồi trả lời kèm theo sẽ bị xóa vĩnh viễn.",
+      "bulkTitle": "Xóa {count} bình luận đã chọn?",
+      "bulkDescription": "Các bình luận đã chọn cùng toàn bộ phản hồi trả lời kèm theo sẽ bị xóa vĩnh viễn.",
+      "confirm": "Xóa vĩnh viễn"
+    },
+    "toast": {
+      "loadFailed": "Không thể tải danh sách bình luận.",
+      "deleted": "Đã xóa bình luận.",
+      "deleteFailed": "Không thể xóa bình luận."
+    }
+  }
+}

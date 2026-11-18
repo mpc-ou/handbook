@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useHandbook } from "@/context/HandbookContext";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { StreakChip } from "@/components/layout/StreakChip";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -247,6 +248,9 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
             <Link href="/studio">{t("studio")}</Link>
           </Button>
         )}
+
+        {/* Notification Bell */}
+        {user && <NotificationBell />}
 
         {/* Theme Switcher */}
         <Tooltip>

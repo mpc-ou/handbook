@@ -1,0 +1,173 @@
+{
+  "nav": {
+    "comments": "Comments"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Super Admin",
+    "ADMIN": "Admin",
+    "EDITOR": "Editor",
+    "MEMBER": "Member",
+    "ADMIN_DESC": "Admin — Full system access",
+    "EDITOR_DESC": "Editor — Manage assigned courses",
+    "MEMBER_DESC": "Member — Learn and participate"
+  },
+  "members": {
+    "breadcrumb": "Members",
+    "title": "Members",
+    "description": "Manage accounts, departments and course editing permissions.",
+    "viewProgressLink": "View learner progress",
+    "departmentsButton": "Departments ({count})",
+    "noAccess": {
+      "title": "Access denied",
+      "description": "Only administrators can manage members and permissions."
+    },
+    "filters": {
+      "searchPlaceholder": "Search by name or email…",
+      "allRoles": "All roles",
+      "allDepartments": "All departments",
+      "unassignedDepartment": "Unassigned",
+      "reset": "Reset",
+      "showingCount": "Showing {shown} of {total} members"
+    },
+    "table": {
+      "member": "Member",
+      "role": "Role",
+      "department": "Department",
+      "assignedCourses": "Assigned courses",
+      "joinedAt": "Joined",
+      "actionsSr": "Actions",
+      "unassigned": "—",
+      "coursesCount": "{count, plural, one {# course} other {# courses}}",
+      "youBadge": "You",
+      "loadMore": "Show more ({remaining})"
+    },
+    "rowActions": {
+      "openMenu": "Open actions menu",
+      "edit": "Edit",
+      "cleanup": "Clear learning data…",
+      "delete": "Delete member…"
+    },
+    "empty": {
+      "title": "No members found",
+      "description": "Try adjusting your search query or filters.",
+      "resetFilters": "Clear filters"
+    },
+    "editSheet": {
+      "title": "Edit member",
+      "superAdminNotice": "Super Admin accounts are permanently configured by the system.",
+      "adminProtectedNotice": "Only a Super Admin can modify another administrator.",
+      "roleLabel": "Role",
+      "rolePlaceholder": "Select role",
+      "departmentLabel": "Department",
+      "departmentPlaceholder": "Select department",
+      "noDepartment": "Unassigned",
+      "managedGroupsLabel": "Accessible internal groups",
+      "managedGroupsHint": "Allow viewing courses restricted to the selected departments.",
+      "assignedCoursesLabel": "Assigned courses ({count})",
+      "assignedCoursesHint": "Editors can edit content and grade submissions in these courses.",
+      "searchCoursesPlaceholder": "Search courses…",
+      "noCourses": "No courses available.",
+      "noCoursesMatch": "No matching courses found.",
+      "saving": "Saving…",
+      "saveFailed": "Couldn't update member permissions."
+    },
+    "cleanupDialog": {
+      "title": "Clear learning data",
+      "description": "Clear learning data for {name} ({email}). This action cannot be undone.",
+      "scopeLabel": "Course scope",
+      "allCourses": "All courses",
+      "dataTypesLabel": "Data to clear",
+      "typeProgress": "Learning progress (completed chapters)",
+      "typeAttempts": "Quiz and assignment attempts",
+      "typeComments": "Comments and discussions",
+      "consequenceNote": "Selected records will be permanently removed and the member will need to start over.",
+      "confirm": "Clear data",
+      "deleting": "Clearing…",
+      "failed": "Couldn't clear learning data."
+    },
+    "deleteDialog": {
+      "title": "Delete member",
+      "description": "You are about to delete the account of {name} ({email}).",
+      "consequenceProgress": "All of their learning progress, quiz attempts, comments and likes will be deleted.",
+      "consequenceOwnership": "Courses and chapters they created will be transferred to you.",
+      "consequenceSso": "Their SSO account will be recreated (empty) if they sign in again.",
+      "confirmEmailLabel": "Type {email} to confirm",
+      "confirmEmailPlaceholder": "Enter email to confirm…",
+      "confirm": "Delete member",
+      "deleting": "Deleting…",
+      "failed": "Couldn't delete member."
+    },
+    "departmentsSheet": {
+      "title": "Departments",
+      "description": "Manage club departments.",
+      "addButton": "Add department",
+      "createTitle": "New department",
+      "editTitle": "Edit department",
+      "nameLabel": "Department name",
+      "namePlaceholder": "e.g. Technical Department",
+      "descLabel": "Description",
+      "descPlaceholder": "Short description…",
+      "colorLabel": "Color",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "empty": "No departments yet.",
+      "editAria": "Edit department",
+      "deleteAria": "Delete department",
+      "deleteDisabledHint": "Cannot delete while {count} members belong to this department",
+      "deleteConfirmTitle": "Delete department?",
+      "deleteConfirmDescription": "Department \"{name}\" will be removed.",
+      "nameRequired": "Please enter a department name.",
+      "saveFailed": "Couldn't save department.",
+      "deleteFailed": "Couldn't delete department.",
+      "saving": "Saving…"
+    }
+  },
+  "comments": {
+    "breadcrumb": "Comments",
+    "title": "Comment moderation",
+    "description": "Monitor and moderate learner discussions across courses.",
+    "totalBadge": "{count, plural, one {# comment} other {# comments}}",
+    "noAccess": {
+      "title": "Access denied",
+      "description": "Only administrators and editors can moderate comments."
+    },
+    "filters": {
+      "allCourses": "All courses",
+      "searchPlaceholder": "Search by content or author…",
+      "authorChip": "Author: {name}",
+      "clearAuthor": "Clear author filter",
+      "selectAll": "Select all ({count})",
+      "selectedCount": "{count} selected",
+      "deleteSelected": "Delete selected ({count})"
+    },
+    "row": {
+      "selectAria": "Select comment by {name}",
+      "filterByAuthorTitle": "Filter comments by {name}",
+      "replyBadge": "Reply",
+      "repliesCount": "{count, plural, one {# reply} other {# replies}}",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "viewInItem": "View in chapter",
+      "deleteAria": "Delete comment",
+      "unknownUser": "unknown"
+    },
+    "empty": {
+      "title": "No comments found",
+      "description": "No comments match the current filters.",
+      "resetFilters": "Clear filters"
+    },
+    "loadMore": "Load more ({shown}/{total})",
+    "loadingMore": "Loading…",
+    "deleteConfirm": {
+      "singleTitle": "Delete this comment?",
+      "singleDescription": "The comment by {name} and all of its replies will be permanently deleted.",
+      "bulkTitle": "Delete {count} selected comments?",
+      "bulkDescription": "Selected comments and all of their replies will be permanently deleted.",
+      "confirm": "Delete permanently"
+    },
+    "toast": {
+      "loadFailed": "Couldn't load comments.",
+      "deleted": "Comment deleted.",
+      "deleteFailed": "Couldn't delete comment."
+    }
+  }
+}

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { useReducedMotion } from "motion/react";
 import { useHandbook } from "@/context/HandbookContext";
 import { CommentRecord, Role } from "@/types";
+import { cn } from "@/lib/utils";
 import { CommentContentRenderer } from "./CommentContentRenderer";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,12 @@ export function CommentSection({ itemId }: CommentSectionProps) {
     isReply: boolean;
     rootId?: string;
   } | null>(null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(
+    null
+  );
+  const reduceMotion = useReducedMotion();
+  const lastHandledHashRef = useRef<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchComments = useCallback(async () => {
     try {
@@ -66,8 +74,66 @@ export function CommentSection({ itemId }: CommentSectionProps) {
   }, [itemId]);
 
   useEffect(() => {
+    lastHandledHashRef.current = null;
     fetchComments();
   }, [fetchComments]);
+
+  const scrollToHashComment = useCallback(
+    (force = false) => {
+      if (typeof window === "undefined") return;
+      const hash = window.location.hash;
+      if (!hash.startsWith("#comment-")) return;
+      if (!force && lastHandledHashRef.current === hash) return;
+
+      const commentId = decodeURIComponent(hash.slice("#comment-".length));
+      if (!commentId) return;
+
+      const el = document.getElementById(`comment-${commentId}`);
+      if (!el) return;
+
+      lastHandledHashRef.current = hash;
+      el.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+      setHighlightedCommentId(commentId);
+
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedCommentId((prev) => (prev === commentId ? null : prev));
+      }, 2500);
+    },
+    [reduceMotion]
+  );
+
+  useEffect(() => {
+    if (!isLoading && comments.length > 0) {
+      scrollToHashComment(false);
+    }
+  }, [isLoading, comments, scrollToHashComment]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onHashChange = () => {
+      if (!isLoading && comments.length > 0) {
+        scrollToHashComment(true);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+    };
+  }, [isLoading, comments.length, scrollToHashComment]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
 
   const userListForRenderer = allUsers.map((u) => ({
     id: u.uid || u.ssoId || "",
@@ -346,7 +412,13 @@ export function CommentSection({ itemId }: CommentSectionProps) {
             return (
               <div
                 key={root.id}
-                className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3"
+                id={`comment-${root.id}`}
+                className={cn(
+                  "rounded-xl border border-border/60 bg-card/40 p-4 space-y-3",
+                  !reduceMotion && "transition-colors duration-500",
+                  highlightedCommentId === root.id &&
+                    "border-primary/60 bg-primary/10 ring-2 ring-primary/20"
+                )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -417,7 +489,16 @@ export function CommentSection({ itemId }: CommentSectionProps) {
                 {hasReplies && (
                   <div className="pl-5 ml-4 border-l border-border/60 space-y-2.5 pt-1">
                     {root.replies?.map((rep) => (
-                      <div key={rep.id} className="space-y-1.5 py-1">
+                      <div
+                        key={rep.id}
+                        id={`comment-${rep.id}`}
+                        className={cn(
+                          "space-y-1.5 py-1 rounded-lg",
+                          !reduceMotion && "transition-colors duration-500",
+                          highlightedCommentId === rep.id &&
+                            "px-2.5 bg-primary/10 ring-1 ring-primary/30"
+                        )}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2 flex-wrap text-xs">
                             <Avatar className="size-5 shrink-0 border border-border/60">

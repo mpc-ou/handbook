@@ -1,0 +1,54 @@
+{
+  "bell": {
+    "label": "Thông báo",
+    "labelWithUnread": "Thông báo ({count} chưa đọc)",
+    "title": "Thông báo",
+    "markAllRead": "Đánh dấu đã đọc hết",
+    "viewAll": "Xem tất cả",
+    "empty": "Bạn chưa có thông báo nào."
+  },
+  "messages": {
+    "COMMENT": "<b>{actor}</b> đã bình luận ở \"{item}\"",
+    "REPLY": "<b>{actor}</b> đã trả lời bình luận của bạn ở \"{item}\"",
+    "MENTION": "<b>{actor}</b> đã nhắc đến bạn ở \"{item}\"",
+    "COURSE_COMPLETED": "<b>{actor}</b> đã hoàn thành khóa \"{course}\"",
+    "CERTIFICATE_READY": "Chúc mừng! Bạn đã hoàn thành khóa \"{course}\" — nhận chứng nhận",
+    "ASSIGNMENT_SUBMITTED": "<b>{actor}</b> vừa nộp bài \"{item}\" — chờ chấm",
+    "ASSIGNMENT_GRADED": "Bài \"{item}\" đã được chấm: <b>{score}%</b>"
+  },
+  "fallback": {
+    "actor": "Một thành viên",
+    "item": "nội dung",
+    "course": "khóa học"
+  },
+  "item": {
+    "unreadDot": "Chưa đọc",
+    "moreActions": "Tùy chọn thông báo",
+    "markRead": "Đánh dấu đã đọc",
+    "delete": "Xóa thông báo"
+  },
+  "page": {
+    "title": "Thông báo",
+    "subtitle": "{count, plural, =0 {Không có thông báo chưa đọc} other {# thông báo chưa đọc}}",
+    "tabs": {
+      "all": "Tất cả",
+      "unread": "Chưa đọc"
+    },
+    "markAllRead": "Đánh dấu đã đọc hết",
+    "clearRead": "Xóa thông báo đã đọc",
+    "clearReadConfirm": "Xóa tất cả thông báo đã đọc?",
+    "loadMore": "Tải thêm",
+    "emptyAll": "Bạn chưa có thông báo nào.",
+    "emptyUnread": "Không có thông báo chưa đọc.",
+    "guest": {
+      "title": "Đăng nhập để xem thông báo",
+      "description": "Nhận thông báo khi có phản hồi bình luận, nhắc tên, kết quả chấm bài và chứng nhận khóa học.",
+      "signInSso": "Đăng nhập qua MPC-SSO",
+      "signInPage": "Trang đăng nhập"
+    }
+  },
+  "toast": {
+    "loadFailed": "Không thể tải thông báo.",
+    "updateFailed": "Không thể cập nhật thông báo. Vui lòng thử lại."
+  }
+}

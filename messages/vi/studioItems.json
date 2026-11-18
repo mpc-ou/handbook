@@ -58,6 +58,12 @@
       "noLessonsHint": "Khóa học này chưa có bài học nào. Hãy tạo bài học trong Cây chương trình trước.",
       "openCurriculum": "Mở Cây chương trình",
       "typeLabel": "Loại nội dung",
+      "typeLockedHint": "Loại nội dung sẽ cố định sau khi tạo.",
+      "typeDescriptions": {
+        "CONTENT": "Nội dung để đọc, hoàn thành khi đọc hết.",
+        "QUIZ": "Câu hỏi chọn đáp án, điền khuyết, thang đo — chấm tự động.",
+        "ASSIGNMENT": "Tự luận, nộp tệp hoặc mã nguồn — chấm tay."
+      },
       "titleLabel": "Tiêu đề",
       "titlePlaceholder": "Ví dụ: Chương 1 — Quy tắc ứng xử",
       "creating": "Đang tạo...",
@@ -70,6 +76,7 @@
     },
     "toast": {
       "lessonRequired": "Vui lòng chọn bài học.",
+      "typeRequired": "Vui lòng chọn loại nội dung.",
       "titleRequired": "Vui lòng nhập tiêu đề.",
       "createFailed": "Không thể tạo mục mới.",
       "linkCopied": "Đã sao chép liên kết: {path}",
@@ -135,18 +142,26 @@
       "rollbackReview": "Chuyển về Chờ duyệt",
       "copyReaderLink": "Sao chép liên kết đọc"
     },
-    "typeSwitch": {
-      "label": "Loại:",
+    "typePicker": {
+      "title": "Bạn muốn tạo gì?",
+      "subtitle": "Chọn loại mục phù hợp. Loại sẽ cố định sau khi lưu lần đầu.",
+      "belongsTo": "Thuộc: {course} › {lesson}",
+      "selectLessonFirst": "Chọn khóa học và bài học trước khi bắt đầu soạn thảo.",
       "descriptions": {
-        "CONTENT": "Chương chỉ để đọc nội dung và tài liệu đính kèm.",
-        "QUIZ": "Bài kiểm tra trắc nghiệm chấm điểm tự động.",
-        "ASSIGNMENT": "Bài tập tự luận, nộp tệp hoặc mã nguồn, được chấm tay."
+        "CONTENT": "Nội dung để đọc, hoàn thành khi đọc hết.",
+        "QUIZ": "Câu hỏi chọn đáp án, điền khuyết hoặc thang đo, chấm tự động.",
+        "ASSIGNMENT": "Tự luận, nộp tệp hoặc mã nguồn, chấm tay."
       },
-      "warnings": {
-        "toContent": "Khi đổi sang Chương đọc, toàn bộ câu hỏi kiểm tra hiện có sẽ bị xóa khi lưu.",
-        "fromContent": "Khi đổi sang {type}, hệ thống sẽ khởi tạo bộ câu hỏi cho mục này khi lưu.",
-        "incompatibleQuestions": "Có {count} câu hỏi không hợp lệ với loại {type}. Hãy xóa hoặc đổi loại câu hỏi trước khi lưu.",
-        "removeIncompatible": "Xóa câu không hợp lệ"
+      "changeType": "Đổi loại",
+      "confirmResetPrompt": "Đổi loại sẽ xóa nội dung hoặc câu hỏi vừa nhập. Tiếp tục?",
+      "confirmResetAction": "Đổi loại"
+    },
+    "typeBadge": {
+      "locked": "Loại không thể đổi sau khi tạo",
+      "descriptions": {
+        "CONTENT": "Nội dung để đọc. Hoàn thành khi đọc hết.",
+        "QUIZ": "Câu hỏi trắc nghiệm, chấm điểm tự động.",
+        "ASSIGNMENT": "Bài tập tự luận/nộp tệp, chấm tay."
       }
     },
     "canvas": {
@@ -221,6 +236,27 @@
       "saveFailed": "Không thể lưu nội dung.",
       "conflictHasAttempts": "Không thể đổi loại hoặc xóa câu hỏi vì đã có thành viên nộp bài.",
       "linkCopied": "Đã sao chép liên kết: {url}"
+    },
+    "typeChooser": {
+      "title": "Bạn muốn tạo gì?",
+      "subtitle": "Loại không thể đổi sau khi tạo, hãy chọn đúng ngay từ đầu.",
+      "change": "Đổi loại",
+      "changeConfirm": "Đổi loại sẽ xóa các câu hỏi đã nhập.",
+      "changeConfirmAction": "Đổi loại",
+      "options": {
+        "CONTENT": {
+          "title": "Chương",
+          "description": "Nội dung để đọc. Học viên hoàn thành khi đọc hết, không có câu hỏi."
+        },
+        "QUIZ": {
+          "title": "Trắc nghiệm",
+          "description": "Câu hỏi chọn đáp án, điền khuyết, thang đo. Chấm điểm tự động."
+        },
+        "ASSIGNMENT": {
+          "title": "Bài tập",
+          "description": "Tự luận, nộp tệp hoặc mã nguồn. Người chấm sẽ chấm thủ công."
+        }
+      }
     }
   },
   "quizzes": {
