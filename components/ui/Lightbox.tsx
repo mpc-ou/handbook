@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
@@ -31,6 +32,7 @@ export function Lightbox({
   items,
   initialIndex = 0,
 }: LightboxProps) {
+  const t = useTranslations("common.lightbox");
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
 
@@ -104,7 +106,7 @@ export function Lightbox({
             size="icon-sm"
             onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))}
             className="text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer"
-            title="Zoom in"
+            title={t("zoomIn")}
           >
             <ZoomIn className="size-4" />
           </Button>
@@ -114,7 +116,7 @@ export function Lightbox({
             size="icon-sm"
             onClick={() => setZoom((z) => Math.max(0.75, z - 0.25))}
             className="text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer"
-            title="Zoom out"
+            title={t("zoomOut")}
           >
             <ZoomOut className="size-4" />
           </Button>
@@ -124,7 +126,7 @@ export function Lightbox({
             size="icon-sm"
             onClick={onClose}
             className="text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer ml-2"
-            title="Close (Esc)"
+            title={t("close")}
           >
             <X className="size-5" />
           </Button>
@@ -143,7 +145,7 @@ export function Lightbox({
             size="icon-sm"
             onClick={handlePrev}
             className="absolute left-2 sm:left-4 z-10 size-10 rounded-full bg-black/40 text-white hover:bg-black/70 hover:text-white cursor-pointer"
-            title="Previous image (←)"
+            title={t("previous")}
           >
             <ChevronLeft className="size-6" />
           </Button>
@@ -157,7 +159,7 @@ export function Lightbox({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={currentItem.url}
-            alt={currentItem.alt || currentItem.caption || "Expanded image"}
+            alt={currentItem.alt || currentItem.caption || t("expandedImage")}
             className="max-h-[78vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
           />
         </div>
@@ -169,7 +171,7 @@ export function Lightbox({
             size="icon-sm"
             onClick={handleNext}
             className="absolute right-2 sm:right-4 z-10 size-10 rounded-full bg-black/40 text-white hover:bg-black/70 hover:text-white cursor-pointer"
-            title="Next image (→)"
+            title={t("next")}
           >
             <ChevronRight className="size-6" />
           </Button>

@@ -1,8 +1,13 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { ArticleCover, VECTOR_PATTERNS } from "@/components/ui/ArticleCover";
-import { ImageCropDialog } from "@/components/editor/ImageCropDialog";
+import { useTranslations } from "next-intl";
+import { Cover, VECTOR_PATTERNS } from "@/components/ui/Cover";
+import {
+  CropResult,
+  ImageCropDialog,
+} from "@/components/editor/ImageCropDialog";
+import { MAX_FILE_SIZE_BYTES, uploadToCloudinary } from "@/lib/cloudinary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,30 +21,32 @@ import { toast } from "sonner";
 import {
   Crop,
   Dice5,
-  Image as ImageIcon,
   Link2,
+  Loader2,
   Palette,
   Trash2,
   Upload,
 } from "lucide-react";
 
-interface CoverImagePickerProps {
+export interface CoverImagePickerProps {
   value?: string;
-  articleTitle: string;
+  title: string;
   onChange: (url: string) => void;
 }
 
 export function CoverImagePicker({
   value,
-  articleTitle,
+  title,
   onChange,
 }: CoverImagePickerProps) {
+  const t = useTranslations("editor.cover");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [customUrl, setCustomUrl] = useState(
     value && !value.startsWith("preset:") ? value : ""
   );
   const [cropSource, setCropSource] = useState<string>("");
   const [cropOpen, setCropOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const isPreset = value?.startsWith("preset:");
   const activePresetId = isPreset ? value?.replace("preset:", "") : null;
@@ -58,9 +65,11 @@ export function CoverImagePicker({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       toast.error(
-        `Cover image (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 5MB size limit.`
+        t("fileSizeError", {
+          size: (file.size / (1024 * 1024)).toFixed(1),
+        })
       );
       e.target.value = "";
       return;
@@ -80,23 +89,58 @@ export function CoverImagePicker({
   const handleOpenCropForUrl = () => {
     const target = customUrl.trim();
     if (!target) return;
+    if (!/^https?:\/\//i.test(target) && !target.startsWith("data:image/")) {
+      toast.error(t("invalidUrlError"));
+      return;
+    }
     setCropSource(target);
     setCropOpen(true);
+  };
+
+  const handleCropComplete = async ({ blob, previewUrl }: CropResult) => {
+    URL.revokeObjectURL(previewUrl);
+
+    if (blob.size > MAX_FILE_SIZE_BYTES) {
+      toast.error(
+        t("croppedSizeError", {
+          size: (blob.size / (1024 * 1024)).toFixed(1),
+        })
+      );
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const file = new File([blob], `cover-${Date.now()}.jpg`, {
+        type: blob.type || "image/jpeg",
+      });
+      const secureUrl = await uploadToCloudinary(file);
+      setCustomUrl(secureUrl);
+      onChange(secureUrl);
+    } catch {
+      toast.error(t("uploadFailedError"));
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <div className="space-y-2">
       {/* 3:1 Aspect Ratio Banner with Hover Controls */}
       <div className="relative overflow-hidden rounded-xl border border-border bg-card group">
-        <ArticleCover
+        <Cover
           coverImage={value}
-          seedId={activePresetId || articleTitle || "mpc-editor"}
-          title={articleTitle}
+          seedId={activePresetId || title || "mpc-editor"}
+          title={title}
           aspectRatio="3/1"
         />
 
         {/* Hover Action Overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-2 p-3">
+        <div
+          className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-end gap-2 p-3 ${
+            uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -109,11 +153,16 @@ export function CoverImagePicker({
             type="button"
             size="xs"
             variant="secondary"
+            disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
             className="cursor-pointer shadow-sm"
           >
-            <Upload className="size-3.5 mr-1.5" />
-            <span>Upload Cover</span>
+            {uploading ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Upload className="size-3.5 mr-1.5" />
+            )}
+            <span>{uploading ? t("uploading") : t("uploadButton")}</span>
           </Button>
 
           {value && !value.startsWith("preset:") && (
@@ -121,6 +170,7 @@ export function CoverImagePicker({
               type="button"
               size="xs"
               variant="secondary"
+              disabled={uploading}
               onClick={() => {
                 setCropSource(value);
                 setCropOpen(true);
@@ -128,7 +178,7 @@ export function CoverImagePicker({
               className="cursor-pointer shadow-sm"
             >
               <Crop className="size-3.5 mr-1.5" />
-              <span>Crop 3:1</span>
+              <span>{t("cropRatio")}</span>
             </Button>
           )}
 
@@ -138,10 +188,11 @@ export function CoverImagePicker({
                 type="button"
                 size="xs"
                 variant="secondary"
+                disabled={uploading}
                 className="cursor-pointer shadow-sm"
               >
                 <Palette className="size-3.5 mr-1.5" />
-                <span>Patterns</span>
+                <span>{t("presetsTab")}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 p-3">
@@ -149,10 +200,10 @@ export function CoverImagePicker({
                 <div className="flex items-center justify-between">
                   <TabsList className="h-7">
                     <TabsTrigger value="presets" className="text-xs px-2.5">
-                      Presets
+                      {t("presetsTab")}
                     </TabsTrigger>
                     <TabsTrigger value="url" className="text-xs px-2.5">
-                      Image URL
+                      {t("urlTab")}
                     </TabsTrigger>
                   </TabsList>
 
@@ -160,11 +211,12 @@ export function CoverImagePicker({
                     type="button"
                     variant="ghost"
                     size="xs"
+                    disabled={uploading}
                     onClick={handleRandomize}
                     className="text-xs text-primary cursor-pointer"
                   >
                     <Dice5 className="size-3.5 mr-1" />
-                    <span>Randomize</span>
+                    <span>{t("randomize")}</span>
                   </Button>
                 </div>
 
@@ -176,6 +228,7 @@ export function CoverImagePicker({
                         <button
                           type="button"
                           key={p.id}
+                          disabled={uploading}
                           onClick={() => handleSelectPreset(p.id)}
                           className={`flex flex-col items-start p-2 rounded-lg border text-left transition-colors cursor-pointer ${
                             isSelected
@@ -187,7 +240,9 @@ export function CoverImagePicker({
                             className={`w-full h-6 rounded bg-gradient-to-r ${p.gradient} mb-1.5`}
                           />
                           <span className="text-xs font-medium text-foreground truncate w-full capitalize">
-                            {p.id.replace("pattern-", "Pattern ")}
+                            {t("presetItem", {
+                              id: p.id.replace("pattern-", ""),
+                            })}
                           </span>
                         </button>
                       );
@@ -197,24 +252,25 @@ export function CoverImagePicker({
 
                 <TabsContent value="url" className="mt-0 space-y-2">
                   <Label className="text-xs text-muted-foreground">
-                    Paste image URL to crop at 3:1 ratio
+                    {t("urlHint")}
                   </Label>
                   <div className="flex gap-1.5">
                     <Input
-                      placeholder="https://..."
+                      placeholder={t("urlPlaceholder")}
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
+                      disabled={uploading}
                       className="h-8 text-xs"
                     />
                     <Button
                       type="button"
                       size="xs"
                       onClick={handleOpenCropForUrl}
-                      disabled={!customUrl.trim()}
+                      disabled={!customUrl.trim() || uploading}
                       className="shrink-0 h-8 cursor-pointer"
                     >
                       <Link2 className="size-3.5 mr-1" />
-                      <span>Crop 3:1</span>
+                      <span>{t("cropRatio")}</span>
                     </Button>
                   </div>
                 </TabsContent>
@@ -227,12 +283,14 @@ export function CoverImagePicker({
               type="button"
               size="icon-sm"
               variant="destructive"
+              disabled={uploading}
               onClick={() => {
                 setCustomUrl("");
                 onChange("");
               }}
               className="cursor-pointer shadow-sm"
-              title="Reset cover"
+              title={t("removeCover")}
+              aria-label={t("removeCover")}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -244,7 +302,7 @@ export function CoverImagePicker({
         open={cropOpen}
         onOpenChange={setCropOpen}
         imageSrc={cropSource}
-        onCropComplete={(croppedUrl) => onChange(croppedUrl)}
+        onCropComplete={handleCropComplete}
       />
     </div>
   );

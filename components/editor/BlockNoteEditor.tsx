@@ -1,18 +1,23 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BlockType, EditorBlock, GalleryImage, TableData, ComparisonData } from "@/types";
+import { useTranslations } from "next-intl";
+import {
+  BlockType,
+  EditorBlock,
+  GalleryImage,
+  TableData,
+  ComparisonData,
+} from "@/types";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -25,35 +30,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   AlignCenter,
-  AlignJustify,
   AlignLeft,
   AlignRight,
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
-  Bold,
-  Check,
   CheckCircle2,
   CheckSquare,
+  ChevronDown,
   Code,
   Columns2,
   Copy,
   FileImage,
-  GripVertical,
   Heading1,
   Heading2,
   Heading3,
   Images,
   Info,
-  Italic,
   Link as LinkIcon,
   List,
   ListOrdered,
@@ -61,12 +56,9 @@ import {
   Plus,
   Quote,
   Redo2,
-  ShieldAlert,
-  Strikethrough,
   Table as TableIcon,
   Trash2,
   Type,
-  Underline,
   Undo2,
   UploadCloud,
   Video,
@@ -82,46 +74,67 @@ interface BlockNoteEditorProps {
   onUploadSuccess?: (url: string) => void;
 }
 
-const BLOCK_CATEGORIES = [
+type BlockGroupKey = "typography" | "lists" | "media" | "structure";
+
+interface BlockTypeOption {
+  type: BlockType;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const BLOCK_CATEGORIES: ReadonlyArray<{
+  groupKey: BlockGroupKey;
+  items: ReadonlyArray<BlockTypeOption>;
+}> = [
   {
-    group: "Typography",
+    groupKey: "typography",
     items: [
-      { type: "paragraph" as BlockType, label: "Paragraph", icon: Type },
-      { type: "heading_1" as BlockType, label: "Heading 1 (H1)", icon: Heading1 },
-      { type: "heading_2" as BlockType, label: "Heading 2 (H2)", icon: Heading2 },
-      { type: "heading_3" as BlockType, label: "Heading 3 (H3)", icon: Heading3 },
-      { type: "quote" as BlockType, label: "Blockquote", icon: Quote },
+      { type: "paragraph", icon: Type },
+      { type: "heading_1", icon: Heading1 },
+      { type: "heading_2", icon: Heading2 },
+      { type: "heading_3", icon: Heading3 },
+      { type: "quote", icon: Quote },
     ],
   },
   {
-    group: "Lists",
+    groupKey: "lists",
     items: [
-      { type: "bullet_list" as BlockType, label: "Bullet List", icon: List },
-      { type: "numbered_list" as BlockType, label: "Numbered List", icon: ListOrdered },
-      { type: "checklist" as BlockType, label: "Checklist", icon: CheckSquare },
+      { type: "bullet_list", icon: List },
+      { type: "numbered_list", icon: ListOrdered },
+      { type: "checklist", icon: CheckSquare },
     ],
   },
   {
-    group: "Media",
+    groupKey: "media",
     items: [
-      { type: "image" as BlockType, label: "Single Image", icon: FileImage },
-      { type: "gallery" as BlockType, label: "Image Gallery", icon: Images },
-      { type: "video" as BlockType, label: "Embedded Video", icon: Video },
+      { type: "image", icon: FileImage },
+      { type: "gallery", icon: Images },
+      { type: "video", icon: Video },
     ],
   },
   {
-    group: "Structure & Layout",
+    groupKey: "structure",
     items: [
-      { type: "table" as BlockType, label: "Data Table", icon: TableIcon },
-      { type: "comparison" as BlockType, label: "2-Column Comparison", icon: Columns2 },
-      { type: "callout" as BlockType, label: "Callout Box", icon: Info },
-      { type: "code" as BlockType, label: "Code Block", icon: Code },
-      { type: "divider" as BlockType, label: "Divider Line", icon: Minus },
+      { type: "table", icon: TableIcon },
+      { type: "comparison", icon: Columns2 },
+      { type: "callout", icon: Info },
+      { type: "code", icon: Code },
+      { type: "divider", icon: Minus },
     ],
   },
 ];
 
-const ALL_BLOCK_TYPES = BLOCK_CATEGORIES.flatMap((c) => c.items);
+const ALL_BLOCK_TYPES: ReadonlyArray<BlockTypeOption> =
+  BLOCK_CATEGORIES.flatMap((c) => c.items);
+
+const QUICK_INSERT_TYPES: ReadonlyArray<BlockTypeOption> = [
+  { type: "paragraph", icon: Type },
+  { type: "heading_2", icon: Heading2 },
+  { type: "bullet_list", icon: List },
+  { type: "callout", icon: Info },
+  { type: "code", icon: Code },
+  { type: "image", icon: FileImage },
+  { type: "table", icon: TableIcon },
+];
 
 export default function BlockNoteEditor({
   blocks,
@@ -129,6 +142,7 @@ export default function BlockNoteEditor({
   onUploadError,
   onUploadSuccess,
 }: BlockNoteEditorProps) {
+  const t = useTranslations("editor.blocks");
   const [uploadingBlockId, setUploadingBlockId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeUploadTarget, setActiveUploadTarget] = useState<{
@@ -146,16 +160,19 @@ export default function BlockNoteEditor({
   const isUndoingRedoingRef = useRef(false);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const pushSnapshot = useCallback((newBlocks: EditorBlock[]) => {
-    if (isUndoingRedoingRef.current) return;
-    const cloned = JSON.parse(JSON.stringify(newBlocks));
-    setHistory((prev) => {
-      const sliced = prev.slice(0, historyIndex + 1);
-      const next = [...sliced, cloned];
-      return next.length > 50 ? next.slice(next.length - 50) : next;
-    });
-    setHistoryIndex((prev) => Math.min(prev + 1, 49));
-  }, [historyIndex]);
+  const pushSnapshot = useCallback(
+    (newBlocks: EditorBlock[]) => {
+      if (isUndoingRedoingRef.current) return;
+      const cloned = JSON.parse(JSON.stringify(newBlocks));
+      setHistory((prev) => {
+        const sliced = prev.slice(0, historyIndex + 1);
+        const next = [...sliced, cloned];
+        return next.length > 50 ? next.slice(next.length - 50) : next;
+      });
+      setHistoryIndex((prev) => Math.min(prev + 1, 49));
+    },
+    [historyIndex]
+  );
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -206,6 +223,39 @@ export default function BlockNoteEditor({
     return () => window.removeEventListener("keydown", onGlobalKeyDown);
   }, [undo, redo]);
 
+  const getDefaultTableData = (): TableData => ({
+    headers: [
+      t("content.tableDefaultHeader1"),
+      t("content.tableDefaultHeader2"),
+      t("content.tableDefaultHeader3"),
+    ],
+    rows: [
+      [
+        t("content.tableDefaultRow1Col1"),
+        t("content.tableDefaultRow1Col2"),
+        t("content.tableDefaultRow1Col3"),
+      ],
+      [
+        t("content.tableDefaultRow2Col1"),
+        t("content.tableDefaultRow2Col2"),
+        t("content.tableDefaultRow2Col3"),
+      ],
+    ],
+  });
+
+  const getDefaultComparisonData = (): ComparisonData => ({
+    leftTitle: t("content.comparisonDefaultLeftTitle"),
+    leftPoints: [
+      t("content.comparisonDefaultLeftPoint1"),
+      t("content.comparisonDefaultLeftPoint2"),
+    ],
+    rightTitle: t("content.comparisonDefaultRightTitle"),
+    rightPoints: [
+      t("content.comparisonDefaultRightPoint1"),
+      t("content.comparisonDefaultRightPoint2"),
+    ],
+  });
+
   const updateBlock = (
     id: string,
     patch: Partial<EditorBlock>,
@@ -219,7 +269,6 @@ export default function BlockNoteEditor({
     if (immediateSnapshot) {
       pushSnapshot(nextBlocks);
     } else {
-      // Debounce typing snapshot to capture paragraph edits smoothly
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => {
         pushSnapshot(nextBlocks);
@@ -242,24 +291,9 @@ export default function BlockNoteEditor({
     } else if (type === "video") {
       defaultProps = { videoUrl: "", caption: "" };
     } else if (type === "table") {
-      defaultProps = {
-        tableData: {
-          headers: ["Criteria", "Description", "Standard"],
-          rows: [
-            ["Topic 1", "Details 1", "Approved"],
-            ["Topic 2", "Details 2", "Approved"],
-          ],
-        },
-      };
+      defaultProps = { tableData: getDefaultTableData() };
     } else if (type === "comparison") {
-      defaultProps = {
-        comparisonData: {
-          leftTitle: "Do / Recommended",
-          leftPoints: ["Proactive communication", "Clear meeting minutes"],
-          rightTitle: "Avoid / Caution",
-          rightPoints: ["Unreported changes", "Skipping approval process"],
-        },
-      };
+      defaultProps = { comparisonData: getDefaultComparisonData() };
     }
 
     const newBlock: EditorBlock = {
@@ -277,7 +311,11 @@ export default function BlockNoteEditor({
 
   const removeBlock = (id: string) => {
     if (blocks.length <= 1) {
-      updateBlock(id, { type: "paragraph", content: "", props: { align: "left" } }, true);
+      updateBlock(
+        id,
+        { type: "paragraph", content: "", props: { align: "left" } },
+        true
+      );
       return;
     }
     const next = blocks.filter((b) => b.id !== id);
@@ -308,13 +346,14 @@ export default function BlockNoteEditor({
     pushSnapshot(next);
   };
 
-  const handleFileUpload = async (blockId: string, file: File, isGallery = false) => {
-    // Check 5MB limit before uploading
+  const handleFileUpload = async (
+    blockId: string,
+    file: File,
+    isGallery = false
+  ) => {
     if (file.size > 5 * 1024 * 1024) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      onUploadError?.(
-        `Image size (${sizeMb}MB) exceeds the maximum limit of 5MB. Please choose a smaller file.`
-      );
+      onUploadError?.(t("errors.imageSizeExceeds", { size: sizeMb }));
       return;
     }
 
@@ -351,7 +390,9 @@ export default function BlockNoteEditor({
       onUploadSuccess?.(url);
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to upload image.";
+        err instanceof Error && err.message
+          ? err.message
+          : t("errors.imageUploadFailed");
       onUploadError?.(msg);
     } finally {
       setUploadingBlockId(null);
@@ -365,7 +406,7 @@ export default function BlockNoteEditor({
     currentContent: string,
     prefix: string,
     suffix: string,
-    placeholder = "content"
+    placeholder = t("formatPlaceholders.content")
   ) => {
     const next = currentContent
       ? `${currentContent} ${prefix}${placeholder}${suffix}`
@@ -383,7 +424,6 @@ export default function BlockNoteEditor({
 
     const key = e.key.toLowerCase();
 
-    // Undo / Redo Shortcuts inside active textarea
     if (key === "z") {
       e.preventDefault();
       if (e.shiftKey) {
@@ -406,23 +446,23 @@ export default function BlockNoteEditor({
     if (key === "b") {
       prefix = "**";
       suffix = "**";
-      defaultPlaceholder = "bold text";
+      defaultPlaceholder = t("formatPlaceholders.bold");
     } else if (key === "i") {
       prefix = "*";
       suffix = "*";
-      defaultPlaceholder = "italic text";
+      defaultPlaceholder = t("formatPlaceholders.italic");
     } else if (key === "u") {
       prefix = "<u>";
       suffix = "</u>";
-      defaultPlaceholder = "underlined text";
+      defaultPlaceholder = t("formatPlaceholders.underline");
     } else if (key === "k") {
       prefix = "[";
       suffix = "](https://mpclub.dev)";
-      defaultPlaceholder = "link title";
+      defaultPlaceholder = t("formatPlaceholders.link");
     } else if (key === "`" || (e.shiftKey && key === "c")) {
       prefix = "`";
       suffix = "`";
-      defaultPlaceholder = "code";
+      defaultPlaceholder = t("formatPlaceholders.code");
     } else {
       return;
     }
@@ -443,10 +483,8 @@ export default function BlockNoteEditor({
       suffix +
       currentVal.substring(end);
 
-    // Save with immediate snapshot so Ctrl+Z undoes the format directly
     updateBlock(blockId, { content: nextVal }, true);
 
-    // Move cursor right after the wrapped text
     const newCursorPos =
       start + prefix.length + textToWrap.length + suffix.length;
     setTimeout(() => {
@@ -454,6 +492,13 @@ export default function BlockNoteEditor({
       target.selectionEnd = newCursorPos;
       target.focus();
     }, 0);
+  };
+
+  const getAlignLabel = (align: "left" | "center" | "right" | "justify") => {
+    if (align === "center") return t("toolbar.alignCenter");
+    if (align === "right") return t("toolbar.alignRight");
+    if (align === "justify") return t("toolbar.alignJustify");
+    return t("toolbar.alignLeft");
   };
 
   return (
@@ -477,8 +522,8 @@ export default function BlockNoteEditor({
         }}
       />
 
-      {/* Top Editor Control Toolbar: Undo / Redo & Formatting Quick Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-card border border-border/80 text-xs shadow-2xs select-none sticky top-16 z-20 backdrop-blur-md bg-card/90">
+      {/* Top Editor Control Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-card/90 border border-border/80 text-xs shadow-2xs select-none sticky top-16 z-20 backdrop-blur-md">
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -487,13 +532,10 @@ export default function BlockNoteEditor({
             disabled={!canUndo}
             onClick={undo}
             className="h-7 px-2 text-xs gap-1.5 cursor-pointer hover:bg-muted disabled:opacity-40"
-            title="Undo changes (Ctrl+Z)"
+            title={t("toolbar.undoTitle")}
           >
             <Undo2 className="size-3.5 text-primary" />
-            <span>Undo</span>
-            <kbd className="hidden sm:inline-block text-[10px] bg-muted/80 px-1 py-0.5 rounded text-muted-foreground font-mono">
-              Ctrl+Z
-            </kbd>
+            <span>{t("toolbar.undo")}</span>
           </Button>
 
           <Button
@@ -503,29 +545,15 @@ export default function BlockNoteEditor({
             disabled={!canRedo}
             onClick={redo}
             className="h-7 px-2 text-xs gap-1.5 cursor-pointer hover:bg-muted disabled:opacity-40"
-            title="Redo action (Ctrl+Y or Ctrl+Shift+Z)"
+            title={t("toolbar.redoTitle")}
           >
             <Redo2 className="size-3.5 text-primary" />
-            <span>Redo</span>
-            <kbd className="hidden sm:inline-block text-[10px] bg-muted/80 px-1 py-0.5 rounded text-muted-foreground font-mono">
-              Ctrl+Y
-            </kbd>
+            <span>{t("toolbar.redo")}</span>
           </Button>
-
-          <Separator orientation="vertical" className="h-4 mx-1" />
-
-          <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground/80">
-            Step {historyIndex + 1}/{history.length}
-          </Badge>
         </div>
 
-        {/* Quick Format Shortcuts Pill */}
-        <div className="hidden lg:flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span>Shortcuts:</span>
-          <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded">Ctrl+B: Bold</span>
-          <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded">Ctrl+I: Italic</span>
-          <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded">Ctrl+U: Underline</span>
-          <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded">Ctrl+K: Link</span>
+        <div className="hidden lg:flex items-center text-[11px] text-muted-foreground">
+          <span>{t("toolbar.shortcutHint")}</span>
         </div>
       </div>
 
@@ -533,7 +561,7 @@ export default function BlockNoteEditor({
       <div className="space-y-3">
         {blocks.map((block, index) => {
           const typeMeta =
-            ALL_BLOCK_TYPES.find((t) => t.type === block.type) ||
+            ALL_BLOCK_TYPES.find((item) => item.type === block.type) ||
             ALL_BLOCK_TYPES[0];
           const TypeIcon = typeMeta.icon;
           const currentAlign = block.props?.align || "left";
@@ -561,17 +589,21 @@ export default function BlockNoteEditor({
                     <button
                       type="button"
                       className="size-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                      title="Change block type"
+                      title={t("toolbar.changeType")}
+                      aria-label={t("toolbar.changeType")}
                     >
                       <TypeIcon className="size-4 text-primary" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56 p-1.5 text-xs">
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-56 p-1.5 text-xs"
+                  >
                     {BLOCK_CATEGORIES.map((cat, catIdx) => (
-                      <React.Fragment key={cat.group}>
+                      <React.Fragment key={cat.groupKey}>
                         {catIdx > 0 && <DropdownMenuSeparator />}
                         <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1">
-                          {cat.group}
+                          {t(`groups.${cat.groupKey}`)}
                         </DropdownMenuLabel>
                         {cat.items.map((opt) => {
                           const Icon = opt.icon;
@@ -584,30 +616,31 @@ export default function BlockNoteEditor({
                                 if (opt.type === "table" && !props?.tableData) {
                                   props = {
                                     ...props,
-                                    tableData: {
-                                      headers: ["Criteria", "Description", "Standard"],
-                                      rows: [["Topic 1", "Details 1", "Approved"]],
-                                    },
+                                    tableData: getDefaultTableData(),
                                   };
-                                } else if (opt.type === "comparison" && !props?.comparisonData) {
+                                } else if (
+                                  opt.type === "comparison" &&
+                                  !props?.comparisonData
+                                ) {
                                   props = {
                                     ...props,
-                                    comparisonData: {
-                                      leftTitle: "Do / Recommended",
-                                      leftPoints: ["Proactive communication"],
-                                      rightTitle: "Avoid / Caution",
-                                      rightPoints: ["Unreported changes"],
-                                    },
+                                    comparisonData: getDefaultComparisonData(),
                                   };
-                                } else if (opt.type === "gallery" && !props?.galleryImages) {
+                                } else if (
+                                  opt.type === "gallery" &&
+                                  !props?.galleryImages
+                                ) {
                                   props = { ...props, galleryImages: [] };
                                 }
-                                updateBlock(block.id, { type: opt.type, props });
+                                updateBlock(block.id, {
+                                  type: opt.type,
+                                  props,
+                                });
                               }}
                               className="flex items-center gap-2 cursor-pointer"
                             >
                               <Icon className="size-3.5 text-muted-foreground" />
-                              <span>{opt.label}</span>
+                              <span>{t(`types.${opt.type}`)}</span>
                             </DropdownMenuItem>
                           );
                         })}
@@ -617,55 +650,93 @@ export default function BlockNoteEditor({
                 </DropdownMenu>
               </div>
 
-              {/* Top-Right Floating Control Toolbar (Floats safely above the block, never overlapping content or controls) */}
+              {/* Top-Right Floating Control Toolbar */}
               <div className="absolute top-0 -translate-y-[calc(100%)] right-2 hidden group-hover:flex items-center gap-0.5 z-40 bg-background/95 rounded-lg border border-border/90 px-1.5 py-0.5 shadow-md backdrop-blur select-none animate-in fade-in zoom-in-95 duration-150">
-                {/* Text Formatting Quick Helpers */}
                 {isTextType && (
                   <>
                     <button
                       type="button"
-                      onClick={() => applyTextWrap(block.id, block.content, "**", "**", "bold text")}
+                      onClick={() =>
+                        applyTextWrap(
+                          block.id,
+                          block.content,
+                          "**",
+                          "**",
+                          t("formatPlaceholders.bold")
+                        )
+                      }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-bold cursor-pointer"
-                      title="Bold (**text**)"
+                      title={t("toolbar.boldTitle")}
                     >
                       B
                     </button>
                     <button
                       type="button"
-                      onClick={() => applyTextWrap(block.id, block.content, "*", "*", "italic text")}
+                      onClick={() =>
+                        applyTextWrap(
+                          block.id,
+                          block.content,
+                          "*",
+                          "*",
+                          t("formatPlaceholders.italic")
+                        )
+                      }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs italic cursor-pointer"
-                      title="Italic (*text*)"
+                      title={t("toolbar.italicTitle")}
                     >
                       I
                     </button>
                     <button
                       type="button"
-                      onClick={() => applyTextWrap(block.id, block.content, "<u>", "</u>", "underlined text")}
+                      onClick={() =>
+                        applyTextWrap(
+                          block.id,
+                          block.content,
+                          "<u>",
+                          "</u>",
+                          t("formatPlaceholders.underline")
+                        )
+                      }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground text-xs underline cursor-pointer"
-                      title="Underline (<u>text</u>)"
+                      title={t("toolbar.underlineTitle")}
                     >
                       U
                     </button>
                     <button
                       type="button"
-                      onClick={() => applyTextWrap(block.id, block.content, "[", "](https://mpclub.dev)", "link title")}
+                      onClick={() =>
+                        applyTextWrap(
+                          block.id,
+                          block.content,
+                          "[",
+                          "](https://mpclub.dev)",
+                          t("formatPlaceholders.link")
+                        )
+                      }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-                      title="Insert link [title](url)"
+                      title={t("toolbar.linkTitle")}
                     >
                       <LinkIcon className="size-3" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => applyTextWrap(block.id, block.content, "`", "`", "code")}
+                      onClick={() =>
+                        applyTextWrap(
+                          block.id,
+                          block.content,
+                          "`",
+                          "`",
+                          t("formatPlaceholders.code")
+                        )
+                      }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
-                      title="Inline code (`code`)"
+                      title={t("toolbar.inlineCodeTitle")}
                     >
                       &lt;/&gt;
                     </button>
 
                     <Separator orientation="vertical" className="h-3.5 mx-0.5" />
 
-                    {/* Alignment options */}
                     <button
                       type="button"
                       onClick={() =>
@@ -682,7 +753,9 @@ export default function BlockNoteEditor({
                         })
                       }
                       className="size-5 sm:size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-                      title={`Change alignment (Current: ${currentAlign})`}
+                      title={t("toolbar.alignTitle", {
+                        align: getAlignLabel(currentAlign),
+                      })}
                     >
                       {currentAlign === "center" ? (
                         <AlignCenter className="size-3" />
@@ -702,7 +775,7 @@ export default function BlockNoteEditor({
                   onClick={() => moveBlock(index, "up")}
                   disabled={index === 0}
                   className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                  title="Move up"
+                  title={t("toolbar.moveUp")}
                 >
                   <ArrowUp className="size-3" />
                 </button>
@@ -711,7 +784,7 @@ export default function BlockNoteEditor({
                   onClick={() => moveBlock(index, "down")}
                   disabled={index === blocks.length - 1}
                   className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                  title="Move down"
+                  title={t("toolbar.moveDown")}
                 >
                   <ArrowDown className="size-3" />
                 </button>
@@ -719,7 +792,7 @@ export default function BlockNoteEditor({
                   type="button"
                   onClick={() => duplicateBlock(index)}
                   className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                  title="Duplicate block"
+                  title={t("toolbar.duplicate")}
                 >
                   <Copy className="size-3" />
                 </button>
@@ -727,7 +800,7 @@ export default function BlockNoteEditor({
                   type="button"
                   onClick={() => addBlockAfter(index)}
                   className="size-6 flex items-center justify-center rounded text-primary hover:bg-primary/10 cursor-pointer"
-                  title="Insert block below"
+                  title={t("toolbar.insertBelow")}
                 >
                   <Plus className="size-3.5" />
                 </button>
@@ -735,7 +808,7 @@ export default function BlockNoteEditor({
                   type="button"
                   onClick={() => removeBlock(block.id)}
                   className="size-6 flex items-center justify-center rounded text-destructive hover:bg-destructive/10 cursor-pointer"
-                  title="Delete block"
+                  title={t("toolbar.deleteBlock")}
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -751,7 +824,7 @@ export default function BlockNoteEditor({
                       updateBlock(block.id, { content: e.target.value })
                     }
                     onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                    placeholder="Heading 1..."
+                    placeholder={t("content.heading1Placeholder")}
                     className={cn(
                       "border-0 bg-transparent px-0 text-2xl sm:text-3xl font-bold tracking-tight focus-visible:ring-0 shadow-none h-auto py-1",
                       currentAlign === "center" && "text-center",
@@ -768,7 +841,7 @@ export default function BlockNoteEditor({
                       updateBlock(block.id, { content: e.target.value })
                     }
                     onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                    placeholder="2. Section Heading 2..."
+                    placeholder={t("content.heading2Placeholder")}
                     className={cn(
                       "border-0 border-b border-border/40 bg-transparent px-0 text-xl font-semibold tracking-tight focus-visible:ring-0 rounded-none shadow-none h-auto py-1",
                       currentAlign === "center" && "text-center",
@@ -785,7 +858,7 @@ export default function BlockNoteEditor({
                       updateBlock(block.id, { content: e.target.value })
                     }
                     onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                    placeholder="2.1 Subsection Heading 3..."
+                    placeholder={t("content.heading3Placeholder")}
                     className={cn(
                       "border-0 bg-transparent px-0 text-lg font-medium focus-visible:ring-0 shadow-none h-auto py-0.5",
                       currentAlign === "center" && "text-center",
@@ -802,7 +875,7 @@ export default function BlockNoteEditor({
                       updateBlock(block.id, { content: e.target.value })
                     }
                     onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                    placeholder="Enter text content (supports **bold**, *italic*, [link](url)...)"
+                    placeholder={t("content.paragraphPlaceholder")}
                     rows={Math.max(2, block.content.split("\n").length)}
                     className={cn(
                       "border-0 bg-transparent px-0 text-sm sm:text-base leading-relaxed focus-visible:ring-0 resize-none shadow-none py-1",
@@ -816,14 +889,16 @@ export default function BlockNoteEditor({
                 {/* Bullet List */}
                 {block.type === "bullet_list" && (
                   <div className="flex gap-2 items-start">
-                    <span className="text-primary mt-1 text-base select-none">•</span>
+                    <span className="text-primary mt-1 text-base select-none">
+                      •
+                    </span>
                     <Textarea
                       value={block.content}
                       onChange={(e) =>
                         updateBlock(block.id, { content: e.target.value })
                       }
                       onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                      placeholder="Each line is a bullet item..."
+                      placeholder={t("content.bulletListPlaceholder")}
                       rows={Math.max(2, block.content.split("\n").length)}
                       className="border-0 bg-transparent px-0 text-sm sm:text-base focus-visible:ring-0 resize-none shadow-none py-0.5"
                     />
@@ -842,7 +917,7 @@ export default function BlockNoteEditor({
                         updateBlock(block.id, { content: e.target.value })
                       }
                       onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                      placeholder="Each line is a numbered step 1, 2, 3..."
+                      placeholder={t("content.numberedListPlaceholder")}
                       rows={Math.max(2, block.content.split("\n").length)}
                       className="border-0 bg-transparent px-0 text-sm sm:text-base focus-visible:ring-0 resize-none shadow-none py-0.5"
                     />
@@ -867,7 +942,7 @@ export default function BlockNoteEditor({
                         updateBlock(block.id, { content: e.target.value })
                       }
                       onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                      placeholder="Checklist task item..."
+                      placeholder={t("content.checklistPlaceholder")}
                       className="border-0 bg-transparent px-0 text-sm focus-visible:ring-0 shadow-none h-auto py-0.5"
                     />
                   </div>
@@ -879,7 +954,7 @@ export default function BlockNoteEditor({
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-primary shrink-0">
                         <Info className="size-4" />
-                        <span>Callout box:</span>
+                        <span>{t("content.calloutLabel")}</span>
                       </div>
                       <Select
                         value={block.props?.variant || "info"}
@@ -887,19 +962,31 @@ export default function BlockNoteEditor({
                           updateBlock(block.id, {
                             props: {
                               ...block.props,
-                              variant: val as "info" | "warning" | "success" | "danger",
+                              variant: val as
+                                | "info"
+                                | "warning"
+                                | "success"
+                                | "danger",
                             },
                           })
                         }
                       >
-                        <SelectTrigger className="h-7 text-xs w-32 bg-background">
+                        <SelectTrigger className="h-7 text-xs w-36 bg-background">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="info">Info</SelectItem>
-                          <SelectItem value="warning">Warning</SelectItem>
-                          <SelectItem value="success">Recommendation</SelectItem>
-                          <SelectItem value="danger">Prohibited</SelectItem>
+                          <SelectItem value="info">
+                            {t("content.calloutInfo")}
+                          </SelectItem>
+                          <SelectItem value="warning">
+                            {t("content.calloutWarning")}
+                          </SelectItem>
+                          <SelectItem value="success">
+                            {t("content.calloutSuccess")}
+                          </SelectItem>
+                          <SelectItem value="danger">
+                            {t("content.calloutDanger")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -909,7 +996,7 @@ export default function BlockNoteEditor({
                         updateBlock(block.id, { content: e.target.value })
                       }
                       onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                      placeholder="Important notice for members to remember..."
+                      placeholder={t("content.calloutPlaceholder")}
                       rows={2}
                       className="border-0 bg-transparent px-0 text-sm focus-visible:ring-0 resize-none shadow-none py-0"
                     />
@@ -921,7 +1008,7 @@ export default function BlockNoteEditor({
                   <div className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 space-y-2 text-slate-100">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono text-slate-400 shrink-0">
-                        Code block:
+                        {t("content.codeLabel")}
                       </span>
                       <Input
                         value={block.props?.language || "typescript"}
@@ -930,7 +1017,7 @@ export default function BlockNoteEditor({
                             props: { ...block.props, language: e.target.value },
                           })
                         }
-                        placeholder="typescript / json / bash / python"
+                        placeholder={t("content.codeLanguagePlaceholder")}
                         className="h-7 w-36 text-xs bg-slate-900 border-slate-800 font-mono text-slate-300"
                       />
                     </div>
@@ -939,7 +1026,7 @@ export default function BlockNoteEditor({
                       onChange={(e) =>
                         updateBlock(block.id, { content: e.target.value })
                       }
-                      placeholder="// Paste example code here..."
+                      placeholder={t("content.codePlaceholder")}
                       rows={4}
                       className="border-0 bg-transparent p-0 font-mono text-xs sm:text-sm text-slate-200 focus-visible:ring-0 resize-y"
                     />
@@ -955,7 +1042,7 @@ export default function BlockNoteEditor({
                         updateBlock(block.id, { content: e.target.value })
                       }
                       onKeyDown={(e) => handleTextareaKeyDown(e, block.id)}
-                      placeholder="Quote from leadership, motto or philosophy..."
+                      placeholder={t("content.quotePlaceholder")}
                       rows={2}
                       className="border-0 bg-transparent px-0 text-sm sm:text-base italic focus-visible:ring-0 resize-none shadow-none py-0"
                     />
@@ -963,9 +1050,7 @@ export default function BlockNoteEditor({
                 )}
 
                 {/* Divider */}
-                {block.type === "divider" && (
-                  <Separator className="my-3" />
-                )}
+                {block.type === "divider" && <Separator className="my-3" />}
 
                 {/* Single Image */}
                 {block.type === "image" && (
@@ -973,7 +1058,7 @@ export default function BlockNoteEditor({
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <FileImage className="size-4 text-primary" />
-                        <span>Illustration Image</span>
+                        <span>{t("content.imageTitle")}</span>
                       </span>
                       <Button
                         type="button"
@@ -981,7 +1066,10 @@ export default function BlockNoteEditor({
                         size="xs"
                         disabled={uploadingBlockId === block.id}
                         onClick={() => {
-                          setActiveUploadTarget({ blockId: block.id, isGallery: false });
+                          setActiveUploadTarget({
+                            blockId: block.id,
+                            isGallery: false,
+                          });
                           fileInputRef.current?.click();
                         }}
                         className="gap-1.5 text-xs cursor-pointer"
@@ -989,8 +1077,8 @@ export default function BlockNoteEditor({
                         <UploadCloud className="size-3.5" />
                         <span>
                           {uploadingBlockId === block.id
-                            ? "Uploading image..."
-                            : "Upload from device"}
+                            ? t("content.imageUploading")
+                            : t("content.imageUploadBtn")}
                         </span>
                       </Button>
                     </div>
@@ -1000,20 +1088,26 @@ export default function BlockNoteEditor({
                         value={block.props?.imageUrl || ""}
                         onChange={(e) =>
                           updateBlock(block.id, {
-                            props: { ...block.props, imageUrl: e.target.value },
+                            props: {
+                              ...block.props,
+                              imageUrl: e.target.value,
+                            },
                           })
                         }
-                        placeholder="Or paste direct image URL..."
+                        placeholder={t("content.imageUrlPlaceholder")}
                         className="text-xs h-8"
                       />
                       <Input
                         value={block.props?.caption || ""}
                         onChange={(e) =>
                           updateBlock(block.id, {
-                            props: { ...block.props, caption: e.target.value },
+                            props: {
+                              ...block.props,
+                              caption: e.target.value,
+                            },
                           })
                         }
-                        placeholder="Image caption..."
+                        placeholder={t("content.imageCaptionPlaceholder")}
                         className="text-xs h-8"
                       />
                     </div>
@@ -1023,7 +1117,9 @@ export default function BlockNoteEditor({
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={block.props.imageUrl}
-                          alt={block.props.caption || "Illustration image"}
+                          alt={
+                            block.props.caption || t("content.imageAltFallback")
+                          }
                           className="w-full max-h-56 object-contain"
                         />
                       </div>
@@ -1038,7 +1134,7 @@ export default function BlockNoteEditor({
                       <div className="flex items-center gap-2 shrink-0">
                         <Images className="size-4 text-primary" />
                         <span className="text-xs font-semibold text-foreground">
-                          Image Gallery
+                          {t("content.galleryTitle")}
                         </span>
                       </div>
                       <Button
@@ -1047,13 +1143,16 @@ export default function BlockNoteEditor({
                         size="xs"
                         disabled={uploadingBlockId === block.id}
                         onClick={() => {
-                          setActiveUploadTarget({ blockId: block.id, isGallery: true });
+                          setActiveUploadTarget({
+                            blockId: block.id,
+                            isGallery: true,
+                          });
                           fileInputRef.current?.click();
                         }}
                         className="gap-1.5 text-xs cursor-pointer"
                       >
                         <Plus className="size-3.5" />
-                        <span>Add image</span>
+                        <span>{t("content.galleryAddImage")}</span>
                       </Button>
                     </div>
 
@@ -1062,7 +1161,7 @@ export default function BlockNoteEditor({
                       onChange={(e) =>
                         updateBlock(block.id, { content: e.target.value })
                       }
-                      placeholder="Gallery title (e.g. Hackathon 2026 Photos)..."
+                      placeholder={t("content.galleryTitlePlaceholder")}
                       className="text-xs h-8"
                     />
 
@@ -1077,34 +1176,48 @@ export default function BlockNoteEditor({
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={img.url}
-                              alt={img.caption || "Gallery image"}
+                              alt={
+                                img.caption || t("content.galleryAltFallback")
+                              }
                               className="size-full object-cover"
                             />
                           </div>
                           <Input
                             value={img.caption || ""}
                             onChange={(e) => {
-                              const nextList = [...(block.props?.galleryImages || [])];
-                              nextList[imgIdx] = { ...nextList[imgIdx], caption: e.target.value };
+                              const nextList = [
+                                ...(block.props?.galleryImages || []),
+                              ];
+                              nextList[imgIdx] = {
+                                ...nextList[imgIdx],
+                                caption: e.target.value,
+                              };
                               updateBlock(block.id, {
-                                props: { ...block.props, galleryImages: nextList },
+                                props: {
+                                  ...block.props,
+                                  galleryImages: nextList,
+                                },
                               });
                             }}
-                            placeholder="Image caption..."
+                            placeholder={t("content.imageCaptionPlaceholder")}
                             className="text-[11px] h-6 px-1.5"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              const nextList = (block.props?.galleryImages || []).filter(
-                                (_, idx) => idx !== imgIdx
-                              );
+                              const nextList = (
+                                block.props?.galleryImages || []
+                              ).filter((_, idx) => idx !== imgIdx);
                               updateBlock(block.id, {
-                                props: { ...block.props, galleryImages: nextList },
+                                props: {
+                                  ...block.props,
+                                  galleryImages: nextList,
+                                },
                               });
                             }}
                             className="absolute top-2 right-2 size-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                            title="Delete this image"
+                            title={t("content.galleryDeleteImage")}
+                            aria-label={t("content.galleryDeleteImage")}
                           >
                             <X className="size-3" />
                           </button>
@@ -1114,15 +1227,18 @@ export default function BlockNoteEditor({
                       {/* Add by URL card */}
                       <div className="rounded-lg border border-dashed border-border p-2 flex flex-col justify-center items-center gap-1.5 text-center min-h-[100px]">
                         <p className="text-[11px] text-muted-foreground">
-                          Or add image URL:
+                          {t("content.galleryAddByUrlHint")}
                         </p>
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
                             const form = e.currentTarget;
-                            const input = form.elements.namedItem("urlInput") as HTMLInputElement;
+                            const input = form.elements.namedItem(
+                              "urlInput"
+                            ) as HTMLInputElement;
                             if (input && input.value.trim()) {
-                              const currentList = block.props?.galleryImages || [];
+                              const currentList =
+                                block.props?.galleryImages || [];
                               updateBlock(block.id, {
                                 props: {
                                   ...block.props,
@@ -1143,11 +1259,16 @@ export default function BlockNoteEditor({
                         >
                           <Input
                             name="urlInput"
-                            placeholder="https://..."
+                            placeholder={t("content.galleryUrlPlaceholder")}
                             className="text-[11px] h-6 px-1.5"
                           />
-                          <Button type="submit" size="xs" variant="secondary" className="h-6 text-[11px]">
-                            Add
+                          <Button
+                            type="submit"
+                            size="xs"
+                            variant="secondary"
+                            className="h-6 text-[11px]"
+                          >
+                            {t("content.galleryAddUrlBtn")}
                           </Button>
                         </form>
                       </div>
@@ -1161,7 +1282,7 @@ export default function BlockNoteEditor({
                     <div className="flex items-center gap-2">
                       <Youtube className="size-4 text-red-500" />
                       <span className="text-xs font-semibold text-foreground">
-                        Embedded Video (YouTube or MP4 link)
+                        {t("content.videoTitle")}
                       </span>
                     </div>
 
@@ -1171,7 +1292,7 @@ export default function BlockNoteEditor({
                         onChange={(e) =>
                           updateBlock(block.id, { content: e.target.value })
                         }
-                        placeholder="Video title..."
+                        placeholder={t("content.videoTitlePlaceholder")}
                         className="text-xs h-8"
                       />
                       <Input
@@ -1181,7 +1302,7 @@ export default function BlockNoteEditor({
                             props: { ...block.props, videoUrl: e.target.value },
                           })
                         }
-                        placeholder="https://www.youtube.com/watch?v=..."
+                        placeholder={t("content.videoUrlPlaceholder")}
                         className="text-xs h-8"
                       />
                     </div>
@@ -1195,7 +1316,7 @@ export default function BlockNoteEditor({
                       <div className="flex items-center gap-2 shrink-0">
                         <TableIcon className="size-4 text-primary" />
                         <span className="text-xs font-semibold text-foreground">
-                          Data Table
+                          {t("content.tableTitle")}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -1204,27 +1325,44 @@ export default function BlockNoteEditor({
                           variant="outline"
                           size="xs"
                           onClick={() => {
-                            const table = block.props?.tableData || { headers: [], rows: [] };
-                            const newHeaders = [...table.headers, `Column ${table.headers.length + 1}`];
+                            const table = block.props?.tableData || {
+                              headers: [],
+                              rows: [],
+                            };
+                            const newHeaders = [
+                              ...table.headers,
+                              t("content.tableNewColumn", {
+                                index: table.headers.length + 1,
+                              }),
+                            ];
                             const newRows = table.rows.map((r) => [...r, ""]);
                             updateBlock(block.id, {
                               props: {
                                 ...block.props,
-                                tableData: { headers: newHeaders, rows: newRows },
+                                tableData: {
+                                  headers: newHeaders,
+                                  rows: newRows,
+                                },
                               },
                             });
                           }}
                           className="h-7 text-xs cursor-pointer"
                         >
-                          + Column
+                          {t("content.tableAddColumn")}
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="xs"
                           onClick={() => {
-                            const table = block.props?.tableData || { headers: [], rows: [] };
-                            const newRows = [...table.rows, new Array(table.headers.length).fill("")];
+                            const table = block.props?.tableData || {
+                              headers: [],
+                              rows: [],
+                            };
+                            const newRows = [
+                              ...table.rows,
+                              new Array(table.headers.length).fill(""),
+                            ];
                             updateBlock(block.id, {
                               props: {
                                 ...block.props,
@@ -1234,7 +1372,7 @@ export default function BlockNoteEditor({
                           }}
                           className="h-7 text-xs cursor-pointer"
                         >
-                          + Row
+                          {t("content.tableAddRow")}
                         </Button>
                       </div>
                     </div>
@@ -1244,7 +1382,7 @@ export default function BlockNoteEditor({
                       onChange={(e) =>
                         updateBlock(block.id, { content: e.target.value })
                       }
-                      placeholder="Table title (e.g. Member Tier Comparison)..."
+                      placeholder={t("content.tableTitlePlaceholder")}
                       className="text-xs h-8"
                     />
 
@@ -1255,11 +1393,16 @@ export default function BlockNoteEditor({
                           <thead className="bg-muted/40 border-b border-border">
                             <tr>
                               {block.props.tableData.headers.map((h, hIdx) => (
-                                <th key={hIdx} className="p-1.5 border-r border-border last:border-0">
+                                <th
+                                  key={hIdx}
+                                  className="p-1.5 border-r border-border last:border-0"
+                                >
                                   <Input
                                     value={h}
                                     onChange={(e) => {
-                                      const nextHeaders = [...block.props!.tableData!.headers];
+                                      const nextHeaders = [
+                                        ...block.props!.tableData!.headers,
+                                      ];
                                       nextHeaders[hIdx] = e.target.value;
                                       updateBlock(block.id, {
                                         props: {
@@ -1281,11 +1424,17 @@ export default function BlockNoteEditor({
                             {block.props.tableData.rows.map((row, rIdx) => (
                               <tr key={rIdx}>
                                 {row.map((cell, cIdx) => (
-                                  <td key={cIdx} className="p-1.5 border-r border-border last:border-0">
+                                  <td
+                                    key={cIdx}
+                                    className="p-1.5 border-r border-border last:border-0"
+                                  >
                                     <Input
                                       value={cell}
                                       onChange={(e) => {
-                                        const nextRows = block.props!.tableData!.rows.map((r) => [...r]);
+                                        const nextRows =
+                                          block.props!.tableData!.rows.map(
+                                            (r) => [...r]
+                                          );
                                         nextRows[rIdx][cIdx] = e.target.value;
                                         updateBlock(block.id, {
                                           props: {
@@ -1316,7 +1465,7 @@ export default function BlockNoteEditor({
                     <div className="flex items-center gap-2">
                       <Columns2 className="size-4 text-primary" />
                       <span className="text-xs font-semibold text-foreground">
-                        2-Column Visual Comparison
+                        {t("content.comparisonTitle")}
                       </span>
                     </div>
 
@@ -1325,7 +1474,7 @@ export default function BlockNoteEditor({
                       onChange={(e) =>
                         updateBlock(block.id, { content: e.target.value })
                       }
-                      placeholder="Comparison title..."
+                      placeholder={t("content.comparisonTitlePlaceholder")}
                       className="text-xs h-8"
                     />
 
@@ -1335,16 +1484,25 @@ export default function BlockNoteEditor({
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                           <CheckCircle2 className="size-3.5" />
                           <Input
-                            value={block.props?.comparisonData?.leftTitle || "Do / Recommended"}
+                            value={
+                              block.props?.comparisonData?.leftTitle ??
+                              t("content.comparisonDefaultLeftTitle")
+                            }
                             onChange={(e) =>
                               updateBlock(block.id, {
                                 props: {
                                   ...block.props,
                                   comparisonData: {
                                     leftTitle: e.target.value,
-                                    leftPoints: block.props?.comparisonData?.leftPoints || [],
-                                    rightTitle: block.props?.comparisonData?.rightTitle || "Avoid / Caution",
-                                    rightPoints: block.props?.comparisonData?.rightPoints || [],
+                                    leftPoints:
+                                      block.props?.comparisonData?.leftPoints ||
+                                      [],
+                                    rightTitle:
+                                      block.props?.comparisonData?.rightTitle ??
+                                      t("content.comparisonDefaultRightTitle"),
+                                    rightPoints:
+                                      block.props?.comparisonData
+                                        ?.rightPoints || [],
                                   },
                                 },
                               })
@@ -1353,22 +1511,32 @@ export default function BlockNoteEditor({
                           />
                         </div>
                         <Textarea
-                          value={(block.props?.comparisonData?.leftPoints || []).join("\n")}
+                          value={(
+                            block.props?.comparisonData?.leftPoints || []
+                          ).join("\n")}
                           onChange={(e) => {
-                            const points = e.target.value.split("\n").filter(Boolean);
+                            const points = e.target.value
+                              .split("\n")
+                              .filter(Boolean);
                             updateBlock(block.id, {
                               props: {
                                 ...block.props,
                                 comparisonData: {
-                                  leftTitle: block.props?.comparisonData?.leftTitle || "Do / Recommended",
+                                  leftTitle:
+                                    block.props?.comparisonData?.leftTitle ??
+                                    t("content.comparisonDefaultLeftTitle"),
                                   leftPoints: points,
-                                  rightTitle: block.props?.comparisonData?.rightTitle || "Avoid / Caution",
-                                  rightPoints: block.props?.comparisonData?.rightPoints || [],
+                                  rightTitle:
+                                    block.props?.comparisonData?.rightTitle ??
+                                    t("content.comparisonDefaultRightTitle"),
+                                  rightPoints:
+                                    block.props?.comparisonData?.rightPoints ||
+                                    [],
                                 },
                               },
                             });
                           }}
-                          placeholder="Each line is a recommendation..."
+                          placeholder={t("content.comparisonLeftPlaceholder")}
                           rows={3}
                           className="text-xs bg-background"
                         />
@@ -1379,16 +1547,25 @@ export default function BlockNoteEditor({
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
                           <XCircle className="size-3.5" />
                           <Input
-                            value={block.props?.comparisonData?.rightTitle || "Avoid / Caution"}
+                            value={
+                              block.props?.comparisonData?.rightTitle ??
+                              t("content.comparisonDefaultRightTitle")
+                            }
                             onChange={(e) =>
                               updateBlock(block.id, {
                                 props: {
                                   ...block.props,
                                   comparisonData: {
-                                    leftTitle: block.props?.comparisonData?.leftTitle || "Do / Recommended",
-                                    leftPoints: block.props?.comparisonData?.leftPoints || [],
+                                    leftTitle:
+                                      block.props?.comparisonData?.leftTitle ??
+                                      t("content.comparisonDefaultLeftTitle"),
+                                    leftPoints:
+                                      block.props?.comparisonData?.leftPoints ||
+                                      [],
                                     rightTitle: e.target.value,
-                                    rightPoints: block.props?.comparisonData?.rightPoints || [],
+                                    rightPoints:
+                                      block.props?.comparisonData
+                                        ?.rightPoints || [],
                                   },
                                 },
                               })
@@ -1397,22 +1574,32 @@ export default function BlockNoteEditor({
                           />
                         </div>
                         <Textarea
-                          value={(block.props?.comparisonData?.rightPoints || []).join("\n")}
+                          value={(
+                            block.props?.comparisonData?.rightPoints || []
+                          ).join("\n")}
                           onChange={(e) => {
-                            const points = e.target.value.split("\n").filter(Boolean);
+                            const points = e.target.value
+                              .split("\n")
+                              .filter(Boolean);
                             updateBlock(block.id, {
                               props: {
                                 ...block.props,
                                 comparisonData: {
-                                  leftTitle: block.props?.comparisonData?.leftTitle || "Do / Recommended",
-                                  leftPoints: block.props?.comparisonData?.leftPoints || [],
-                                  rightTitle: block.props?.comparisonData?.rightTitle || "Avoid / Caution",
+                                  leftTitle:
+                                    block.props?.comparisonData?.leftTitle ??
+                                    t("content.comparisonDefaultLeftTitle"),
+                                  leftPoints:
+                                    block.props?.comparisonData?.leftPoints ||
+                                    [],
+                                  rightTitle:
+                                    block.props?.comparisonData?.rightTitle ??
+                                    t("content.comparisonDefaultRightTitle"),
                                   rightPoints: points,
                                 },
                               },
                             });
                           }}
-                          placeholder="Each line is a caution..."
+                          placeholder={t("content.comparisonRightPlaceholder")}
                           rows={3}
                           className="text-xs bg-background"
                         />
@@ -1427,110 +1614,64 @@ export default function BlockNoteEditor({
       </div>
 
       {/* Bottom Block Inserter Bar */}
-      <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border/60">
+      <div className="flex flex-wrap items-center gap-1.5 pt-4 border-t border-border/60">
         <span className="text-xs font-medium text-muted-foreground mr-1">
-          + Quick Insert:
+          {t("toolbar.quickInsert")}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "paragraph")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Type className="size-3" />
-          <span>Paragraph</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "heading_2")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Heading2 className="size-3 text-primary" />
-          <span>Heading H2</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "heading_3")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Heading3 className="size-3 text-primary/80" />
-          <span>Heading H3</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "bullet_list")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <List className="size-3" />
-          <span>Bullet List</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "table")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <TableIcon className="size-3 text-blue-500" />
-          <span>Table</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "comparison")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Columns2 className="size-3 text-emerald-500" />
-          <span>2-Column Comparison</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "gallery")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Images className="size-3 text-purple-500" />
-          <span>Image Gallery</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "video")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Video className="size-3 text-red-500" />
-          <span>Video</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "callout")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Info className="size-3 text-amber-500" />
-          <span>Callout</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => addBlockAfter(blocks.length - 1, "code")}
-          className="text-xs h-7 gap-1.5 cursor-pointer"
-        >
-          <Code className="size-3" />
-          <span>Code</span>
-        </Button>
+        {QUICK_INSERT_TYPES.map((opt) => {
+          const Icon = opt.icon;
+          return (
+            <Button
+              key={opt.type}
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => addBlockAfter(blocks.length - 1, opt.type)}
+              className="text-xs h-7 gap-1.5 cursor-pointer"
+            >
+              <Icon className="size-3 text-primary" />
+              <span>{t(`types.${opt.type}`)}</span>
+            </Button>
+          );
+        })}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="text-xs h-7 gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="size-3" />
+              <span>{t("toolbar.moreBlocks")}</span>
+              <ChevronDown className="size-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56 p-1.5 text-xs">
+            {BLOCK_CATEGORIES.map((cat, catIdx) => (
+              <React.Fragment key={cat.groupKey}>
+                {catIdx > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1">
+                  {t(`groups.${cat.groupKey}`)}
+                </DropdownMenuLabel>
+                {cat.items.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={opt.type}
+                      onClick={() => addBlockAfter(blocks.length - 1, opt.type)}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Icon className="size-3.5 text-muted-foreground" />
+                      <span>{t(`types.${opt.type}`)}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

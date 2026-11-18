@@ -9,7 +9,7 @@ export default function LegacyEditorRedirect() {
   const id = params?.id || "new";
 
   useEffect(() => {
-    router.replace(`/studio/articles/${id}`);
+    router.replace(`/studio/items/${id}`);
   }, [id, router]);
 
   return null;

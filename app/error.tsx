@@ -2,9 +2,9 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function GlobalError({
   error,
@@ -13,47 +13,44 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("nav.error");
+  const tActions = useTranslations("common.actions");
+
   useEffect(() => {
-    console.error("Next.js App Error Boundary Caught:", error);
+    console.error("App Error Boundary:", error);
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6 bg-background text-foreground">
-      <Card className="max-w-md w-full p-8 text-center space-y-4 border-border shadow-xs">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
-          <AlertTriangle className="size-6" />
+      <div className="max-w-sm w-full text-center space-y-4">
+        <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+          <AlertTriangle className="size-5" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-bold tracking-tight">Something went wrong</h2>
+          <h1 className="text-lg font-bold tracking-tight">{t("title")}</h1>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {error?.message && !error.message.includes("Server Components render")
-              ? error.message
-              : "An unexpected error occurred while loading this page. Please try refreshing."}
+            {t("description")}
           </p>
           {error?.digest && (
-            <p className="text-[10px] font-mono text-muted-foreground/60 pt-1">
-              Digest: {error.digest}
+            <p className="text-[11px] font-mono text-muted-foreground/60 pt-1">
+              {t("digest", { id: error.digest })}
             </p>
           )}
         </div>
-        <div className="flex items-center justify-center gap-3 pt-2">
+        <div className="flex items-center justify-center gap-2.5 pt-1">
           <Button
             size="sm"
             onClick={() => reset()}
             className="gap-1.5 font-semibold cursor-pointer"
           >
             <RefreshCw className="size-3.5" />
-            <span>Try again</span>
+            <span>{tActions("retry")}</span>
           </Button>
-          <Button asChild variant="outline" size="sm" className="cursor-pointer">
-            <Link href="/">
-              <ArrowLeft className="size-3.5 mr-1" />
-              <span>Back Home</span>
-            </Link>
+          <Button asChild variant="ghost" size="sm" className="cursor-pointer">
+            <Link href="/">{t("backHome")}</Link>
           </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
-

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { CountUp, ProgressBar } from "@/components/ui/animated-progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useHandbook } from "@/context/HandbookContext";
 import {
   AlertCircle,
@@ -45,12 +46,15 @@ interface StorageData {
 }
 
 export default function StudioSettingsPage() {
+  const t = useTranslations("studio");
+  const ts = useTranslations("studio.settings");
   const { showToast } = useHandbook();
+
   const [data, setData] = useState<StorageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
 
-  const fetchStorageData = async () => {
+  const fetchStorageData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/studio/storage", { cache: "no-store" });
@@ -58,18 +62,21 @@ export default function StudioSettingsPage() {
       if (res.ok && json.success) {
         setData(json);
       } else {
-        showToast(json.error || "Không thể tải dữ liệu dung lượng.", "error");
+        showToast(json.error || ts("toasts.loadFailed"), "error");
       }
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi kết nối máy chủ.", "error");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : ts("toasts.serverError"),
+        "error"
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast, ts]);
 
   useEffect(() => {
-    fetchStorageData();
-  }, []);
+    void fetchStorageData();
+  }, [fetchStorageData]);
 
   const handleCleanOrphans = async () => {
     setCleaning(true);
@@ -80,15 +87,21 @@ export default function StudioSettingsPage() {
       const json = await res.json();
       if (res.ok && json.success) {
         showToast(
-          `Đã dọn dẹp thành công ${json.deletedCount} tệp rác (giải phóng ~${json.freedMegabytes} MB).`,
+          ts("toasts.cleanSuccess", {
+            count: json.deletedCount ?? 0,
+            mb: json.freedMegabytes ?? 0,
+          }),
           "success"
         );
-        fetchStorageData();
+        void fetchStorageData();
       } else {
-        showToast(json.error || "Dọn dẹp tệp rác thất bại.", "error");
+        showToast(json.error || ts("toasts.cleanFailed"), "error");
       }
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi khi gọi API dọn dẹp.", "error");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : ts("toasts.cleanFailed"),
+        "error"
+      );
     } finally {
       setCleaning(false);
     }
@@ -97,66 +110,72 @@ export default function StudioSettingsPage() {
   const usage = data?.cloudinary?.usage;
   const storageUsageBytes = usage?.storage?.usage || 0;
   const storageUsageMb = (storageUsageBytes / (1024 * 1024)).toFixed(2);
-  const bandwidthUsageMb = ((usage?.bandwidth?.usage || 0) / (1024 * 1024)).toFixed(2);
+  const bandwidthUsageMb = (
+    (usage?.bandwidth?.usage || 0) /
+    (1024 * 1024)
+  ).toFixed(2);
   const creditsPercent = usage?.credits?.used_percent || 0;
+  const orphanCount = data?.dbTracking?.orphanCount || 0;
 
   return (
     <AdminLayout
-      breadcrumbs={[
-        { label: "Studio", href: "/studio" },
-        { label: "Storage & Settings" },
-      ]}
+      breadcrumbs={[{ label: t("nav.settings") }]}
       actions={
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={fetchStorageData}
           disabled={loading}
-          className="gap-1.5 text-xs cursor-pointer"
+          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
         >
           <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-          <span>Làm mới</span>
+          <span>{ts("refresh")}</span>
         </Button>
       }
     >
       <div className="space-y-6">
-        <PageHeader
-          title="Cloud Storage & Asset Lifecycle"
-          description="Quản lý hạn mức lưu trữ Cloudinary CDN, tự động dọn dẹp tệp tải lên mồ côi (chưa lưu bài viết)."
-        />
+        <PageHeader title={ts("title")} description={ts("description")} />
 
         {/* 1. Cloudinary Quota Overview */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
+        <div className="rounded-lg border border-border bg-card p-5 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Cloud className="size-5.5" />
+              <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Cloud className="size-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                  <span>Cloudinary Media CDN</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    Plan: {usage?.plan || "Free / Developer"}
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                  <span>{ts("cloudinary.heading")}</span>
+                  <Badge variant="outline" className="text-[11px] font-mono">
+                    {ts("cloudinary.plan", {
+                      plan: usage?.plan || ts("cloudinary.defaultPlan"),
+                    })}
                   </Badge>
-                </h3>
+                </h2>
                 <p className="text-xs text-muted-foreground font-mono">
-                  Cloud Name: {data?.cloudinary?.cloudName || "y2h4qe5e"}
+                  {ts("cloudinary.cloudName", {
+                    name: data?.cloudinary?.cloudName || "—",
+                  })}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Badge
-                variant={data?.cloudinary?.configured ? "default" : "destructive"}
+                variant={
+                  data?.cloudinary?.configured ? "outline" : "destructive"
+                }
                 className="text-xs"
               >
                 {data?.cloudinary?.configured ? (
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="size-3" /> API Connected
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-3" />
+                    <span>{ts("cloudinary.connected")}</span>
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
-                    <AlertCircle className="size-3" /> Chưa cấu hình API
+                    <AlertCircle className="size-3" />
+                    <span>{ts("cloudinary.unconfigured")}</span>
                   </span>
                 )}
               </Badge>
@@ -165,63 +184,66 @@ export default function StudioSettingsPage() {
 
           {data?.cloudinary?.error && (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs">
-              Lưu ý API Admin: {data.cloudinary.error}
+              {ts("cloudinary.apiError", { error: data.cloudinary.error })}
             </div>
           )}
 
           {/* 3 Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
+            <div className="p-4 rounded-lg border border-border bg-muted/15 space-y-1.5">
               <span className="text-xs text-muted-foreground flex items-center justify-between">
-                <span>Dung lượng lưu trữ</span>
-                <HardDrive className="size-3.5 text-primary" />
+                <span>{ts("cloudinary.storageLabel")}</span>
+                <HardDrive className="size-3.5 text-muted-foreground" />
               </span>
-              <p className="text-2xl font-bold font-mono text-foreground">
+              <p className="text-2xl font-bold font-mono tabular-nums text-foreground">
                 {storageUsageMb} MB
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                Tổng file ảnh / tài liệu đang lưu trên cloud
+              <p className="text-xs text-muted-foreground">
+                {ts("cloudinary.storageHint")}
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
+            <div className="p-4 rounded-lg border border-border bg-muted/15 space-y-1.5">
               <span className="text-xs text-muted-foreground flex items-center justify-between">
-                <span>Băng thông (Bandwidth)</span>
-                <Server className="size-3.5 text-blue-500" />
+                <span>{ts("cloudinary.bandwidthLabel")}</span>
+                <Server className="size-3.5 text-muted-foreground" />
               </span>
-              <p className="text-2xl font-bold font-mono text-foreground">
+              <p className="text-2xl font-bold font-mono tabular-nums text-foreground">
                 {bandwidthUsageMb} MB
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                Lượng truyền tải trong chu kỳ 30 ngày
+              <p className="text-xs text-muted-foreground">
+                {ts("cloudinary.bandwidthHint")}
               </p>
             </div>
 
-            <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
+            <div className="p-4 rounded-lg border border-border bg-muted/15 space-y-2">
               <span className="text-xs text-muted-foreground flex items-center justify-between">
-                <span>Hạn mức Credits đã dùng</span>
-                <Badge variant="outline" className="text-[10px]">
+                <span>{ts("cloudinary.creditsLabel")}</span>
+                <span className="text-xs font-mono tabular-nums">
                   {creditsPercent}%
-                </Badge>
+                </span>
               </span>
-              <p className="text-2xl font-bold font-mono text-foreground">
-                {creditsPercent}%
+              <p className="text-2xl font-bold font-mono tabular-nums text-foreground">
+                <CountUp value={creditsPercent} suffix="%" />
               </p>
-              <Progress value={creditsPercent} className="h-1.5" />
+              <ProgressBar
+                value={creditsPercent}
+                label={ts("cloudinary.creditsLabel")}
+              />
             </div>
           </div>
         </div>
 
         {/* 2. Orphan Uploads & Automated Garbage Collection */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
+        <div className="rounded-lg border border-border bg-card p-5 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Database className="size-4.5 text-primary" />
-                <span>Cơ chế dọn dẹp tệp rác tự động (Orphan Files Lifecycle)</span>
-              </h3>
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Database className="size-4 text-primary shrink-0" />
+                <span>{ts("orphans.heading")}</span>
+              </h2>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                Khi tác giả upload ảnh vào BlockNote hoặc ảnh bìa nhưng sau đó F5 làm mới trang, đóng tab hoặc không bấm lưu, các file đó sẽ được đánh dấu là tệp mồ côi (chưa gắn vào bài viết nào). Hệ thống sẽ tự động quét và xóa sạch khỏi Cloudinary để tiết kiệm dung lượng.
+                {ts("orphans.description")}
               </p>
             </div>
 
@@ -229,66 +251,76 @@ export default function StudioSettingsPage() {
               variant="destructive"
               size="sm"
               onClick={handleCleanOrphans}
-              disabled={cleaning || (data?.dbTracking?.orphanCount || 0) === 0}
+              disabled={cleaning || orphanCount === 0}
               className="gap-2 text-xs font-semibold shrink-0 cursor-pointer"
             >
               {cleaning ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Đang dọn dẹp...</span>
+                  <span>{ts("orphans.cleaning")}</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="size-3.5" />
-                  <span>Dọn dẹp ngay ({data?.dbTracking?.orphanCount || 0} tệp rác)</span>
+                  <span>
+                    {ts("orphans.cleanButton", { count: orphanCount })}
+                  </span>
                 </>
               )}
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-            <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
-              <span className="text-xs text-muted-foreground">Tổng tệp đã track</span>
-              <p className="text-xl font-bold font-mono text-foreground">
-                {data?.dbTracking?.totalTracked || 0}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+            <div className="p-3.5 rounded-lg border border-border bg-muted/15 space-y-1">
+              <span className="text-xs text-muted-foreground">
+                {ts("orphans.totalTracked")}
+              </span>
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground">
+                <CountUp value={data?.dbTracking?.totalTracked || 0} />
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-emerald-500/5 space-y-1">
-              <span className="text-xs text-emerald-700 dark:text-emerald-400">Đã lưu trong bài viết</span>
-              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                {data?.dbTracking?.attachedCount || 0}
+            <div className="p-3.5 rounded-lg border border-border bg-muted/15 space-y-1">
+              <span className="text-xs text-muted-foreground">
+                {ts("orphans.attachedCount")}
+              </span>
+              <p className="text-xl font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                <CountUp value={data?.dbTracking?.attachedCount || 0} />
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-amber-500/5 space-y-1">
-              <span className="text-xs text-amber-700 dark:text-amber-400">Tệp mồ côi (chưa lưu)</span>
-              <p className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">
-                {data?.dbTracking?.orphanCount || 0}
+            <div className="p-3.5 rounded-lg border border-border bg-muted/15 space-y-1">
+              <span className="text-xs text-muted-foreground">
+                {ts("orphans.orphanCount")}
+              </span>
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground">
+                <CountUp value={orphanCount} />
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-muted/10 space-y-1">
-              <span className="text-xs text-muted-foreground">Dung lượng track trong DB</span>
-              <p className="text-xl font-bold font-mono text-foreground">
+            <div className="p-3.5 rounded-lg border border-border bg-muted/15 space-y-1">
+              <span className="text-xs text-muted-foreground">
+                {ts("orphans.trackedVolume")}
+              </span>
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground">
                 {data?.dbTracking?.totalMegabytes || 0} MB
               </p>
             </div>
           </div>
 
-          {/* Webhook / Cron Instruction */}
-          <div className="rounded-xl bg-muted/40 p-4 border border-border text-xs space-y-2">
-            <p className="font-semibold text-foreground">
-              Thiết lập Cronjob tự động theo định kỳ:
+          {/* Cron Instruction */}
+          <div className="rounded-lg bg-muted/30 p-3.5 border border-border text-xs space-y-1.5">
+            <p className="font-medium text-foreground">
+              {ts("orphans.cronTitle")}
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              Bạn có thể gọi tự động vào endpoint sau (sử dụng Vercel Cron, GitHub Actions, hoặc cron server):
+              {ts("orphans.cronDescription")}
             </p>
-            <div className="p-2.5 rounded-lg bg-background border border-border font-mono text-[11px] select-all overflow-x-auto text-primary">
+            <div className="p-2 rounded bg-background border border-border font-mono text-[11px] select-all overflow-x-auto text-primary">
               POST /api/upload/cleanup?hours=2
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Mặc định xóa các tệp mồ côi đã tạo quá 2 giờ mà không được lưu vào bài viết.
+              {ts("orphans.cronHint")}
             </p>
           </div>
         </div>
@@ -296,4 +328,3 @@ export default function StudioSettingsPage() {
     </AdminLayout>
   );
 }
-

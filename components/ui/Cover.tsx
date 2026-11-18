@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface ArticleCoverProps {
+export interface CoverProps {
   src?: string | null;
   coverImage?: string | null;
   title: string;
@@ -124,7 +124,7 @@ export function getPatternBySeed(seed: string) {
   return VECTOR_PATTERNS[index];
 }
 
-export function ArticleCover({
+export function Cover({
   src,
   coverImage,
   title,
@@ -132,7 +132,7 @@ export function ArticleCover({
   className,
   aspectRatio = "3/1",
   showLabel = true,
-}: ArticleCoverProps) {
+}: CoverProps) {
   const [imageError, setImageError] = useState(false);
 
   const isPreset = coverImage?.startsWith("preset:");
@@ -225,4 +225,3 @@ export function ArticleCover({
 }
 
 export { VECTOR_PATTERNS };
-

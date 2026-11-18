@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from "react";
 import Cropper, { Area } from "react-easy-crop";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +13,25 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { Crop, RotateCcw, ZoomIn } from "lucide-react";
 
-interface ImageCropDialogProps {
+export interface CropResult {
+  blob: Blob;
+  previewUrl: string;
+}
+
+export interface ImageCropDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageSrc: string;
-  onCropComplete: (croppedDataUrl: string) => void;
+  onCropComplete: (result: CropResult) => void | Promise<void>;
 }
 
-async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: Area
+): Promise<CropResult> {
   const image = new Image();
   image.crossOrigin = "anonymous";
   await new Promise<void>((resolve, reject) => {
@@ -53,7 +63,26 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
     targetHeight
   );
 
-  return canvas.toDataURL("image/jpeg", 0.9);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    try {
+      canvas.toBlob(
+        (b) => {
+          if (b) {
+            resolve(b);
+          } else {
+            reject(new Error("Canvas toBlob returned null."));
+          }
+        },
+        "image/jpeg",
+        0.9
+      );
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  const previewUrl = URL.createObjectURL(blob);
+  return { blob, previewUrl };
 }
 
 export function ImageCropDialog({
@@ -62,6 +91,8 @@ export function ImageCropDialog({
   imageSrc,
   onCropComplete,
 }: ImageCropDialogProps) {
+  const t = useTranslations("editor.crop");
+  const tActions = useTranslations("common.actions");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -75,16 +106,19 @@ export function ImageCropDialog({
   );
 
   const handleConfirm = async () => {
-    if (!croppedAreaPixels || !imageSrc) return;
+    if (!imageSrc) return;
+    if (!croppedAreaPixels) {
+      toast.error(t("corsError"));
+      return;
+    }
+
     setProcessing(true);
     try {
-      const dataUrl = await getCroppedImg(imageSrc, croppedAreaPixels);
-      onCropComplete(dataUrl);
+      const result = await getCroppedImg(imageSrc, croppedAreaPixels);
       onOpenChange(false);
+      await onCropComplete(result);
     } catch {
-      // Fallback to raw image if CORS blocks canvas export on external URL
-      onCropComplete(imageSrc);
-      onOpenChange(false);
+      toast.error(t("corsError"));
     } finally {
       setProcessing(false);
     }
@@ -96,10 +130,10 @@ export function ImageCropDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Crop className="size-4 text-primary" />
-            <span>Crop Cover Image (3:1 Ratio)</span>
+            <span>{t("title")}</span>
           </DialogTitle>
           <DialogDescription className="text-sm">
-            Drag and zoom to frame the 3:1 banner displayed on lesson cards and headers.
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -121,7 +155,7 @@ export function ImageCropDialog({
         <div className="flex items-center gap-4 pt-1">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0">
             <ZoomIn className="size-3.5" />
-            <span>Zoom</span>
+            <span>{t("zoom")}</span>
           </Label>
           <input
             type="range"
@@ -129,6 +163,7 @@ export function ImageCropDialog({
             max={3}
             step={0.05}
             value={zoom}
+            aria-label={t("zoom")}
             onChange={(e) => setZoom(Number(e.target.value))}
             className="flex-1 accent-primary cursor-pointer"
           />
@@ -143,7 +178,7 @@ export function ImageCropDialog({
             className="text-xs cursor-pointer"
           >
             <RotateCcw className="size-3 mr-1" />
-            <span>Reset</span>
+            <span>{t("reset")}</span>
           </Button>
         </div>
 
@@ -155,7 +190,7 @@ export function ImageCropDialog({
             onClick={() => onOpenChange(false)}
             className="cursor-pointer"
           >
-            Cancel
+            {tActions("cancel")}
           </Button>
           <Button
             type="button"
@@ -165,7 +200,7 @@ export function ImageCropDialog({
             className="cursor-pointer"
           >
             <Crop className="size-3.5 mr-1.5" />
-            <span>{processing ? "Processing..." : "Apply 3:1 Crop"}</span>
+            <span>{processing ? t("processing") : t("apply")}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

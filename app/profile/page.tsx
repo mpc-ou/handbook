@@ -2,43 +2,94 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "motion/react";
 import { useHandbook } from "@/context/HandbookContext";
 import { AppShell } from "@/components/layout/AppShell";
+import {
+  computeAchievements,
+  computeStreak,
+  toDayKey,
+  type AchievementId,
+} from "@/lib/gamification";
+import {
+  getCourseItemsInOrder,
+  getCourseProgress,
+} from "@/lib/progression";
+import {
+  CountUp,
+  ProgressBar,
+  ProgressRing,
+} from "@/components/ui/animated-progress";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDate, formatDateTime } from "@/lib/date";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   Award,
   BookOpen,
-  Calendar,
   CheckCircle2,
-  Clock,
-  Download,
-  ExternalLink,
   Eye,
   EyeOff,
+  Flame,
   GraduationCap,
-  Heart,
-  HelpCircle,
   KeyRound,
   Loader2,
-  Lock,
-  Mail,
-  ShieldCheck,
-  User,
-  XCircle,
+  Sparkles,
+  Trophy,
 } from "lucide-react";
 
+const ACHIEVEMENT_ICONS: Record<
+  AchievementId,
+  React.ComponentType<{ className?: string }>
+> = {
+  first_chapter: BookOpen,
+  chapters_5: BookOpen,
+  chapters_20: BookOpen,
+  first_quiz_passed: CheckCircle2,
+  perfect_score: Sparkles,
+  first_course_complete: GraduationCap,
+  streak_3: Flame,
+  streak_7: Flame,
+  streak_30: Trophy,
+};
+
+const HEATMAP_WEEKS = 12;
+const HEATMAP_DAYS = HEATMAP_WEEKS * 7;
+
 export default function ProfilePage() {
-  const { user, articles, categories, progressMap, quizAttempts, ssoStatus, showToast } = useHandbook();
-  const [activeTab, setActiveTab] = useState<"reading" | "quizzes" | "likes" | "security">("reading");
+  const t = useTranslations("profile");
+  const tRoles = useTranslations("nav.roles");
+  const format = useFormatter();
+  const reduceMotion = useReducedMotion();
+
+  const {
+    user,
+    dataLoading,
+    courses,
+    lessons,
+    items,
+    progressMap,
+    quizAttempts,
+    ssoStatus,
+    showToast,
+  } = useHandbook();
+
   const isEmailLoginActive = ssoStatus?.emailLoginEnabled ?? true;
 
-  // Password management state
+  // Password form state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -49,15 +100,15 @@ export default function ProfilePage() {
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
-      showToast("Mật khẩu mới phải có tối thiểu 6 ký tự.", "error");
+      showToast(t("account.errors.tooShort"), "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast("Xác nhận mật khẩu mới không khớp.", "error");
+      showToast(t("account.errors.mismatch"), "error");
       return;
     }
     if (!user?.noPassword && !currentPassword) {
-      showToast("Vui lòng nhập mật khẩu hiện tại.", "error");
+      showToast(t("account.errors.currentRequired"), "error");
       return;
     }
 
@@ -73,7 +124,7 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        showToast(data.message || "Cập nhật mật khẩu thành công!", "success");
+        showToast(t("account.success"), "success");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -81,633 +132,678 @@ export default function ProfilePage() {
           user.noPassword = false;
         }
       } else {
-        showToast(data.error || "Không thể cập nhật mật khẩu.", "error");
+        showToast(data.error || t("account.errors.failed"), "error");
       }
-    } catch (err: any) {
-      showToast(err?.message || "Lỗi kết nối máy chủ.", "error");
+    } catch {
+      showToast(t("account.errors.serverError"), "error");
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  // Category mapping
-  const categoryMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of categories) {
-      map.set(c.id, c.name);
+  const progressList = useMemo(
+    () => Object.values(progressMap),
+    [progressMap]
+  );
+
+  const streak = useMemo(() => computeStreak(progressList), [progressList]);
+
+  const activeDaySet = useMemo(
+    () => new Set(streak.activeDays),
+    [streak.activeDays]
+  );
+
+  // Build 12-week (84 days) grid ending today
+  const heatmapWeeks = useMemo(() => {
+    const today = new Date();
+    const cells: Array<{ key: string; date: Date; active: boolean }> = [];
+    for (let i = HEATMAP_DAYS - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = toDayKey(d);
+      cells.push({ key, date: d, active: activeDaySet.has(key) });
     }
-    return map;
-  }, [categories]);
+    const weeks: Array<Array<{ key: string; date: Date; active: boolean }>> =
+      [];
+    for (let w = 0; w < HEATMAP_WEEKS; w++) {
+      weeks.push(cells.slice(w * 7, (w + 1) * 7));
+    }
+    return weeks;
+  }, [activeDaySet]);
 
-  // User reading progress statistics
-  const userProgressList = useMemo(() => {
-    if (!user) return [];
-    return Object.values(progressMap);
-  }, [user, progressMap]);
+  const publishedCourses = useMemo(
+    () =>
+      courses
+        .filter((c) => c.status === "PUBLISHED")
+        .sort((a, b) => a.orderIndex - b.orderIndex),
+    [courses]
+  );
 
-  const completedCount = useMemo(() => {
-    return userProgressList.filter((p) => p.isCompleted).length;
-  }, [userProgressList]);
+  const courseMap = useMemo(
+    () => new Map(courses.map((c) => [c.id, c])),
+    [courses]
+  );
+  const lessonMap = useMemo(
+    () => new Map(lessons.map((l) => [l.id, l])),
+    [lessons]
+  );
+  const itemMap = useMemo(
+    () => new Map(items.map((i) => [i.id, i])),
+    [items]
+  );
 
-  const totalPublishedArticles = useMemo(() => {
-    return articles.filter((a) => a.isPublished).length;
-  }, [articles]);
-
-  const overallProgressPct = useMemo(() => {
-    if (totalPublishedArticles === 0) return 0;
-    return Math.round((completedCount / totalPublishedArticles) * 100);
-  }, [completedCount, totalPublishedArticles]);
-
-  // User's quiz attempts
   const myQuizAttempts = useMemo(() => {
     if (!user) return [];
-    return quizAttempts.filter((att) => att.userId === user.uid);
+    return quizAttempts
+      .filter((att) => att.userId === user.uid)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
   }, [user, quizAttempts]);
 
-  const passedQuizzesCount = useMemo(() => {
-    // Unique quizzes passed
-    const passedQuizIds = new Set(
-      myQuizAttempts.filter((a) => a.isPassed).map((a) => a.articleId || a.quizId)
-    );
-    return passedQuizIds.size;
-  }, [myQuizAttempts]);
+  const achievements = useMemo(
+    () =>
+      computeAchievements({
+        progress: progressList,
+        courses: publishedCourses,
+        lessons,
+        items,
+        attempts: myQuizAttempts,
+      }),
+    [progressList, publishedCourses, lessons, items, myQuizAttempts]
+  );
 
-  const avgQuizScore = useMemo(() => {
-    if (myQuizAttempts.length === 0) return 0;
-    const sum = myQuizAttempts.reduce((acc, curr) => acc + (curr.scorePercent || 0), 0);
-    return Math.round(sum / myQuizAttempts.length);
-  }, [myQuizAttempts]);
+  const unlockedCount = useMemo(
+    () => achievements.filter((a) => a.unlocked).length,
+    [achievements]
+  );
 
-  // Liked articles
-  const likedArticles = useMemo(() => {
-    if (!user) return [];
-    return articles.filter((a) => a.likedUserIds?.includes(user.uid));
-  }, [user, articles]);
-
-  // Export User Transcript to CSV for Excel
-  const exportUserTranscript = () => {
-    if (!user) return;
-
-    const headers = [
-      "Full Name",
-      "Email",
-      "Department",
-      "Lesson / Assessment Title",
-      "Category",
-      "Reading Status",
-      "Quiz Score (%)",
-      "Assessment Result",
-      "Completion Date",
-    ];
-
-    const rows = articles
-      .filter((a) => a.isPublished)
-      .map((art) => {
-        const prog = progressMap[art.id];
-        const isDone = Boolean(prog?.isCompleted);
-        const score = prog?.highestQuizScore ?? 0;
-        const quizRequired = (art.passScorePercent || 0) > 0;
-        let quizStatus = "Not Required";
-        if (quizRequired) {
-          quizStatus = score >= art.passScorePercent ? "Passed" : "Failed";
-        }
-        const completedDate = prog?.completedAt
-          ? formatDate(prog.completedAt)
-          : "Incomplete";
-
-        return [
-          `"${user.fullName}"`,
-          `"${user.email}"`,
-          `"${user.department || ""}"`,
-          `"${art.title}"`,
-          `"${categoryMap.get(art.categoryId) || "Category"}"`,
-          isDone ? "Completed" : "In Progress",
-          quizRequired ? score : "—",
-          quizStatus,
-          `"${completedDate}"`,
-        ];
-      });
-
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Transcript_${user.fullName.replace(/\s+/g, "_")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Downloaded personal learning transcript.", "success");
+  const resolveItemContext = (itemId: string) => {
+    const item = itemMap.get(itemId) || items.find((i) => i.slug === itemId);
+    const lesson = item ? lessonMap.get(item.lessonId) : undefined;
+    const course = lesson ? courseMap.get(lesson.courseId) : undefined;
+    const href =
+      course && lesson && item
+        ? `/learn/${course.slug}/${lesson.slug}/${item.slug}`
+        : course
+        ? `/learn/${course.slug}`
+        : "/";
+    return { item, lesson, course, href };
   };
 
-  const initials = (user?.fullName || "MPC")
+  if (!user && !dataLoading) {
+    return (
+      <AppShell hideLeftSidebar>
+        <div className="mx-auto max-w-md px-4 py-16 text-center space-y-4">
+          <h1 className="text-xl font-bold text-foreground">
+            {t("guestPrompt.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("guestPrompt.description")}
+          </p>
+          <Button asChild size="sm">
+            <Link href="/login">{t("guestPrompt.cta")}</Link>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const initials = (user?.fullName || "MP")
     .split(" ")
     .map((n) => n[0])
     .join("")
-    .slice(0, 2)
+    .slice(-2)
     .toUpperCase();
 
   return (
     <AppShell hideLeftSidebar>
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-6">
-        {/* User Profile Card */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-16 border-2 border-primary/20 shadow-xs">
-              {user?.avatarUrl && (
-                <AvatarImage src={user.avatarUrl} alt={user.fullName} referrerPolicy="no-referrer" />
-              )}
-              <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+      <div className="mx-auto max-w-4xl px-4 sm:px-8 py-8 space-y-6">
+        {/* User Summary Header */}
+        <div className="flex items-center gap-4">
+          <Avatar className="size-14 border border-border">
+            {user?.avatarUrl && (
+              <AvatarImage
+                src={user.avatarUrl}
+                alt={user.fullName}
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
 
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold text-foreground">
-                  {user?.fullName || "MPC Member"}
-                </h1>
-                <Badge variant="outline" className="font-mono text-xs">
-                  {user?.role || "MEMBER"}
-                </Badge>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1 font-mono">
-                  <Mail className="size-3" />
-                  <span>{user?.email || "member@mpclub.dev"}</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="size-3 text-primary" />
-                  <span>{user?.department || "Academic Team"}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={exportUserTranscript}
-            className="gap-1.5 text-xs cursor-pointer shrink-0"
-          >
-            <Download className="size-3.5" />
-            <span>Export Transcript (CSV)</span>
-          </Button>
-        </div>
-
-        {/* 4 Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-            <span className="text-xs text-muted-foreground font-medium flex items-center justify-between">
-              <span>Completed Lessons</span>
-              <BookOpen className="size-3.5 text-primary" />
-            </span>
-            <p className="text-2xl font-bold text-foreground font-mono">
-              {completedCount} / {totalPublishedArticles}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Lessons completed across roadmap
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-            <span className="text-xs text-muted-foreground font-medium flex items-center justify-between">
-              <span>Overall Progress</span>
-              <GraduationCap className="size-3.5 text-emerald-500" />
-            </span>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-              {overallProgressPct}%
-            </p>
-            <Progress value={overallProgressPct} className="h-1.5 mt-1" />
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-            <span className="text-xs text-muted-foreground font-medium flex items-center justify-between">
-              <span>Passed Assessments</span>
-              <Award className="size-3.5 text-blue-500" />
-            </span>
-            <p className="text-2xl font-bold text-foreground font-mono">
-              {passedQuizzesCount}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Met passing standards
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-border bg-card shadow-2xs space-y-1">
-            <span className="text-xs text-muted-foreground font-medium flex items-center justify-between">
-              <span>Average Quiz Score</span>
-              <HelpCircle className="size-3.5 text-purple-500" />
-            </span>
-            <p className="text-2xl font-bold text-foreground font-mono">
-              {avgQuizScore}%
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Across {myQuizAttempts.length} total attempts
+          <div className="min-w-0 space-y-0.5">
+            <h1 className="text-xl font-bold text-foreground truncate">
+              {user?.fullName}
+            </h1>
+            <p className="text-xs text-muted-foreground truncate">
+              {user ? tRoles(user.role) : ""}
+              {user?.department
+                ? ` · ${user.department}`
+                : ` · ${t("defaultDepartment")}`}
+              {user?.email ? ` · ${user.email}` : ""}
             </p>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-border pb-3">
-          <button
-            type="button"
-            onClick={() => setActiveTab("reading")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-              activeTab === "reading"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            Lesson Progress ({completedCount}/{totalPublishedArticles})
-          </button>
+        {/* Main Profile Tabs */}
+        <Tabs defaultValue="progress" className="space-y-6">
+          <TabsList className="w-full sm:w-fit justify-start overflow-x-auto">
+            <TabsTrigger value="progress">{t("tabs.progress")}</TabsTrigger>
+            <TabsTrigger value="achievements">
+              {t("tabs.achievements")}
+            </TabsTrigger>
+            <TabsTrigger value="attempts">{t("tabs.attempts")}</TabsTrigger>
+            <TabsTrigger value="account">{t("tabs.account")}</TabsTrigger>
+          </TabsList>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("quizzes")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-              activeTab === "quizzes"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            Quiz History ({myQuizAttempts.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("likes")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-              activeTab === "likes"
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            Liked Articles ({likedArticles.length})
-          </button>
-
-          {isEmailLoginActive && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("security")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                activeTab === "security"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              Security & Password
-            </button>
-          )}
-        </div>
-
-        {/* TAB 1: Reading Progress */}
-        {activeTab === "reading" && (
-          <div className="space-y-3">
-            {articles
-              .filter((a) => a.isPublished)
-              .map((art) => {
-                const prog = progressMap[art.id];
-                const isDone = Boolean(prog?.isCompleted);
-                const isScrolled = Boolean(prog?.hasScrolledBottom);
-                const score = prog?.highestQuizScore ?? 0;
-                const quizRequired = (art.passScorePercent || 0) > 0;
-                const catName = categoryMap.get(art.categoryId) || "Category";
-
-                return (
-                  <div
-                    key={art.id}
-                    className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-primary/40 transition-colors shadow-2xs"
-                  >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] h-4.5 px-1.5 font-normal">
-                          {catName}
-                        </Badge>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          ~{art.readingTime} min read
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/docs/${art.slug}`}
-                        className="font-medium text-foreground hover:text-primary transition-colors text-sm block leading-snug"
-                      >
-                        {art.title}
-                      </Link>
-
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        {quizRequired ? (
-                          <span className="font-mono">
-                            Highest score:{" "}
-                            <strong className="text-foreground">{score}%</strong> (Required: ≥
-                            {art.passScorePercent}%)
-                          </span>
-                        ) : (
-                          <span>Reading only required</span>
-                        )}
-                        {prog?.completedAt && (
-                          <>
-                            <span>•</span>
-                            <span className="font-mono text-[11px]">
-                              Completed:{" "}
-                              {formatDate(prog.completedAt)}
-                            </span>
-                          </>
-                        )}
-                      </div>
+          {/* TAB 1: Streak + Course Progress */}
+          <TabsContent value="progress" className="space-y-6">
+            {/* Streak & 12-Week Activity Heatmap */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={cn(
+                        "flex size-9 items-center justify-center rounded-lg",
+                        streak.activeToday
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <Flame className="size-5" />
                     </div>
-
-                    <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                      <Badge
-                        variant={isDone ? "success" : "secondary"}
-                        className="text-xs font-normal"
-                      >
-                        {isDone ? (
-                          <>
-                            <CheckCircle2 className="size-3 mr-1" />
-                            <span>Completed</span>
-                          </>
-                        ) : isScrolled ? (
-                          "Read (Pending quiz)"
-                        ) : (
-                          "In Progress"
-                        )}
-                      </Badge>
-
-                      <Button asChild variant="outline" size="xs" className="cursor-pointer text-xs">
-                        <Link href={`/docs/${art.slug}`}>
-                          <span>Open Lesson</span>
-                          <ExternalLink className="size-3 ml-1" />
-                        </Link>
-                      </Button>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("streak.current")}
+                      </p>
+                      <p className="text-lg font-bold text-foreground tabular-nums">
+                        <CountUp value={streak.current} />
+                      </p>
                     </div>
                   </div>
+
+                  <div className="h-8 w-px bg-border" />
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      {t("streak.longest")}
+                    </p>
+                    <p className="text-lg font-bold text-foreground tabular-nums">
+                      <CountUp value={streak.longest} />
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-xs text-muted-foreground">
+                  {t("streak.heatmapLabel")}
+                </span>
+              </div>
+
+              {/* 12-week heatmap grid */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                {heatmapWeeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-1.5">
+                    {week.map((cell) => {
+                      const formattedDate = format.dateTime(cell.date, {
+                        dateStyle: "medium",
+                      });
+                      const label = cell.active
+                        ? t("streak.activeDay", { date: formattedDate })
+                        : t("streak.inactiveDay", { date: formattedDate });
+                      return (
+                        <Tooltip key={cell.key}>
+                          <TooltipTrigger asChild>
+                            <div
+                              aria-label={label}
+                              className={cn(
+                                "size-3 rounded-[3px] transition-colors",
+                                cell.active
+                                  ? "bg-primary"
+                                  : "bg-muted hover:bg-muted-foreground/20"
+                              )}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>{label}</TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Course Progress List */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                {t("courses.title")}
+              </h2>
+
+              {publishedCourses.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                  {t("courses.empty")}
+                </p>
+              ) : (
+                <div className="divide-y divide-border rounded-xl border border-border bg-card overflow-hidden">
+                  {publishedCourses.map((course) => {
+                    const prog = getCourseProgress(
+                      course.id,
+                      lessons,
+                      items,
+                      progressMap
+                    );
+                    const isDone = prog.total > 0 && prog.completed >= prog.total;
+                    const orderedItems = getCourseItemsInOrder(
+                      course.id,
+                      lessons,
+                      items
+                    );
+                    const nextIncomplete = orderedItems.find(
+                      (i) => !progressMap[i.id]?.isCompleted
+                    );
+                    const nextLesson = nextIncomplete
+                      ? lessonMap.get(nextIncomplete.lessonId)
+                      : undefined;
+                    const actionHref = isDone
+                      ? `/learn/${course.slug}/certificate`
+                      : nextIncomplete && nextLesson
+                      ? `/learn/${course.slug}/${nextLesson.slug}/${nextIncomplete.slug}`
+                      : `/learn/${course.slug}`;
+
+                    return (
+                      <div
+                        key={course.id}
+                        className="flex items-center justify-between gap-4 p-4"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <ProgressRing
+                            value={prog.percent}
+                            size={44}
+                            strokeWidth={4}
+                          />
+                          <div className="min-w-0 space-y-0.5">
+                            <Link
+                              href={`/learn/${course.slug}`}
+                              className="block text-sm font-semibold text-foreground hover:text-primary transition-colors truncate"
+                            >
+                              {course.title}
+                            </Link>
+                            <p className="text-xs text-muted-foreground">
+                              {t("courses.chaptersProgress", {
+                                completed: prog.completed,
+                                total: prog.total,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 text-xs"
+                        >
+                          <Link href={actionHref}>
+                            {isDone
+                              ? t("courses.certificate")
+                              : prog.completed > 0
+                              ? t("courses.continue")
+                              : t("courses.start")}
+                          </Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: Achievements */}
+          <TabsContent value="achievements" className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              {t("achievements.unlockedCount", {
+                unlocked: unlockedCount,
+                total: achievements.length,
+              })}
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {achievements.map((ach, idx) => {
+                const Icon = ACHIEVEMENT_ICONS[ach.id] || Award;
+                const pct =
+                  ach.target > 0
+                    ? Math.round((ach.value / ach.target) * 100)
+                    : 0;
+
+                return (
+                  <motion.div
+                    key={ach.id}
+                    initial={
+                      reduceMotion || !ach.unlocked
+                        ? false
+                        : { opacity: 0, scale: 0.96 }
+                    }
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : { duration: 0.2, delay: idx * 0.03 }
+                    }
+                    className={cn(
+                      "flex flex-col justify-between gap-3 rounded-xl border p-4 transition-colors",
+                      ach.unlocked
+                        ? "border-primary/40 bg-primary/5"
+                        : "border-border bg-card opacity-75"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                          ach.unlocked
+                            ? "bg-primary/15 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        <Icon className="size-4.5" />
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-sm font-semibold text-foreground leading-snug">
+                          {t(`achievements.${ach.id}.title`)}
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {t(`achievements.${ach.id}.description`)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {ach.unlocked ? (
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-3.5" />
+                        <span>{t("achievements.unlockedLabel")}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground tabular-nums">
+                          <span>
+                            {ach.value}/{ach.target}
+                          </span>
+                          <span>{pct}%</span>
+                        </div>
+                        <ProgressBar
+                          value={pct}
+                          label={t(`achievements.${ach.id}.title`)}
+                          heightClassName="h-1"
+                        />
+                      </div>
+                    )}
+                  </motion.div>
                 );
               })}
-          </div>
-        )}
+            </div>
+          </TabsContent>
 
-        {/* TAB 2: Quiz History */}
-        {activeTab === "quizzes" && (
-          <div className="space-y-3">
-            {myQuizAttempts.length > 0 ? (
-              <div className="rounded-xl border border-border overflow-hidden bg-card shadow-2xs">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50 border-b border-border text-muted-foreground font-medium">
-                    <tr>
-                      <th className="py-2.5 px-3 text-left">Assessment</th>
-                      <th className="py-2.5 px-3 text-center">Score</th>
-                      <th className="py-2.5 px-3 text-center">Result</th>
-                      <th className="py-2.5 px-3 text-left">Submitted At</th>
-                      <th className="py-2.5 px-3 text-left">Review / Feedback</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {myQuizAttempts.map((att) => (
-                      <tr key={att.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-2.5 px-3 font-semibold text-foreground max-w-xs">
-                          <p className="line-clamp-1">{att.articleTitle}</p>
-                        </td>
-
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-foreground">
-                          {att.scorePercent}%
-                        </td>
-
-                        <td className="py-2.5 px-3 text-center">
-                          <Badge
-                            variant={att.isPassed ? "success" : "destructive"}
-                            className="text-[10px] h-4.5 px-1.5 font-normal"
-                          >
-                            {att.isPassed ? "Passed" : "Failed"}
-                          </Badge>
-                        </td>
-
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground">
-                          {formatDateTime(att.createdAt)}
-                        </td>
-
-                        <td className="py-2.5 px-3 text-muted-foreground max-w-sm">
-                          {att.feedback ? (
-                            <span className="text-foreground">{att.feedback}</span>
-                          ) : (
-                            <span className="italic text-muted-foreground/60">—</span>
-                          )}
-                        </td>
-
-                        <td className="py-2.5 px-3 text-right">
-                          <Button asChild variant="outline" size="xs" className="cursor-pointer text-xs">
-                            <Link href={`/docs/${att.articleId}`}>
-                              <span>Retake</span>
-                            </Link>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {/* TAB 3: Quiz & Assignment Attempts */}
+          <TabsContent value="attempts">
+            {myQuizAttempts.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+                {t("attempts.empty")}
+              </p>
             ) : (
-              <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-2 bg-card/40">
-                <Award className="size-8 mx-auto text-muted-foreground/50" />
-                <p className="text-sm font-medium text-foreground">
-                  You haven&apos;t taken any assessments yet
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Read through the handbook lessons and complete the assessment at the end of each lesson.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+              <div className="divide-y divide-border rounded-xl border border-border bg-card overflow-hidden">
+                {myQuizAttempts.map((att) => {
+                  const resolved = resolveItemContext(att.itemId);
+                  const title =
+                    att.itemTitle ||
+                    resolved.item?.title ||
+                    t("attempts.untitledItem");
+                  const isPending = att.status === "PENDING_REVIEW";
+                  const statusLabel = isPending
+                    ? t("attempts.status.pendingReview")
+                    : att.isPassed
+                    ? t("attempts.status.passed")
+                    : t("attempts.status.failed");
 
-        {/* TAB 3: Liked Articles */}
-        {activeTab === "likes" && (
-          <div className="space-y-3">
-            {likedArticles.length > 0 ? (
-              likedArticles.map((art) => {
-                const catName = categoryMap.get(art.categoryId) || "Category";
-                return (
-                  <div
-                    key={art.id}
-                    className="p-4 rounded-xl border border-border bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-primary/40 transition-colors shadow-2xs"
-                  >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] h-4.5 px-1.5 font-normal">
-                          {catName}
-                        </Badge>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          ~{art.readingTime} min read
-                        </span>
+                  return (
+                    <div
+                      key={att.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <Link
+                          href={resolved.href}
+                          className="block text-sm font-medium text-foreground hover:text-primary transition-colors truncate"
+                        >
+                          {title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {resolved.course && resolved.lesson
+                            ? `${resolved.course.title} › ${resolved.lesson.title} · `
+                            : ""}
+                          {format.dateTime(new Date(att.createdAt), {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
                       </div>
 
-                      <Link
-                        href={`/docs/${art.slug}`}
-                        className="font-medium text-foreground hover:text-primary transition-colors text-sm block leading-snug"
-                      >
-                        {art.title}
-                      </Link>
-
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1 font-mono text-rose-600 dark:text-rose-400">
-                          <Heart className="size-3 fill-rose-500 text-rose-500" />
-                          <span>{art.likesCount || 1} likes</span>
+                      <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
+                        <span className="text-sm font-semibold tabular-nums text-foreground">
+                          {t("attempts.score", { score: att.scorePercent })}
                         </span>
+
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            isPending
+                              ? "bg-muted text-muted-foreground"
+                              : att.isPassed
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-destructive/15 text-destructive"
+                          )}
+                        >
+                          {statusLabel}
+                        </span>
+
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Link href={resolved.href}>
+                            {t("attempts.openItem")}
+                          </Link>
+                        </Button>
                       </div>
                     </div>
-
-                    <Button asChild variant="outline" size="xs" className="cursor-pointer text-xs shrink-0">
-                      <Link href={`/docs/${art.slug}`}>
-                        <span>Read Lesson</span>
-                        <ExternalLink className="size-3 ml-1" />
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="rounded-xl border border-dashed border-border p-12 text-center space-y-2 bg-card/40">
-                <Heart className="size-8 mx-auto text-muted-foreground/50" />
-                <p className="text-sm font-medium text-foreground">
-                  You haven&apos;t liked any articles yet
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  When reading lessons, click the Like button to save them here for quick reference.
-                </p>
+                  );
+                })}
               </div>
             )}
-          </div>
-        )}
+          </TabsContent>
 
-        {/* TAB 4: Security & Password */}
-        {activeTab === "security" && isEmailLoginActive && (
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs max-w-xl space-y-5">
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Lock className="size-4.5 text-primary" />
-                <span>
-                  {user?.noPassword ? "Thiết lập mật khẩu mới" : "Đổi mật khẩu"}
-                </span>
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {user?.noPassword ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">
-                    Tài khoản của bạn được liên kết qua MPC-SSO và chưa có mật khẩu riêng. Bạn có thể tạo mật khẩu ngay bên dưới để đăng nhập bằng Email + Mật khẩu mà không cần nhập mật khẩu cũ.
-                  </span>
-                ) : (
-                  "Cập nhật mật khẩu định kỳ để bảo vệ tài khoản thành viên của bạn."
-                )}
-              </p>
+          {/* TAB 4: Account & Password */}
+          <TabsContent value="account" className="space-y-6">
+            {/* Personal Info */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                {t("account.infoTitle")}
+              </h2>
+
+              <dl className="grid gap-4 sm:grid-cols-2 text-xs">
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">
+                    {t("account.fullName")}
+                  </dt>
+                  <dd className="font-medium text-foreground">
+                    {user?.fullName}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">
+                    {t("account.email")}
+                  </dt>
+                  <dd className="font-mono text-foreground">{user?.email}</dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">
+                    {t("account.department")}
+                  </dt>
+                  <dd className="font-medium text-foreground">
+                    {user?.department || t("defaultDepartment")}
+                  </dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="text-muted-foreground">{t("account.role")}</dt>
+                  <dd className="font-medium text-foreground">
+                    {user ? tRoles(user.role) : ""}
+                  </dd>
+                </div>
+              </dl>
             </div>
 
-            <form onSubmit={handleUpdatePassword} className="space-y-4 pt-1">
-              {!user?.noPassword && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="current-pass" className="text-xs font-medium">
-                    Mật khẩu hiện tại
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="current-pass"
-                      type={showCurrentPass ? "text" : "password"}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="pr-9 text-xs h-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPass(!showCurrentPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                      tabIndex={-1}
-                    >
-                      {showCurrentPass ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  </div>
+            {/* Password Management */}
+            {isEmailLoginActive && (
+              <div className="rounded-xl border border-border bg-card p-5 max-w-lg space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {user?.noPassword
+                      ? t("account.setPasswordTitle")
+                      : t("account.passwordTitle")}
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {user?.noPassword
+                      ? t("account.noPasswordHint")
+                      : t("account.passwordHint")}
+                  </p>
                 </div>
-              )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="new-pass" className="text-xs font-medium">
-                  {user?.noPassword ? "Mật khẩu mong muốn" : "Mật khẩu mới"}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="new-pass"
-                    type={showNewPass ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Tối thiểu 6 ký tự"
-                    required
-                    minLength={6}
-                    className="pr-9 text-xs h-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPass(!showNewPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                    tabIndex={-1}
-                  >
-                    {showNewPass ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-pass" className="text-xs font-medium">
-                  Xác nhận mật khẩu mới
-                </Label>
-                <Input
-                  id="confirm-pass"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới"
-                  required
-                  minLength={6}
-                  className="text-xs h-9"
-                />
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="font-semibold text-xs cursor-pointer gap-2"
-                >
-                  {passwordLoading ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      <span>Đang lưu...</span>
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound className="size-3.5" />
-                      <span>
-                        {user?.noPassword ? "Tạo mật khẩu" : "Cập nhật mật khẩu"}
-                      </span>
-                    </>
+                <form onSubmit={handleUpdatePassword} className="space-y-3.5">
+                  {!user?.noPassword && (
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="current-pass"
+                        className="text-xs font-medium"
+                      >
+                        {t("account.currentPassword")}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="current-pass"
+                          type={showCurrentPass ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="pr-9 text-xs h-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPass(!showCurrentPass)}
+                          aria-label={
+                            showCurrentPass
+                              ? t("account.hidePassword")
+                              : t("account.showPassword")
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          {showCurrentPass ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </Button>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-pass" className="text-xs font-medium">
+                      {t("account.newPassword")}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="new-pass"
+                        type={showNewPass ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder={t("account.passwordPlaceholder")}
+                        required
+                        minLength={6}
+                        className="pr-9 text-xs h-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        aria-label={
+                          showNewPass
+                            ? t("account.hidePassword")
+                            : t("account.showPassword")
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        {showNewPass ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="confirm-pass"
+                      className="text-xs font-medium"
+                    >
+                      {t("account.confirmPassword")}
+                    </Label>
+                    <Input
+                      id="confirm-pass"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder={t("account.confirmPlaceholder")}
+                      required
+                      minLength={6}
+                      className="text-xs h-9"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={passwordLoading}
+                    className="gap-1.5 text-xs font-semibold cursor-pointer"
+                  >
+                    {passwordLoading ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>{t("account.saving")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="size-3.5" />
+                        <span>
+                          {user?.noPassword
+                            ? t("account.submitCreate")
+                            : t("account.submitUpdate")}
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                </form>
               </div>
-            </form>
-          </div>
-        )}
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
 }
-

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   DndContext,
   DragEndEvent,
@@ -15,202 +15,119 @@ import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useHandbook } from "@/context/HandbookContext";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { CategoryManager } from "@/components/studio/curriculum/CategoryManager";
+import { CourseDialog } from "@/components/studio/curriculum/CourseDialog";
+import { LessonDialog } from "@/components/studio/curriculum/LessonDialog";
+import {
+  ItemQuickDialog,
+  MoveItemDialog,
+} from "@/components/studio/curriculum/ItemQuickDialog";
+import { SortableCourseCard } from "@/components/studio/curriculum/SortableRows";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { ApiError } from "@/lib/api-client";
+import { canUserManageCourse } from "@/lib/progression";
+import type {
+  CategoryRecord,
+  ContentStatus,
+  CourseRecord,
+  ItemRecord,
+  LessonRecord,
+} from "@/types";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import type { ArticleRecord, CategoryRecord } from "@/types";
-import {
-  FileEdit,
-  Folder,
-  FolderPlus,
-  GripVertical,
-  Lock,
-  LockOpen,
-  Pencil,
+  AlertCircle,
+  BookOpen,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  FolderTree,
+  Loader2,
   Plus,
-  Trash2,
+  Tag,
 } from "lucide-react";
 
-interface SortableArticleRowProps {
-  article: ArticleRecord;
-  index: number;
-  onToggleSequential: (article: ArticleRecord) => void;
-}
-
-function SortableArticleRow({
-  article,
-  index,
-  onToggleSequential,
-}: SortableArticleRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: article.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const quizCount = article.quizQuestions?.length || 0;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors ${
-        isDragging ? "opacity-60 ring-2 ring-primary z-10" : "hover:bg-muted/30"
-      }`}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-0.5"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="size-4" />
-        </button>
-
-        <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-xs font-mono font-medium text-muted-foreground tabular-nums">
-          {index + 1}
-        </span>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/studio/articles/${article.id}`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate cursor-pointer"
-            >
-              {article.title}
-            </Link>
-            {!article.isPublished && (
-              <Badge
-                variant="outline"
-                className="text-xs border-amber-500/30 text-amber-600 dark:text-amber-400"
-              >
-                Draft
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground font-mono truncate">
-            /docs/{article.slug}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {quizCount > 0 && article.passScorePercent > 0 && (
-          <Badge variant="secondary" className="font-mono text-xs hidden sm:inline-flex">
-            Quiz ≥{article.passScorePercent}%
-          </Badge>
-        )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant={article.requirePrevious ? "secondary" : "ghost"}
-              size="xs"
-              onClick={() => onToggleSequential(article)}
-              className={`gap-1 text-xs cursor-pointer ${
-                article.requirePrevious
-                  ? "text-primary bg-primary/10 hover:bg-primary/15"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {article.requirePrevious ? (
-                <>
-                  <Lock className="size-3.5" />
-                  <span className="hidden md:inline">Sequential</span>
-                </>
-              ) : (
-                <>
-                  <LockOpen className="size-3.5" />
-                  <span className="hidden md:inline">Unlocked</span>
-                </>
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {article.requirePrevious
-              ? "Sequential lock enabled: requires completing prior lesson. Click to unlock."
-              : "Unlocked: members can read anytime. Click to enable sequential lock."}
-          </TooltipContent>
-        </Tooltip>
-
-        <Button
-          asChild
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-foreground cursor-pointer"
-        >
-          <Link href={`/studio/articles/${article.id}`} title="Edit article">
-            <FileEdit className="size-3.5" />
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function StudioCurriculumPage() {
+  const t = useTranslations("studio");
+  const tCur = useTranslations("studio.curriculum");
+  const tCommon = useTranslations("common");
+
   const {
+    user,
+    dataLoading,
+    dbError,
     categories,
-    articles,
+    courses,
+    lessons,
+    items,
+    departments,
     createCategory,
     updateCategory,
     deleteCategory,
-    batchUpdateCurriculum,
+    saveCourse,
+    deleteCourse,
+    updateCourseStatus,
+    saveLesson,
+    deleteLesson,
+    saveItem,
+    deleteItem,
+    duplicateItem,
+    updateItemStatus,
+    reorderChildren,
     showToast,
   } = useHandbook();
 
-  // Dialog state for creating or editing a category / subcategory
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(
-    null
-  );
-  const [catName, setCatName] = useState("");
-  const [catDescription, setCatDescription] = useState("");
-  const [catParentId, setCatParentId] = useState<string>("ROOT");
-  const [submitting, setSubmitting] = useState(false);
+  const isAdmin = user?.role === "ADMIN";
 
-  // Delete category confirm state
-  const [deleteTargetCat, setDeleteTargetCat] = useState<CategoryRecord | null>(
+  const [sessionCreatedCourseIds, setSessionCreatedCourseIds] = useState<
+    string[]
+  >([]);
+
+  const [activeCategoryFilter, setActiveCategoryFilter] =
+    useState<string>("ALL");
+
+  // Mặc định thu gọn mọi Course và Lesson
+  const [expandedCourseIds, setExpandedCourseIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [expandedLessonIds, setExpandedLessonIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Trạng thái các Dialog
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
+
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<CourseRecord | null>(null);
+
+  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
+  const [lessonDialogCourse, setLessonDialogCourse] =
+    useState<CourseRecord | null>(null);
+  const [editingLesson, setEditingLesson] = useState<LessonRecord | null>(null);
+
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemDialogLesson, setItemDialogLesson] =
+    useState<LessonRecord | null>(null);
+  const [itemDialogCourseTitle, setItemDialogCourseTitle] = useState("");
+
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [movingItem, setMovingItem] = useState<ItemRecord | null>(null);
+
+  const [confirmCourseDelete, setConfirmCourseDelete] = useState<{
+    course: CourseRecord;
+    lessonCount: number;
+    itemCount: number;
+  } | null>(null);
+
+  const [confirmLessonDelete, setConfirmLessonDelete] = useState<{
+    lesson: LessonRecord;
+    itemCount: number;
+  } | null>(null);
+
+  const [deleteTargetItem, setDeleteTargetItem] = useState<ItemRecord | null>(
     null
   );
 
@@ -221,434 +138,752 @@ export default function StudioCurriculumPage() {
     })
   );
 
-  const rootCategories = useMemo(
+  const manageableCourses = useMemo(
     () =>
-      categories
-        .filter((c) => c.depth === 1 || !c.parentId)
+      courses
+        .filter(
+          (c) =>
+            isAdmin ||
+            canUserManageCourse(user, c.id) ||
+            sessionCreatedCourseIds.includes(c.id)
+        )
         .sort((a, b) => a.orderIndex - b.orderIndex),
-    [categories]
+    [courses, isAdmin, user, sessionCreatedCourseIds]
   );
 
-  const getSubcategories = (parentId: string) =>
-    categories
-      .filter((c) => c.parentId === parentId)
-      .sort((a, b) => a.orderIndex - b.orderIndex);
+  const visibleCourses = useMemo(() => {
+    if (activeCategoryFilter === "ALL") return manageableCourses;
+    return manageableCourses.filter((c) =>
+      (c.categoryIds || []).includes(activeCategoryFilter)
+    );
+  }, [manageableCourses, activeCategoryFilter]);
 
-  const getCategoryArticles = (categoryId: string) =>
-    articles
-      .filter((a) => a.categoryId === categoryId)
-      .sort((a, b) => a.orderIndex - b.orderIndex);
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, CategoryRecord>();
+    for (const c of categories) map.set(c.id, c);
+    return map;
+  }, [categories]);
 
-  const openCreateDialog = (parentId?: string) => {
-    setEditingCategory(null);
-    setCatName("");
-    setCatDescription("");
-    setCatParentId(parentId || "ROOT");
-    setDialogOpen(true);
-  };
-
-  const openEditDialog = (cat: CategoryRecord) => {
-    setEditingCategory(cat);
-    setCatName(cat.name);
-    setCatDescription(cat.description || "");
-    setCatParentId(cat.parentId || "ROOT");
-    setDialogOpen(true);
-  };
-
-  const handleSaveCategory = async () => {
-    if (!catName.trim()) {
-      showToast("Please enter a category name.", "error");
-      return;
+  const lessonsByCourse = useMemo(() => {
+    const map = new Map<string, LessonRecord[]>();
+    const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+    for (const l of sorted) {
+      const list = map.get(l.courseId) || [];
+      list.push(l);
+      map.set(l.courseId, list);
     }
+    return map;
+  }, [lessons]);
 
-    setSubmitting(true);
-    try {
-      const parentIdVal = catParentId === "ROOT" ? "" : catParentId;
-      if (editingCategory) {
-        await updateCategory(editingCategory.id, {
-          name: catName.trim(),
-          description: catDescription.trim(),
-          parentId: parentIdVal,
-        });
+  const itemsByLesson = useMemo(() => {
+    const map = new Map<string, ItemRecord[]>();
+    const sorted = [...items].sort((a, b) => a.orderIndex - b.orderIndex);
+    for (const i of sorted) {
+      const list = map.get(i.lessonId) || [];
+      list.push(i);
+      map.set(i.lessonId, list);
+    }
+    return map;
+  }, [items]);
+
+  const toggleCourseExpand = (courseId: string) => {
+    setExpandedCourseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        next.delete(courseId);
       } else {
-        await createCategory({
-          name: catName.trim(),
-          description: catDescription.trim(),
-          parentId: parentIdVal || null,
-        });
+        next.add(courseId);
       }
-      setDialogOpen(false);
+      return next;
+    });
+  };
+
+  const toggleLessonExpand = (lessonId: string) => {
+    setExpandedLessonIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    setExpandedCourseIds(new Set(manageableCourses.map((c) => c.id)));
+    setExpandedLessonIds(new Set(lessons.map((l) => l.id)));
+  };
+
+  const collapseAll = () => {
+    setExpandedCourseIds(new Set());
+    setExpandedLessonIds(new Set());
+  };
+
+  /* ───────────────────────── Thao tác sắp xếp (Reorder) ───────────────────────── */
+
+  const handleReorderCourses = async (reorderedVisibleIds: string[]) => {
+    const allSorted = [...courses].sort((a, b) => a.orderIndex - b.orderIndex);
+    const visibleSet = new Set(reorderedVisibleIds);
+    let pointer = 0;
+    const mergedIds = allSorted.map((c) =>
+      visibleSet.has(c.id) ? reorderedVisibleIds[pointer++] : c.id
+    );
+
+    try {
+      await reorderChildren("course", null, mergedIds);
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Failed to save category.",
+        err instanceof Error ? err.message : tCur("toasts.reorderCourseFailed"),
         "error"
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const handleToggleSequential = async (article: ArticleRecord) => {
-    await batchUpdateCurriculum([
-      {
-        id: article.id,
-        categoryId: article.categoryId,
-        orderIndex: article.orderIndex,
-        requirePrevious: !article.requirePrevious,
-      },
-    ]);
-  };
-
-  const handleDragEndForCategory = async (
-    categoryId: string,
-    event: DragEndEvent
-  ) => {
+  const handleDragEndCourses = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const list = getCategoryArticles(categoryId);
-    const oldIndex = list.findIndex((a) => a.id === active.id);
-    const newIndex = list.findIndex((a) => a.id === over.id);
+    const oldIndex = visibleCourses.findIndex((c) => c.id === active.id);
+    const newIndex = visibleCourses.findIndex((c) => c.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(list, oldIndex, newIndex);
-    const updates = reordered.map((art, idx) => ({
-      id: art.id,
-      categoryId,
-      orderIndex: idx + 1,
-    }));
-
-    await batchUpdateCurriculum(updates);
+    const reordered = arrayMove(visibleCourses, oldIndex, newIndex);
+    void handleReorderCourses(reordered.map((c) => c.id));
   };
 
+  const handleMoveCourseAt = (fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= visibleCourses.length) return;
+    const reordered = arrayMove(visibleCourses, fromIdx, toIdx);
+    void handleReorderCourses(reordered.map((c) => c.id));
+  };
+
+  const handleReorderLessons = async (
+    courseId: string,
+    orderedIds: string[]
+  ) => {
+    try {
+      await reorderChildren("lesson", courseId, orderedIds);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.reorderLessonFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleReorderItems = async (lessonId: string, orderedIds: string[]) => {
+    try {
+      await reorderChildren("item", lessonId, orderedIds);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.reorderItemFailed"),
+        "error"
+      );
+    }
+  };
+
+  /* ───────────────────────── Thao tác Khóa học ───────────────────────── */
+
+  const openCreateCourse = () => {
+    setEditingCourse(null);
+    setCourseDialogOpen(true);
+  };
+
+  const openEditCourse = (course: CourseRecord) => {
+    setEditingCourse(course);
+    setCourseDialogOpen(true);
+  };
+
+  const handleToggleCourseSequential = async (
+    course: CourseRecord,
+    nextVal: boolean
+  ) => {
+    try {
+      await saveCourse({
+        id: course.id,
+        title: course.title,
+        sequential: nextVal,
+      });
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateCourseFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleChangeCourseStatus = async (
+    course: CourseRecord,
+    status: ContentStatus
+  ) => {
+    try {
+      await updateCourseStatus(course.id, status);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateCourseFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleRequestDeleteCourse = async (course: CourseRecord) => {
+    try {
+      await deleteCourse(course.id, false);
+    } catch (err) {
+      if (err instanceof ApiError && err.requireConfirmation) {
+        setConfirmCourseDelete({
+          course,
+          lessonCount: Number(err.data?.lessonCount ?? 0),
+          itemCount: Number(err.data?.itemCount ?? 0),
+        });
+        return;
+      }
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.deleteCourseFailed"),
+        "error"
+      );
+    }
+  };
+
+  /* ───────────────────────── Thao tác Bài học ───────────────────────── */
+
+  const openCreateLesson = (course: CourseRecord) => {
+    setLessonDialogCourse(course);
+    setEditingLesson(null);
+    setLessonDialogOpen(true);
+  };
+
+  const openEditLesson = (lesson: LessonRecord, course: CourseRecord) => {
+    setLessonDialogCourse(course);
+    setEditingLesson(lesson);
+    setLessonDialogOpen(true);
+  };
+
+  const handleChangeLessonSequential = async (
+    lesson: LessonRecord,
+    nextVal: boolean | null
+  ) => {
+    try {
+      await saveLesson({
+        id: lesson.id,
+        courseId: lesson.courseId,
+        title: lesson.title,
+        requirePrevious: nextVal,
+      });
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateLessonFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleToggleLessonPublished = async (lesson: LessonRecord) => {
+    try {
+      await saveLesson({
+        id: lesson.id,
+        courseId: lesson.courseId,
+        title: lesson.title,
+        isPublished: !lesson.isPublished,
+      });
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateLessonFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleRequestDeleteLesson = async (lesson: LessonRecord) => {
+    try {
+      await deleteLesson(lesson.id, false);
+    } catch (err) {
+      if (err instanceof ApiError && err.requireConfirmation) {
+        setConfirmLessonDelete({
+          lesson,
+          itemCount: Number(err.data?.itemCount ?? 0),
+        });
+        return;
+      }
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.deleteLessonFailed"),
+        "error"
+      );
+    }
+  };
+
+  /* ───────────────────────── Thao tác Chương / Bài tập ───────────────────────── */
+
+  const openCreateItem = (lesson: LessonRecord, course: CourseRecord) => {
+    setItemDialogLesson(lesson);
+    setItemDialogCourseTitle(course.title);
+    setItemDialogOpen(true);
+  };
+
+  const handleChangeItemSequential = async (
+    item: ItemRecord,
+    nextVal: boolean | null
+  ) => {
+    try {
+      await saveItem({
+        id: item.id,
+        lessonId: item.lessonId,
+        title: item.title,
+        requirePrevious: nextVal,
+      });
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateItemFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleChangeItemStatus = async (
+    item: ItemRecord,
+    status: ContentStatus
+  ) => {
+    try {
+      await updateItemStatus(item.id, status);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.updateItemFailed"),
+        "error"
+      );
+    }
+  };
+
+  const handleDuplicateItem = async (item: ItemRecord) => {
+    try {
+      await duplicateItem(item.id);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : tCur("toasts.duplicateItemFailed"),
+        "error"
+      );
+    }
+  };
+
+  const openMoveItemDialog = (item: ItemRecord) => {
+    setMovingItem(item);
+    setMoveDialogOpen(true);
+  };
+
+  const handleMoveItemToLesson = async (
+    item: ItemRecord,
+    targetLessonId: string
+  ) => {
+    await saveItem({
+      id: item.id,
+      lessonId: targetLessonId,
+      title: item.title,
+    });
+    const targetLesson = lessons.find((l) => l.id === targetLessonId);
+    if (targetLesson) {
+      setExpandedCourseIds((prev) => {
+        const next = new Set(prev);
+        next.add(targetLesson.courseId);
+        return next;
+      });
+    }
+    setExpandedLessonIds((prev) => {
+      const next = new Set(prev);
+      next.add(targetLessonId);
+      return next;
+    });
+  };
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.orderIndex - b.orderIndex),
+    [categories]
+  );
+
   return (
-    <AdminLayout breadcrumbs={[{ label: "Curriculum" }]}>
+    <AdminLayout breadcrumbs={[{ label: t("nav.curriculum") }]}>
       <div className="space-y-6">
         <PageHeader
-          title="Curriculum & Roadmap Organization"
-          description="Create and organize categories (up to 2 tiers), order curriculum trees, and reorder lesson sequences."
+          title={tCur("title")}
+          description={tCur("description")}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={() => openCreateDialog()}
+                onClick={() => setCatManagerOpen(true)}
+                className="cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                <Tag className="size-4 mr-1.5" />
+                <span>
+                  {tCur("categoriesButton", { count: categories.length })}
+                </span>
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={openCreateCourse}
                 className="cursor-pointer"
               >
-                <FolderPlus className="size-4 mr-1.5" />
-                <span>Add Category</span>
-              </Button>
-              <Button asChild size="sm" className="cursor-pointer">
-                <Link href="/studio/articles/new">
-                  <Plus className="size-4 mr-1.5" />
-                  <span>New Article</span>
-                </Link>
+                <Plus className="size-4 mr-1.5" />
+                <span>{tCur("createCourseButton")}</span>
               </Button>
             </div>
           }
         />
 
-        {/* Curriculum Tree */}
-        <div className="space-y-5">
-          {rootCategories.map((rootCat) => {
-            const subCats = getSubcategories(rootCat.id);
-            const directArticles = getCategoryArticles(rootCat.id);
-
-            return (
-              <div
-                key={rootCat.id}
-                className="rounded-xl border border-border bg-card overflow-hidden"
+        {/* Thanh lọc theo Danh mục & Điều khiển đóng/mở cây */}
+        {manageableCourses.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setActiveCategoryFilter("ALL")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  activeCategoryFilter === "ALL"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {/* Root Category Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3.5">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Folder className="size-4 text-primary shrink-0" />
-                      <h2 className="text-base font-semibold text-foreground truncate">
-                        {rootCat.name}
-                      </h2>
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        {directArticles.length +
-                          subCats.reduce(
-                            (acc, sc) =>
-                              acc + getCategoryArticles(sc.id).length,
-                            0
-                          )}{" "}
-                        lessons
-                      </Badge>
-                    </div>
-                    {rootCat.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {rootCat.description}
-                      </p>
-                    )}
-                  </div>
+                <span>{tCur("allCoursesFilter")}</span>
+                <span className="text-[10px] font-mono opacity-80 tabular-nums">
+                  ({manageableCourses.length})
+                </span>
+              </button>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={() => openCreateDialog(rootCat.id)}
-                      className="cursor-pointer"
-                    >
-                      <FolderPlus className="size-3.5 mr-1" />
-                      <span>Add Subcategory</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => openEditDialog(rootCat)}
-                      className="text-muted-foreground hover:text-foreground cursor-pointer"
-                      title="Edit category"
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setDeleteTargetCat(rootCat)}
-                      className="text-muted-foreground hover:text-destructive cursor-pointer"
-                      title="Delete category"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-4">
-                  {/* Direct Articles under Root Category */}
-                  {directArticles.length > 0 && (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(e) => handleDragEndForCategory(rootCat.id, e)}
-                    >
-                      <SortableContext
-                        items={directArticles.map((a) => a.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-2">
-                          {directArticles.map((art, idx) => (
-                            <SortableArticleRow
-                              key={art.id}
-                              article={art}
-                              index={idx}
-                              onToggleSequential={handleToggleSequential}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-                  )}
-
-                  {/* Subcategories (Child tier groups) */}
-                  {subCats.map((subCat) => {
-                    const subArticles = getCategoryArticles(subCat.id);
-                    return (
-                      <div
-                        key={subCat.id}
-                        className="rounded-lg border border-border bg-muted/15 p-3.5 space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-semibold text-foreground truncate">
-                                {subCat.name}
-                              </h3>
-                              <Badge
-                                variant="outline"
-                                className="font-mono text-xs"
-                              >
-                                {subArticles.length} lessons
-                              </Badge>
-                            </div>
-                            {subCat.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {subCat.description}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => openEditDialog(subCat)}
-                              className="text-muted-foreground hover:text-foreground cursor-pointer"
-                              title="Edit subcategory"
-                            >
-                              <Pencil className="size-3.5" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setDeleteTargetCat(subCat)}
-                              className="text-muted-foreground hover:text-destructive cursor-pointer"
-                              title="Delete subcategory"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {subArticles.length > 0 ? (
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={(e) =>
-                              handleDragEndForCategory(subCat.id, e)
-                            }
-                          >
-                            <SortableContext
-                              items={subArticles.map((a) => a.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              <div className="space-y-2">
-                                {subArticles.map((art, idx) => (
-                                  <SortableArticleRow
-                                    key={art.id}
-                                    article={art}
-                                    index={idx}
-                                    onToggleSequential={handleToggleSequential}
-                                  />
-                                ))}
-                              </div>
-                            </SortableContext>
-                          </DndContext>
-                        ) : (
-                          <p className="text-xs text-muted-foreground py-2">
-                            No lessons in this subcategory yet.
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {directArticles.length === 0 && subCats.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-2">
-                      No lessons or subcategories under this category yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Create / Edit Category Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {editingCategory
-                ? "Edit Category"
-                : catParentId !== "ROOT"
-                ? "Add Subcategory"
-                : "Create New Category"}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              Clear categorization helps members follow the structured learning roadmap.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Parent Category</Label>
-              <Select value={catParentId} onValueChange={setCatParentId}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select parent level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ROOT">
-                    Tier 1 Root Category (Top-level)
-                  </SelectItem>
-                  {rootCategories
-                    .filter((rc) => rc.id !== editingCategory?.id)
-                    .map((rc) => (
-                      <SelectItem key={rc.id} value={rc.id}>
-                        Subcategory under: {rc.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              {sortedCategories.map((cat) => {
+                const active = activeCategoryFilter === cat.id;
+                const count = manageableCourses.filter((c) =>
+                  (c.categoryIds || []).includes(cat.id)
+                ).length;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() =>
+                      setActiveCategoryFilter(active ? "ALL" : cat.id)
+                    }
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/60 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>#{cat.name}</span>
+                    <span className="text-[10px] font-mono opacity-80 tabular-nums">
+                      ({count})
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Category Name</Label>
-              <Input
-                value={catName}
-                onChange={(e) => setCatName(e.target.value)}
-                placeholder="e.g. Technical Department or Event Operations"
-                className="h-9 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Description</Label>
-              <Input
-                value={catDescription}
-                onChange={(e) => setCatDescription(e.target.value)}
-                placeholder="Brief description of curriculum focus..."
-                className="h-9 text-sm"
-              />
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={expandAll}
+                className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ChevronsUpDown className="size-3.5 mr-1" />
+                <span>{tCur("expandAll")}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={collapseAll}
+                className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ChevronsDownUp className="size-3.5 mr-1" />
+                <span>{tCur("collapseAll")}</span>
+              </Button>
             </div>
           </div>
+        )}
 
-          <DialogFooter>
+        {/* Trạng thái lỗi */}
+        {dbError && (
+          <div className="flex items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{dbError}</span>
+          </div>
+        )}
+
+        {/* Trạng thái đang tải */}
+        {dataLoading ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card py-16 text-center gap-2.5">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">
+              {tCommon("actions.loading")}
+            </p>
+          </div>
+        ) : visibleCourses.length === 0 ? (
+          /* Trạng thái trống */
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card py-16 px-4 text-center">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-3">
+              {activeCategoryFilter === "ALL" ? (
+                <FolderTree className="size-5" />
+              ) : (
+                <BookOpen className="size-5" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground max-w-md mb-4">
+              {activeCategoryFilter === "ALL"
+                ? tCur("emptyAll")
+                : tCur("emptyCategory")}
+            </p>
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              onClick={() => setDialogOpen(false)}
+              onClick={
+                activeCategoryFilter === "ALL"
+                  ? openCreateCourse
+                  : () => setActiveCategoryFilter("ALL")
+              }
               className="cursor-pointer"
             >
-              Cancel
+              {activeCategoryFilter === "ALL" ? (
+                <>
+                  <Plus className="size-4 mr-1.5" />
+                  <span>{tCur("createFirstCourse")}</span>
+                </>
+              ) : (
+                <span>{tCur("allCoursesFilter")}</span>
+              )}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={submitting}
-              onClick={handleSaveCategory}
-              className="cursor-pointer"
+          </div>
+        ) : (
+          /* Cây Giáo trình: Course -> Lesson -> Item */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEndCourses}
+          >
+            <SortableContext
+              items={visibleCourses.map((c) => c.id)}
+              strategy={verticalListSortingStrategy}
             >
-              {editingCategory ? "Save Changes" : "Create Category"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <div className="space-y-2.5">
+                {visibleCourses.map((course, idx) => (
+                  <SortableCourseCard
+                    key={course.id}
+                    course={course}
+                    index={idx}
+                    totalCount={visibleCourses.length}
+                    lessons={lessonsByCourse.get(course.id) || []}
+                    itemsByLesson={itemsByLesson}
+                    categoryMap={categoryMap}
+                    expanded={expandedCourseIds.has(course.id)}
+                    expandedLessonIds={expandedLessonIds}
+                    isAdmin={isAdmin}
+                    onToggleExpand={() => toggleCourseExpand(course.id)}
+                    onToggleLessonExpand={toggleLessonExpand}
+                    onMoveUp={() => handleMoveCourseAt(idx, idx - 1)}
+                    onMoveDown={() => handleMoveCourseAt(idx, idx + 1)}
+                    onToggleCourseSequential={handleToggleCourseSequential}
+                    onChangeCourseStatus={handleChangeCourseStatus}
+                    onEditCourse={openEditCourse}
+                    onDeleteCourse={handleRequestDeleteCourse}
+                    onAddLesson={openCreateLesson}
+                    onEditLesson={openEditLesson}
+                    onDeleteLesson={handleRequestDeleteLesson}
+                    onChangeLessonSequential={handleChangeLessonSequential}
+                    onToggleLessonPublished={handleToggleLessonPublished}
+                    onReorderLessons={handleReorderLessons}
+                    onAddItem={openCreateItem}
+                    onReorderItems={handleReorderItems}
+                    onChangeItemSequential={handleChangeItemSequential}
+                    onChangeItemStatus={handleChangeItemStatus}
+                    onDuplicateItem={handleDuplicateItem}
+                    onOpenMoveItem={openMoveItemDialog}
+                    onDeleteItem={(item) => setDeleteTargetItem(item)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
 
-      {/* Delete Category Confirmation */}
-      <ConfirmDialog
-        open={Boolean(deleteTargetCat)}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTargetCat(null);
+      {/* Dialog Quản lý danh mục phẳng */}
+      <CategoryManager
+        open={catManagerOpen}
+        onOpenChange={setCatManagerOpen}
+        categories={categories}
+        courses={courses}
+        isAdmin={isAdmin}
+        onCreate={createCategory}
+        onUpdate={updateCategory}
+        onDelete={deleteCategory}
+        showToast={showToast}
+      />
+
+      {/* Dialog Tạo / Sửa Khóa học */}
+      <CourseDialog
+        open={courseDialogOpen}
+        onOpenChange={setCourseDialogOpen}
+        editingCourse={editingCourse}
+        categories={sortedCategories}
+        departments={departments}
+        isAdmin={isAdmin}
+        onSave={async (input) => {
+          const saved = await saveCourse(input);
+          if (!input.id) {
+            setSessionCreatedCourseIds((prev) =>
+              prev.includes(saved.id) ? prev : [...prev, saved.id]
+            );
+          }
+          return saved;
         }}
-        title="Delete Category"
-        description={`Are you sure you want to delete "${deleteTargetCat?.name}"? Categories can only be deleted when empty.`}
-        confirmLabel="Delete Category"
+        showToast={showToast}
+      />
+
+      {/* Dialog Tạo / Sửa Bài học */}
+      <LessonDialog
+        open={lessonDialogOpen}
+        onOpenChange={setLessonDialogOpen}
+        course={lessonDialogCourse}
+        editingLesson={editingLesson}
+        onSave={async (input) => {
+          const saved = await saveLesson(input);
+          setExpandedCourseIds((prev) => {
+            const next = new Set(prev);
+            next.add(saved.courseId);
+            return next;
+          });
+          return saved;
+        }}
+        showToast={showToast}
+      />
+
+      {/* Dialog Tạo nhanh Chương / Bài tập */}
+      <ItemQuickDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        lesson={itemDialogLesson}
+        courseTitle={itemDialogCourseTitle}
+        onSave={saveItem}
+        showToast={showToast}
+      />
+
+      {/* Dialog Chuyển Chương / Bài tập sang Bài học khác */}
+      <MoveItemDialog
+        open={moveDialogOpen}
+        onOpenChange={setMoveDialogOpen}
+        item={movingItem}
+        courses={manageableCourses}
+        lessons={lessons}
+        onMove={handleMoveItemToLesson}
+        showToast={showToast}
+      />
+
+      {/* ConfirmDialog Xóa Khóa học khi còn nội dung */}
+      <ConfirmDialog
+        open={Boolean(confirmCourseDelete)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmCourseDelete(null);
+        }}
+        title={tCur("confirmDeleteCourse.title")}
+        description={
+          confirmCourseDelete
+            ? tCur("confirmDeleteCourse.description", {
+                title: confirmCourseDelete.course.title,
+                lessons: confirmCourseDelete.lessonCount,
+                items: confirmCourseDelete.itemCount,
+              })
+            : ""
+        }
+        confirmLabel={tCommon("actions.delete")}
+        cancelLabel={tCommon("actions.cancel")}
         destructive
         onConfirm={async () => {
-          if (!deleteTargetCat) return;
+          if (!confirmCourseDelete) return;
           try {
-            await deleteCategory(deleteTargetCat.id);
+            await deleteCourse(confirmCourseDelete.course.id, true);
           } catch (err) {
             showToast(
-              err instanceof Error ? err.message : "Failed to delete category.",
+              err instanceof Error
+                ? err.message
+                : tCur("toasts.deleteCourseFailed"),
               "error"
             );
           } finally {
-            setDeleteTargetCat(null);
+            setConfirmCourseDelete(null);
+          }
+        }}
+      />
+
+      {/* ConfirmDialog Xóa Bài học khi còn chương/bài tập */}
+      <ConfirmDialog
+        open={Boolean(confirmLessonDelete)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmLessonDelete(null);
+        }}
+        title={tCur("confirmDeleteLesson.title")}
+        description={
+          confirmLessonDelete
+            ? tCur("confirmDeleteLesson.description", {
+                title: confirmLessonDelete.lesson.title,
+                items: confirmLessonDelete.itemCount,
+              })
+            : ""
+        }
+        confirmLabel={tCommon("actions.delete")}
+        cancelLabel={tCommon("actions.cancel")}
+        destructive
+        onConfirm={async () => {
+          if (!confirmLessonDelete) return;
+          try {
+            await deleteLesson(confirmLessonDelete.lesson.id, true);
+          } catch (err) {
+            showToast(
+              err instanceof Error
+                ? err.message
+                : tCur("toasts.deleteLessonFailed"),
+              "error"
+            );
+          } finally {
+            setConfirmLessonDelete(null);
+          }
+        }}
+      />
+
+      {/* ConfirmDialog Xóa Chương / Bài tập */}
+      <ConfirmDialog
+        open={Boolean(deleteTargetItem)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetItem(null);
+        }}
+        title={tCur("confirmDeleteItem.title")}
+        description={
+          deleteTargetItem
+            ? tCur("confirmDeleteItem.description", {
+                title: deleteTargetItem.title,
+              })
+            : ""
+        }
+        confirmLabel={tCommon("actions.delete")}
+        cancelLabel={tCommon("actions.cancel")}
+        destructive
+        onConfirm={async () => {
+          if (!deleteTargetItem) return;
+          try {
+            await deleteItem(deleteTargetItem.id);
+          } catch (err) {
+            showToast(
+              err instanceof Error
+                ? err.message
+                : tCur("toasts.deleteItemFailed"),
+              "error"
+            );
+          } finally {
+            setDeleteTargetItem(null);
           }
         }}
       />
     </AdminLayout>
   );
 }
-

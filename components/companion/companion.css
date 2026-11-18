@@ -1,0 +1,392 @@
+/* Fox mascot art & original NPC logic © 2026 MPClub (MIT) — ported to React. */
+
+.mpc-fox-root {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 40;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mpc-fox-figure {
+  position: relative;
+}
+
+.mpc-fox-body {
+  display: block;
+  width: 140px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.32));
+  animation: mpcFoxBob 3.2s ease-in-out infinite;
+  transition: width 0.25s ease;
+}
+
+.mpc-fox-body:focus-visible {
+  outline: 2px solid #ff7a1a;
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+.mpc-fox-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* --- Bringing the art to life (overlays positioned in % of the 400x461 art) --- */
+.mpc-fox-art {
+  position: relative;
+  display: block;
+  transform-origin: 50% 100%;
+  animation: mpcFoxBreathe 3.6s ease-in-out infinite;
+}
+
+.mpc-fox-body:active .mpc-fox-art {
+  animation: none;
+  transform: scale(1.05, 0.93);
+  transition: transform 0.08s;
+}
+
+/* Eye and lens boxes per pose, in % of the 400x461 art */
+.mpc-fox-lid-l  { left: 27.5%;  top: 44.3%; width: 5%;   height: 7%; }
+.mpc-fox-lid-r  { left: 48.3%;  top: 43.8%; width: 5.4%; height: 5.2%; }
+.mpc-fox-lens-l { left: 25.75%; top: 42.7%; width: 15%;  height: 12.1%; }
+.mpc-fox-lens-r { left: 45.75%; top: 39.7%; width: 15%;  height: 12.8%; }
+
+.mpc-fox-root[data-pose="talk"] .mpc-fox-lid-l  { left: 32.8%;  top: 46%;    width: 5.6%; height: 7%; }
+.mpc-fox-root[data-pose="talk"] .mpc-fox-lid-r  { left: 49%;    top: 43.9%;  width: 5.6%; height: 6.2%; }
+.mpc-fox-root[data-pose="talk"] .mpc-fox-lens-l { left: 26.25%; top: 42.95%; width: 15%;  height: 13.4%; }
+.mpc-fox-root[data-pose="talk"] .mpc-fox-lens-r { left: 46.75%; top: 39.7%;  width: 15%;  height: 13.4%; }
+
+.mpc-fox-lid,
+.mpc-fox-lens {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Eyelid: fur-coloured, drops from the top with a dark lash line */
+.mpc-fox-lid {
+  border-radius: 50% 50% 45% 45%;
+  background: linear-gradient(180deg, #f8682e 0%, #ec5a25 80%);
+  border-bottom: 2px solid #3a1a0c;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  animation: mpcFoxBlink 4.8s infinite;
+}
+
+/* Glint: a white streak sweeping across each lens now and then */
+.mpc-fox-lens {
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.mpc-fox-lens::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -60%;
+  width: 35%;
+  height: 140%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: rotate(25deg) translateX(0);
+  animation: mpcFoxGlint 7s ease-in-out infinite;
+}
+
+.mpc-fox-lens-r::after {
+  animation-delay: 0.12s;
+}
+
+/* Little hop when the fox talks */
+.mpc-fox-root.mpc-fox-waving .mpc-fox-body {
+  animation: mpcFoxHop 0.45s ease-out, mpcFoxBob 3.2s ease-in-out 0.45s infinite;
+}
+
+/* Thought bubble: sits where the cloud was in the art, growing up and to the left */
+.mpc-fox-bubble {
+  position: absolute;
+  right: 67%;
+  bottom: 72%;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 175px;
+  max-width: 280px;
+  padding: 12px 32px 10px 14px;
+  border: 2px solid #1a1a1a;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #111111;
+  filter: drop-shadow(2px 3px 6px rgba(0, 0, 0, 0.25));
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  pointer-events: auto;
+  transform-origin: 85% 100%;
+  animation: mpcFoxPop 0.2s ease-out;
+}
+
+.mpc-fox-text-wrap {
+  display: grid;
+  margin: 0;
+}
+
+.mpc-fox-text-sizer {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mpc-fox-text {
+  grid-area: 1 / 1;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.mpc-fox-bubble-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  color: #666666;
+  cursor: pointer;
+}
+
+.mpc-fox-bubble-close:hover,
+.mpc-fox-bubble-close:focus-visible {
+  color: #000000;
+  background: rgba(0, 0, 0, 0.06);
+  outline: none;
+}
+
+.mpc-fox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.mpc-fox-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #666666;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.mpc-fox-btn:hover,
+.mpc-fox-btn:focus-visible {
+  color: #111111;
+  outline: none;
+}
+
+.mpc-fox-btn-tip {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #d95b00;
+  cursor: pointer;
+}
+
+.mpc-fox-btn-tip:hover,
+.mpc-fox-btn-tip:focus-visible {
+  color: #a84300;
+  text-decoration: underline;
+  outline: none;
+}
+
+/* Collapsed state: a small tab at the right edge to call the fox back */
+.mpc-fox-peek {
+  position: fixed;
+  right: 0;
+  bottom: 1.25rem;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 4px 4px 4px 8px;
+  border: 1.5px solid rgba(26, 26, 26, 0.55);
+  border-right: none;
+  border-radius: 22px 0 0 22px;
+  background: #ff7a32;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateX(4px);
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.mpc-fox-peek:hover,
+.mpc-fox-peek:focus-visible {
+  transform: translateX(0);
+  background: #ff8c47;
+  outline: 2px solid #ff7a1a;
+  outline-offset: 2px;
+}
+
+.mpc-fox-peek-img {
+  display: block;
+  width: 26px;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* Visually hidden region for screen readers */
+.mpc-fox-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes mpcFoxBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes mpcFoxBreathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.012, 1.022); }
+}
+
+@keyframes mpcFoxBlink {
+  0%, 92%, 100% { transform: scaleY(0); }
+  95% { transform: scaleY(1); }
+}
+
+@keyframes mpcFoxGlint {
+  0%, 80% { transform: rotate(25deg) translateX(0); }
+  92%, 100% { transform: rotate(25deg) translateX(560%); }
+}
+
+@keyframes mpcFoxHop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+}
+
+@keyframes mpcFoxPop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mpc-fox-body,
+  .mpc-fox-root.mpc-fox-waving .mpc-fox-body,
+  .mpc-fox-bubble,
+  .mpc-fox-art,
+  .mpc-fox-lid,
+  .mpc-fox-lens::after,
+  .mpc-fox-peek {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Mobile (~96px fox) */
+@media (max-width: 768px) {
+  .mpc-fox-root {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .mpc-fox-body {
+    width: 96px;
+  }
+
+  .mpc-fox-bubble {
+    min-width: 155px;
+    max-width: min(250px, calc(100vw - 88px));
+    padding: 10px 28px 9px 12px;
+    font-size: 12.5px;
+  }
+
+  .mpc-fox-peek {
+    bottom: 1rem;
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/* Short viewports (landscape phones): place bubble beside the fox */
+@media (max-height: 500px) {
+  .mpc-fox-body {
+    width: 96px;
+  }
+
+  .mpc-fox-bubble {
+    right: calc(100% + 14px);
+    bottom: 6px;
+    max-width: min(320px, calc(100vw - 140px));
+    transform-origin: 100% 100%;
+  }
+
+  .mpc-fox-bubble::before,
+  .mpc-fox-bubble::after {
+    content: "";
+    position: absolute;
+    border: 2px solid #1a1a1a;
+    border-radius: 50%;
+    background: #ffffff;
+  }
+
+  .mpc-fox-bubble::before {
+    right: -13px;
+    top: 12px;
+    width: 7px;
+    height: 7px;
+  }
+
+  .mpc-fox-bubble::after {
+    right: -22px;
+    top: 4px;
+    width: 4px;
+    height: 4px;
+  }
+}
+
+@media print {
+  .mpc-fox-root,
+  .mpc-fox-peek,
+  .mpc-fox-sr {
+    display: none !important;
+  }
+}

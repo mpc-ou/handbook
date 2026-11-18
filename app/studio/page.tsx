@@ -2,105 +2,105 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
 import { useHandbook } from "@/context/HandbookContext";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { ArticleCover } from "@/components/ui/ArticleCover";
+import { CountUp } from "@/components/ui/animated-progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { ItemType } from "@/types";
 import {
-  AlertCircle,
   ArrowRight,
+  BookOpen,
+  ClipboardCheck,
   FolderTree,
-  Plus,
+  HelpCircle,
+  Loader2,
 } from "lucide-react";
 
+function getItemTypeIcon(type: ItemType) {
+  switch (type) {
+    case "QUIZ":
+      return HelpCircle;
+    case "ASSIGNMENT":
+      return ClipboardCheck;
+    default:
+      return BookOpen;
+  }
+}
+
 export default function StudioOverviewPage() {
-  const { articles, categories, allUsers, allProgress, quizAttempts } =
-    useHandbook();
+  const t = useTranslations("studio");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
 
-  const publishedArticles = useMemo(
-    () => articles.filter((a) => a.isPublished),
-    [articles]
+  const {
+    courses,
+    lessons,
+    items,
+    categories,
+    allUsers,
+    quizAttempts,
+    dataLoading,
+    dbError,
+  } = useHandbook();
+
+  const publishedCourses = useMemo(
+    () => courses.filter((c) => c.status === "PUBLISHED"),
+    [courses]
   );
-  const draftArticles = useMemo(
-    () => articles.filter((a) => !a.isPublished),
-    [articles]
+
+  const publishedLessons = useMemo(
+    () => lessons.filter((l) => l.isPublished),
+    [lessons]
   );
 
-  // Average completion rate across all members
-  const { avgCompletion, completedMembersCount, notStartedMembers } =
-    useMemo(() => {
-      if (allUsers.length === 0 || publishedArticles.length === 0) {
-        return {
-          avgCompletion: 0,
-          completedMembersCount: 0,
-          notStartedMembers: [] as typeof allUsers,
-        };
-      }
-      const pubIds = new Set(publishedArticles.map((a) => a.id));
-      let totalPct = 0;
-      let fullDone = 0;
-      const notStarted: typeof allUsers = [];
+  const publishedItems = useMemo(
+    () => items.filter((i) => i.status === "PUBLISHED"),
+    [items]
+  );
+  const pendingItems = useMemo(
+    () => items.filter((i) => i.status === "PENDING_REVIEW"),
+    [items]
+  );
+  const draftItems = useMemo(
+    () => items.filter((i) => i.status === "DRAFT"),
+    [items]
+  );
 
-      for (const u of allUsers) {
-        const uProg = allProgress.filter(
-          (p) => p.userId === u.uid && pubIds.has(p.articleId)
-        );
-        const doneCount = uProg.filter((p) => p.isCompleted).length;
-        const pct = Math.round((doneCount / publishedArticles.length) * 100);
-        totalPct += pct;
-        if (doneCount >= publishedArticles.length) fullDone++;
-        if (uProg.length === 0) notStarted.push(u);
-      }
-
-      return {
-        avgCompletion: Math.round(totalPct / allUsers.length),
-        completedMembersCount: fullDone,
-        notStartedMembers: notStarted,
-      };
-    }, [allUsers, allProgress, publishedArticles]);
-
-  const quizPassRate = useMemo(() => {
-    if (quizAttempts.length === 0) return 100;
-    const passed = quizAttempts.filter((a) => a.isPassed).length;
-    return Math.round((passed / quizAttempts.length) * 100);
-  }, [quizAttempts]);
-
-  const failedAttempts = useMemo(
-    () => quizAttempts.filter((a) => !a.isPassed),
+  const pendingAttempts = useMemo(
+    () => quizAttempts.filter((a) => a.status === "PENDING_REVIEW"),
     [quizAttempts]
   );
 
-  const recentArticles = useMemo(
+  const totalPendingReview = pendingItems.length + pendingAttempts.length;
+
+  const recentItems = useMemo(
     () =>
-      [...articles]
+      [...items]
         .sort(
           (a, b) =>
             new Date(b.updatedAt || 0).getTime() -
             new Date(a.updatedAt || 0).getTime()
         )
         .slice(0, 5),
-    [articles]
+    [items]
   );
 
-  const recentAttempts = useMemo(
-    () =>
-      [...quizAttempts]
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt || 0).getTime() -
-            new Date(a.createdAt || 0).getTime()
-        )
-        .slice(0, 6),
-    [quizAttempts]
-  );
-
-  const categoryMap = useMemo(() => {
+  const courseMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of categories) map.set(c.id, c.name);
+    for (const c of courses) map.set(c.id, c.title);
     return map;
-  }, [categories]);
+  }, [courses]);
+
+  const lessonMap = useMemo(() => {
+    const map = new Map<string, { title: string; courseId: string }>();
+    for (const l of lessons) {
+      map.set(l.id, { title: l.title, courseId: l.courseId });
+    }
+    return map;
+  }, [lessons]);
 
   const userMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -108,283 +108,303 @@ export default function StudioOverviewPage() {
     return map;
   }, [allUsers]);
 
-  const articleTitleMap = useMemo(() => {
+  const itemTitleMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const a of articles) map.set(a.id, a.title);
+    for (const i of items) map.set(i.id, i.title);
     return map;
-  }, [articles]);
+  }, [items]);
+
+  const formatDate = (iso?: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return format.dateTime(d, { dateStyle: "medium", timeStyle: "short" });
+  };
 
   return (
-    <AdminLayout breadcrumbs={[{ label: "Overview" }]}>
+    <AdminLayout breadcrumbs={[{ label: t("nav.overview") }]}>
       <div className="space-y-8">
         <PageHeader
-          title="Operations Overview"
-          description="Track handbook documentation status, member reading progress, and triage action items."
+          title={t("dashboard.title")}
+          description={t("dashboard.description")}
           actions={
-            <div className="flex items-center gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-              >
-                <Link href="/studio/curriculum">
-                  <FolderTree className="size-4 mr-1.5" />
-                  <span>Curriculum</span>
-                </Link>
-              </Button>
-              <Button asChild size="sm" className="cursor-pointer">
-                <Link href="/studio/articles/new">
-                  <Plus className="size-4 mr-1.5" />
-                  <span>New Article</span>
-                </Link>
-              </Button>
-            </div>
+            <Button asChild size="sm" className="cursor-pointer">
+              <Link href="/studio/curriculum">
+                <FolderTree className="size-4 mr-1.5" />
+                <span>{t("dashboard.openCurriculum")}</span>
+              </Link>
+            </Button>
           }
         />
 
-        {/* Typographic Stat Strip (No decorative icon circles) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border rounded-xl border border-border bg-card">
-          <div className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Published Articles
-            </p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
-              {publishedArticles.length}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {draftArticles.length > 0
-                ? `${draftArticles.length} drafts in progress`
-                : `Across ${categories.length} categories`}
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Active Members
-            </p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
-              {allUsers.length}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {completedMembersCount} members fully completed (100%)
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Avg Completion Rate
-            </p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
-              {avgCompletion}%
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across {publishedArticles.length} official curriculum lessons
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Quiz Pass Rate
-            </p>
-            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
-              {quizPassRate}%
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {quizAttempts.length} club-wide submissions
-            </p>
-          </div>
-        </div>
-
-        {/* Actionable Triage Section ("Items Requiring Attention") */}
-        {(draftArticles.length > 0 ||
-          notStartedMembers.length > 0 ||
-          failedAttempts.length > 0) && (
-          <div className="rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="size-4 text-primary shrink-0" />
-              <h2 className="text-base font-semibold text-foreground">
-                Items Requiring Attention
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {draftArticles.length} draft articles
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {draftArticles.length > 0
-                      ? "Not yet published for members"
-                      : "All articles published"}
-                  </p>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="xs"
-                  className="shrink-0 cursor-pointer"
-                >
-                  <Link href="/studio/articles">Review</Link>
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {notStartedMembers.length} members not started
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    Haven&apos;t finished introductory lesson
-                  </p>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="xs"
-                  className="shrink-0 cursor-pointer"
-                >
-                  <Link href="/studio/members">View list</Link>
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {failedAttempts.length} failed quiz attempts
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    May need review on lesson material
-                  </p>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="xs"
-                  className="shrink-0 cursor-pointer"
-                >
-                  <Link href="/studio/quizzes">View details</Link>
-                </Button>
-              </div>
-            </div>
+        {dbError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            {dbError}
           </div>
         )}
 
-        {/* Two-Column Activity & Content View */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column (7 cols): Recently Updated Articles */}
-          <div className="lg:col-span-7 rounded-xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-              <h2 className="text-base font-semibold text-foreground">
-                Recently Updated Articles
-              </h2>
-              <Link
-                href="/studio/articles"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
-              >
-                <span>All articles</span>
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-
-            <div className="divide-y divide-border">
-              {recentArticles.map((art) => (
-                <Link
-                  key={art.id}
-                  href={`/studio/articles/${art.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-16 shrink-0 overflow-hidden rounded border border-border">
-                      <ArticleCover
-                        coverImage={art.coverImage}
-                        title={art.title}
-                        showLabel={false}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {art.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {categoryMap.get(art.categoryId) || "Club Category"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <span
-                      className={`inline-flex items-center gap-1.5 text-xs ${
-                        art.isPublished
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-amber-600 dark:text-amber-400"
-                      }`}
-                    >
-                      <span
-                        className={`size-1.5 rounded-full ${
-                          art.isPublished ? "bg-emerald-500" : "bg-amber-500"
-                        }`}
-                      />
-                      <span>{art.isPublished ? "Published" : "Draft"}</span>
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+        {dataLoading ? (
+          <div className="flex items-center justify-center rounded-lg border border-border bg-card py-16 text-sm text-muted-foreground gap-2">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <span>{tCommon("actions.loading")}</span>
           </div>
-
-          {/* Right Column (5 cols): Recent Quiz Submissions */}
-          <div className="lg:col-span-5 rounded-xl border border-border bg-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-              <h2 className="text-base font-semibold text-foreground">
-                Recent Quiz Submissions
-              </h2>
-              <Link
-                href="/studio/quizzes"
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
-              >
-                <span>View all</span>
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-
-            <div className="divide-y divide-border">
-              {recentAttempts.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No quiz submissions recorded yet.
+        ) : (
+          <>
+            {/* 4 số chính dùng CountUp */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border rounded-lg border border-border bg-card">
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t("dashboard.stats.courses")}
                 </p>
-              ) : (
-                recentAttempts.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {userMap.get(att.userId) || "Club Member"}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {articleTitleMap.get(att.articleId) || att.articleId}
-                      </p>
-                    </div>
+                <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+                  <CountUp value={courses.length} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.stats.coursesSub", {
+                    published: publishedCourses.length,
+                    categories: categories.length,
+                  })}
+                </p>
+              </div>
 
-                    <Badge
-                      variant="outline"
-                      className={`shrink-0 font-mono text-xs ${
-                        att.isPassed
-                          ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-                          : "border-destructive/30 text-destructive"
-                      }`}
-                    >
-                      {att.scorePercent}% · {att.isPassed ? "Passed" : "Failed"}
-                    </Badge>
-                  </div>
-                ))
-              )}
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t("dashboard.stats.lessons")}
+                </p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+                  <CountUp value={lessons.length} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.stats.lessonsSub", {
+                    published: publishedLessons.length,
+                    hidden: lessons.length - publishedLessons.length,
+                  })}
+                </p>
+              </div>
+
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t("dashboard.stats.items")}
+                </p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+                  <CountUp value={items.length} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.stats.itemsSub", {
+                    published: publishedItems.length,
+                    draft: draftItems.length,
+                  })}
+                </p>
+              </div>
+
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t("dashboard.stats.pendingReview")}
+                </p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+                  <CountUp value={totalPendingReview} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("dashboard.stats.pendingReviewSub", {
+                    items: pendingItems.length,
+                    attempts: pendingAttempts.length,
+                  })}
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+
+            {/* Khối Cần xử lý (item PENDING_REVIEW, bài làm chờ chấm) */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">
+                  {t("dashboard.needsAction.title")}
+                </h2>
+              </div>
+
+              {totalPendingReview === 0 ? (
+                <div className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground text-center">
+                  {t("dashboard.needsAction.empty")}
+                </div>
+              ) : (
+                <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
+                  {pendingItems.map((item) => {
+                    const lessonInfo = lessonMap.get(item.lessonId);
+                    const courseTitle = lessonInfo
+                      ? courseMap.get(lessonInfo.courseId) || ""
+                      : "";
+                    const lessonTitle = lessonInfo?.title || "";
+                    const TypeIcon = getItemTypeIcon(item.type);
+
+                    return (
+                      <div
+                        key={`item-${item.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <TypeIcon className="size-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {item.title}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[11px] px-1.5 py-0 h-4 shrink-0 text-muted-foreground"
+                              >
+                                {tCommon("status.PENDING_REVIEW")}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {t("dashboard.needsAction.pendingItemMeta", {
+                                course: courseTitle,
+                                lesson: lessonTitle,
+                                author: item.authorName,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="xs"
+                          className="shrink-0 cursor-pointer"
+                        >
+                          <Link href={`/studio/items/${item.id}`}>
+                            {t("dashboard.needsAction.view")}
+                          </Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+
+                  {pendingAttempts.map((att) => {
+                    const learnerName =
+                      userMap.get(att.userId) ||
+                      att.userFullName ||
+                      att.userEmail ||
+                      "";
+                    const title =
+                      itemTitleMap.get(att.itemId) ||
+                      att.itemTitle ||
+                      att.itemId;
+
+                    return (
+                      <div
+                        key={`attempt-${att.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ClipboardCheck className="size-4 text-primary shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {title}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[11px] px-1.5 py-0 h-4 shrink-0 border-primary/30 text-primary"
+                              >
+                                {t("dashboard.needsAction.pendingAttemptBadge")}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {t("dashboard.needsAction.pendingAttemptMeta", {
+                                learner: learnerName,
+                                date: formatDate(att.createdAt),
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="xs"
+                          className="shrink-0 cursor-pointer"
+                        >
+                          <Link href="/studio/quizzes">
+                            {t("dashboard.needsAction.view")}
+                          </Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Khối Chỉnh sửa gần đây (5 item cập nhật gần nhất) */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">
+                  {t("dashboard.recentEdits.title")}
+                </h2>
+                <Link
+                  href="/studio/items"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <span>{t("dashboard.recentEdits.viewAll")}</span>
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </div>
+
+              <div className="divide-y divide-border rounded-lg border border-border bg-card overflow-hidden">
+                {recentItems.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    {t("dashboard.recentEdits.empty")}
+                  </p>
+                ) : (
+                  recentItems.map((item) => {
+                    const lessonInfo = lessonMap.get(item.lessonId);
+                    const courseTitle = lessonInfo
+                      ? courseMap.get(lessonInfo.courseId) || ""
+                      : "";
+                    const lessonTitle = lessonInfo?.title || "";
+                    const TypeIcon = getItemTypeIcon(item.type);
+
+                    return (
+                      <Link
+                        key={item.id}
+                        href={`/studio/items/${item.id}`}
+                        className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <TypeIcon className="size-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {item.title}
+                              </p>
+                              {item.status !== "PUBLISHED" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] px-1.5 py-0 h-4 shrink-0 text-muted-foreground"
+                                >
+                                  {tCommon(`status.${item.status}`)}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {t("dashboard.recentEdits.itemMeta", {
+                                course: courseTitle,
+                                lesson: lessonTitle,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                          {formatDate(item.updatedAt)}
+                        </span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </AdminLayout>
   );

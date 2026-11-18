@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { TopHeader } from "./TopHeader";
 import { AppSidebar } from "./AppSidebar";
 import { CommandSearch } from "./CommandSearch";
@@ -22,16 +24,29 @@ interface AppShellProps {
 }
 
 /**
- * AppShell: Main layout shell (Header, Sidebar, Command Search Ctrl+K, Mobile Drawer).
- * Sidebar is visible only for authenticated club members; for guests or restricted views,
- * sidebar is completely hidden to protect internal curriculum privacy.
+ * AppShell: Khung giao diện chính (Header, Sidebar khóa học đang xem, CommandSearch, Footer).
+ * Sidebar chỉ hiển thị trên các trang `/learn/[course]/...` (trừ trang chứng nhận hoặc khi ép ẩn),
+ * hỗ trợ cả khách lẫn thành viên đã đăng nhập.
  */
 export function AppShell({ children, hideLeftSidebar = false }: AppShellProps) {
-  const { user } = useHandbook();
+  const pathname = usePathname();
+  const t = useTranslations("nav.sidebar");
+  const { courses } = useHandbook();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // If hideLeftSidebar is explicitly requested OR user is not logged in (guest), hide the sidebar
-  const shouldHideSidebar = hideLeftSidebar || !user;
+  const hasActiveLearnCourse = useMemo(() => {
+    if (!pathname.startsWith("/learn/")) return false;
+    const segments = pathname
+      .replace(/^\/learn\/?/, "")
+      .split("/")
+      .filter(Boolean)
+      .map((s) => decodeURIComponent(s));
+    const [courseSlug, secondSegment] = segments;
+    if (!courseSlug || secondSegment === "certificate") return false;
+    return courses.some((c) => c.slug === courseSlug || c.id === courseSlug);
+  }, [pathname, courses]);
+
+  const shouldHideSidebar = hideLeftSidebar || !hasActiveLearnCourse;
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -44,24 +59,20 @@ export function AppShell({ children, hideLeftSidebar = false }: AppShellProps) {
 
         <CommandSearch />
 
-        {/* Mobile Sidebar Sheet (Shadcn Drawer) - Only active when logged in */}
         {!shouldHideSidebar && (
           <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
             <SheetContent side="left" className="p-0 w-72 bg-sidebar">
-              <SheetHeader className="px-4 py-3 text-left">
-                <SheetTitle>MPC Handbook Navigation</SheetTitle>
-                <SheetDescription>
-                  Training curriculum and club operating guidelines
-                </SheetDescription>
+              <SheetHeader className="sr-only">
+                <SheetTitle>{t("sheetTitle")}</SheetTitle>
+                <SheetDescription>{t("sheetDescription")}</SheetDescription>
               </SheetHeader>
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden h-full">
                 <AppSidebar onNavigate={() => setMobileSidebarOpen(false)} />
               </div>
             </SheetContent>
           </Sheet>
         )}
 
-        {/* Main Content Workspace */}
         <div className="flex flex-1">
           {!shouldHideSidebar && (
             <div className="hidden lg:block shrink-0">

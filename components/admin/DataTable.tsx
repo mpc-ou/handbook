@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import {
   Column,
   ColumnDef,
@@ -77,6 +78,8 @@ export function DataTable<TData, TValue>({
   onRowClick,
   getRowId,
 }: DataTableProps<TData, TValue>) {
+  const t = useTranslations("studio.table");
+  const tCommon = useTranslations("common");
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
@@ -109,6 +112,9 @@ export function DataTable<TData, TValue>({
 
   const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
+  const currentPageSize = table.getState().pagination.pageSize;
+  const rangeFrom = data.length === 0 ? 0 : pageIndex * currentPageSize + 1;
+  const rangeTo = Math.min((pageIndex + 1) * currentPageSize, data.length);
 
   return (
     <div className="space-y-3">
@@ -117,14 +123,14 @@ export function DataTable<TData, TValue>({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3.5 py-2 text-sm">
           <div className="flex items-center gap-2.5">
             <span className="font-medium text-foreground">
-              Selected {selectedRows.length} items
+              {t("selectedCount", { count: selectedRows.length })}
             </span>
             <button
               type="button"
               onClick={clearSelection}
               className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
             >
-              Deselect
+              {t("deselect")}
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -177,7 +183,6 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={(e) => {
-                    // Ignore click if target is a button, input, checkbox, or dropdown trigger
                     const target = e.target as HTMLElement;
                     if (
                       target.closest(
@@ -211,7 +216,7 @@ export function DataTable<TData, TValue>({
                 >
                   <div className="mx-auto max-w-sm space-y-2">
                     <p className="text-sm font-medium text-foreground">
-                      {emptyTitle || emptyState?.title || "No data available"}
+                      {emptyTitle || emptyState?.title || t("emptyTitle")}
                     </p>
                     {(emptyDescription || emptyState?.description) && (
                       <p className="text-xs text-muted-foreground">
@@ -234,25 +239,25 @@ export function DataTable<TData, TValue>({
       {/* Pagination Footer */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground pt-1">
         <div className="flex items-center gap-3">
-          <span>
-            Showing{" "}
-            <strong className="font-mono text-foreground">
-              {data.length === 0 ? 0 : pageIndex * table.getState().pagination.pageSize + 1}–
-              {Math.min((pageIndex + 1) * table.getState().pagination.pageSize, data.length)}
-            </strong>{" "}
-            of <strong className="font-mono text-foreground">{data.length}</strong>
+          <span className="tabular-nums">
+            {t("showing", {
+              from: rangeFrom,
+              to: rangeTo,
+              total: data.length,
+            })}
           </span>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px]">Rows / page:</span>
+            <span className="text-[11px]">{t("rowsPerPage")}</span>
             <select
-              value={table.getState().pagination.pageSize}
+              value={currentPageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
+              aria-label={t("rowsPerPage")}
               className="h-7 text-xs rounded-md border border-border bg-background px-1.5 py-0.5 text-foreground cursor-pointer"
             >
               {[20, 50, 100].map((size) => (
                 <option key={size} value={size}>
-                  {size} rows
+                  {t("rowsOption", { size })}
                 </option>
               ))}
             </select>
@@ -270,9 +275,9 @@ export function DataTable<TData, TValue>({
               className="cursor-pointer"
             >
               <ChevronLeft className="size-3.5" />
-              <span>Previous</span>
+              <span>{tCommon("actions.previous")}</span>
             </Button>
-            <span className="px-2 font-mono text-foreground">
+            <span className="px-2 font-mono text-foreground tabular-nums">
               {pageIndex + 1} / {pageCount}
             </span>
             <Button
@@ -283,7 +288,7 @@ export function DataTable<TData, TValue>({
               disabled={!table.getCanNextPage()}
               className="cursor-pointer"
             >
-              <span>Next</span>
+              <span>{tCommon("actions.next")}</span>
               <ChevronRight className="size-3.5" />
             </Button>
           </div>

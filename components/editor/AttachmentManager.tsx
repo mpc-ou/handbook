@@ -1,25 +1,18 @@
-"use client";
+﻿"use client";
 
 import React, { useRef, useState } from "react";
-import { ArticleAttachment, AttachmentType } from "@/types";
+import { useTranslations } from "next-intl";
+import { ItemAttachment, AttachmentType } from "@/types";
 import { uploadToCloudinary, MAX_FILE_SIZE_BYTES } from "@/lib/cloudinary";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   FileText,
   FolderGit2,
   HardDrive,
   Link as LinkIcon,
   Loader2,
-  Paperclip,
   Plus,
   Trash2,
   UploadCloud,
@@ -27,14 +20,15 @@ import {
 } from "lucide-react";
 
 interface AttachmentManagerProps {
-  attachments: ArticleAttachment[];
-  onChange: (items: ArticleAttachment[]) => void;
+  attachments: ItemAttachment[];
+  onChange: (items: ItemAttachment[]) => void;
 }
 
 export function AttachmentManager({
   attachments,
   onChange,
 }: AttachmentManagerProps) {
+  const t = useTranslations("editor.attachment");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -55,7 +49,7 @@ export function AttachmentManager({
   const handleAdd = () => {
     if (!title.trim() || !url.trim()) return;
     setUploadError(null);
-    const newItem: ArticleAttachment = {
+    const newItem: ItemAttachment = {
       id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       type: detectType(url),
       title: title.trim(),
@@ -72,10 +66,14 @@ export function AttachmentManager({
 
     setUploadError(null);
 
-    // Validate 5MB limit
     if (file.size > MAX_FILE_SIZE_BYTES) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      setUploadError(`File "${file.name}" (${sizeMb}MB) exceeds the 5MB size limit.`);
+      setUploadError(
+        t("fileSizeError", {
+          name: file.name,
+          size: sizeMb,
+        })
+      );
       e.target.value = "";
       return;
     }
@@ -83,15 +81,17 @@ export function AttachmentManager({
     try {
       setIsUploading(true);
       const secureUrl = await uploadToCloudinary(file);
-      const newItem: ArticleAttachment = {
+      const newItem: ItemAttachment = {
         id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         type: "external",
         title: file.name,
         url: secureUrl,
       };
       onChange([...attachments, newItem]);
-    } catch (err: any) {
-      setUploadError(err.message || "Failed to upload attachment file.");
+    } catch (err: unknown) {
+      setUploadError(
+        err instanceof Error && err.message ? err.message : t("uploadFailed")
+      );
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -109,14 +109,14 @@ export function AttachmentManager({
         <div className="flex flex-col gap-2.5 sm:flex-row items-stretch sm:items-center">
           <Input
             type="text"
-            placeholder="Link Title"
+            placeholder={t("titlePlaceholder")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="sm:w-2/5 text-xs h-9"
           />
           <Input
             type="url"
-            placeholder="Paste Drive, Figma, GitHub, YouTube link..."
+            placeholder={t("urlPlaceholder")}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="flex-1 text-xs h-9"
@@ -130,7 +130,7 @@ export function AttachmentManager({
             className="text-xs shrink-0 cursor-pointer"
           >
             <Plus className="size-3.5" />
-            <span>Add Link</span>
+            <span>{t("addLink")}</span>
           </Button>
 
           {/* Upload File button */}
@@ -153,7 +153,7 @@ export function AttachmentManager({
             ) : (
               <UploadCloud className="size-3.5" />
             )}
-            <span>Upload File (&le;5MB)</span>
+            <span>{isUploading ? t("uploading") : t("uploadFile")}</span>
           </Button>
         </div>
 
@@ -201,7 +201,8 @@ export function AttachmentManager({
                   size="icon-sm"
                   onClick={() => handleRemove(item.id)}
                   className="text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
-                  title="Remove attachment"
+                  title={t("remove")}
+                  aria-label={t("remove")}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -210,7 +211,7 @@ export function AttachmentManager({
           </div>
         ) : (
           <div className="text-center py-3 text-xs text-muted-foreground/70 border border-dashed rounded-lg bg-muted/10">
-            No attachments added yet. Paste a URL or upload a file directly.
+            {t("empty")}
           </div>
         )}
       </CardContent>

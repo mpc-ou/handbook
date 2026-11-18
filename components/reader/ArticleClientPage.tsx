@@ -1,102 +1,182 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useFormatter, useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "motion/react";
+import confetti from "canvas-confetti";
 import { useHandbook } from "@/context/HandbookContext";
 import { AppShell } from "@/components/layout/AppShell";
 import { TableOfContents } from "@/components/layout/TableOfContents";
 import { ArticleRenderer } from "@/components/reader/ArticleRenderer";
-import { ArticleCover } from "@/components/ui/ArticleCover";
 import { ScrollTracker } from "@/components/reader/ScrollTracker";
 import { QuizRunner } from "@/components/reader/QuizRunner";
+import { ReadingProgressBar } from "@/components/reader/ReadingProgressBar";
+import {
+  DEFAULT_READER_PREFS,
+  FOCUS_MODE_STORAGE_KEY,
+  READER_PREFS_STORAGE_KEY,
+  ReadingSettings,
+  type ReaderPrefs,
+} from "@/components/reader/ReadingSettings";
+import { ShortcutsDialog } from "@/components/reader/ShortcutsDialog";
+import { ItemNav } from "@/components/reader/ItemNav";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { ArticleSkeleton } from "@/components/reader/ArticleSkeleton";
 import {
-  canUserManageCategory,
-  canUserViewArticle,
-  checkArticleAccess,
+  canUserManageCourse,
+  canUserViewCourse,
+  checkItemAccess,
+  getCourseItemsInOrder,
+  getCourseProgress,
   stripQuizAnswersForClient,
 } from "@/lib/progression";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/date";
-import type { ArticleRecord } from "@/types";
+import type { ItemRecord } from "@/types";
 import {
   ArrowLeft,
   ArrowRight,
   Award,
-  BookOpen,
-  Calendar,
   CheckCircle2,
-  Clock,
-  Eye,
-  Globe,
   Heart,
-  Home,
-  Link2,
+  Keyboard,
   Lock,
+  Maximize2,
+  Minimize2,
   RefreshCw,
   Share2,
   ShieldAlert,
-  Trophy,
-  User,
-  Users,
 } from "lucide-react";
 
-interface ArticleClientPageProps {
-  initialArticle: ArticleRecord | null;
-  slug: string;
+export interface ItemReaderProps {
+  courseSlug: string;
+  lessonSlug: string;
+  itemSlug: string;
+  initialItem?: ItemRecord | null;
 }
 
-export function ArticleClientPage({
-  initialArticle,
-  slug,
-}: ArticleClientPageProps) {
+export function ItemReader({
+  courseSlug,
+  lessonSlug,
+  itemSlug,
+  initialItem = null,
+}: ItemReaderProps) {
+  const t = useTranslations("reader");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
+  const router = useRouter();
+  const reduceMotion = useReducedMotion();
+
   const {
     user,
-    categories,
-    articles,
+    courses,
+    lessons,
+    items,
     progressMap,
+    quizAttempts,
     dataLoading,
     authLoading,
     dbError,
     signInWithMpcOidc,
-    markArticleScrolled,
-    submitArticleQuiz,
-    toggleLikeArticle,
+    markItemScrolled,
+    submitItemQuiz,
+    toggleLikeItem,
     showToast,
-    recordArticleView,
+    recordItemView,
+    setIsSearchOpen,
   } = useHandbook();
 
   const [scrollProgressPct, setScrollProgressPct] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
 
-  const article =
-    articles.find((a) => a.slug === slug || a.id === slug) || initialArticle;
-
-  const [currentViews, setCurrentViews] = useState(article?.viewsCount ?? 0);
+  // Focus mode & reader preferences (hydrated in useEffect to prevent SSR mismatch)
+  const [focusMode, setFocusMode] = useState(false);
+  const [readerPrefs, setReaderPrefs] =
+    useState<ReaderPrefs>(DEFAULT_READER_PREFS);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof article?.viewsCount === "number") {
-      setCurrentViews(article.viewsCount);
+    try {
+      const savedFocus = window.localStorage.getItem(FOCUS_MODE_STORAGE_KEY);
+      if (savedFocus === "true") {
+        setFocusMode(true);
+      }
+      const savedPrefs = window.localStorage.getItem(READER_PREFS_STORAGE_KEY);
+      if (savedPrefs) {
+        const parsed = JSON.parse(savedPrefs) as Partial<ReaderPrefs>;
+        setReaderPrefs({
+          fontSize:
+            parsed.fontSize === "sm" ||
+            parsed.fontSize === "md" ||
+            parsed.fontSize === "lg"
+              ? parsed.fontSize
+              : "md",
+          columnWidth:
+            parsed.columnWidth === "sm" ||
+            parsed.columnWidth === "md" ||
+            parsed.columnWidth === "lg"
+              ? parsed.columnWidth
+              : "md",
+        });
+      }
+    } catch {}
+  }, []);
+
+  const handleToggleFocusMode = useCallback(() => {
+    setFocusMode((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(FOCUS_MODE_STORAGE_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleChangePrefs = useCallback((next: ReaderPrefs) => {
+    setReaderPrefs(next);
+    try {
+      window.localStorage.setItem(
+        READER_PREFS_STORAGE_KEY,
+        JSON.stringify(next)
+      );
+    } catch {}
+  }, []);
+
+  const course = courses.find((c) => c.slug === courseSlug);
+  const lesson = course
+    ? lessons.find((l) => l.courseId === course.id && l.slug === lessonSlug)
+    : undefined;
+  const item =
+    (lesson
+      ? items.find((i) => i.lessonId === lesson.id && i.slug === itemSlug)
+      : undefined) ||
+    initialItem ||
+    undefined;
+
+  const [currentViews, setCurrentViews] = useState(item?.viewsCount ?? 0);
+
+  useEffect(() => {
+    if (typeof item?.viewsCount === "number") {
+      setCurrentViews(item.viewsCount);
     }
-  }, [article?.viewsCount]);
+  }, [item?.viewsCount]);
 
+  // Record item view once per session
   useEffect(() => {
-    if (!article?.id) return;
-    const sessionKey = `mpc_viewed_${article.id}`;
-    if (typeof window !== "undefined" && window.sessionStorage.getItem(sessionKey)) {
+    if (!item?.id) return;
+    const sessionKey = `mpc_viewed_${item.id}`;
+    if (
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem(sessionKey)
+    ) {
       return;
     }
 
@@ -105,7 +185,7 @@ export function ArticleClientPage({
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem(sessionKey, Date.now().toString());
         }
-        const updatedViews = await recordArticleView(article.id);
+        const updatedViews = await recordItemView(item.id);
         if (typeof updatedViews === "number") {
           setCurrentViews(updatedViews);
         }
@@ -115,8 +195,9 @@ export function ArticleClientPage({
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [article?.id, recordArticleView]);
+  }, [item?.id, recordItemView]);
 
+  // Track scroll progress for CONTENT items
   useEffect(() => {
     const onScroll = () => {
       const docEl = document.documentElement;
@@ -136,107 +217,212 @@ export function ArticleClientPage({
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
-  }, [slug]);
+  }, [courseSlug, lessonSlug, itemSlug]);
 
   const handleToggleLike = async () => {
-    if (!article || likeLoading) return;
+    if (!item || likeLoading) return;
     setLikeLoading(true);
-    await toggleLikeArticle(article.id);
-    setLikeLoading(false);
+    try {
+      await toggleLikeItem(item.id);
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : t("actions.actionFailed"),
+        "error"
+      );
+    } finally {
+      setLikeLoading(false);
+    }
   };
 
   const handleScrollVerified = useCallback(async () => {
-    if (!article) return;
-    await markArticleScrolled(article.id);
-  }, [article, markArticleScrolled]);
+    if (!item) return;
+    await markItemScrolled(item.id);
+  }, [item, markItemScrolled]);
 
-  const currentCat = article ? categories.find((c) => c.id === article.categoryId) : undefined;
+  const myProgress = item ? progressMap[item.id] : undefined;
 
-  const currentRootCategory = React.useMemo(() => {
-    if (!currentCat) return undefined;
-    let cat: typeof currentCat | undefined = currentCat;
-    while (cat && cat.parentId) {
-      const parent = categories.find((c) => c.id === cat?.parentId);
-      if (!parent) break;
-      cat = parent;
-    }
-    return cat && cat.depth === 1 ? cat : currentCat;
-  }, [currentCat, categories]);
-
-  const categoryIds = React.useMemo(() => {
-    if (!article) return [];
-    if (!currentRootCategory) return [article.categoryId];
-    const subIds = categories
-      .filter((c) => c.depth === 2 && c.parentId === currentRootCategory.id)
-      .map((c) => c.id);
-    return [currentRootCategory.id, ...subIds];
-  }, [currentRootCategory, categories, article?.categoryId]);
-
-  const categoryArticles = React.useMemo(() => {
-    if (categoryIds.length === 0) return [];
-    return articles
-      .filter((a) => a.isPublished && categoryIds.includes(a.categoryId))
-      .sort((a, b) => a.orderIndex - b.orderIndex);
-  }, [articles, categoryIds]);
-
-  const isCategoryCompleted = React.useMemo(() => {
-    if (categoryArticles.length === 0) return false;
-    return categoryArticles.every((a) => Boolean(progressMap[a.id]?.isCompleted));
-  }, [categoryArticles, progressMap]);
-
-  // First published article of the subsequent category
-  const nextCategoryArticle = React.useMemo(() => {
-    const rootCategories = categories
-      .filter((c) => c.depth === 1 && c.isPublished)
-      .sort((a, b) => a.orderIndex - b.orderIndex);
-
-    const currentRootIdx = rootCategories.findIndex(
-      (c) => c.id === currentRootCategory?.id
-    );
-
-    if (currentRootIdx >= 0) {
-      for (let i = currentRootIdx + 1; i < rootCategories.length; i++) {
-        const nextRoot = rootCategories[i];
-        const nextSubIds = new Set(
-          categories
-            .filter((c) => c.depth === 2 && c.parentId === nextRoot.id)
-            .map((c) => c.id)
-        );
-        const nextArticles = articles
-          .filter(
-            (a) =>
-              a.isPublished &&
-              (a.categoryId === nextRoot.id || nextSubIds.has(a.categoryId))
-          )
-          .sort((a, b) => a.orderIndex - b.orderIndex);
-
-        if (nextArticles.length > 0) {
-          return nextArticles[0];
-        }
-      }
-    }
-
-    // Fallback: any other uncompleted published article across the handbook
-    return articles.find((a) => a.isPublished && !progressMap[a.id]?.isCompleted) || null;
-  }, [categories, currentRootCategory, articles, progressMap]);
-
-  // Trigger celebration confetti when the entire category is completed
-  const hasFiredConfetti = useRef(false);
+  // Automatically mark CONTENT item as read when requireScrollToBottom is false
   useEffect(() => {
-    if (isCategoryCompleted && !hasFiredConfetti.current) {
-      hasFiredConfetti.current = true;
+    if (
+      user &&
+      item &&
+      item.type === "CONTENT" &&
+      !item.requireScrollToBottom &&
+      !myProgress?.hasScrolledBottom &&
+      !myProgress?.isCompleted
+    ) {
+      markItemScrolled(item.id).catch(() => {});
+    }
+  }, [
+    user,
+    item,
+    myProgress?.hasScrolledBottom,
+    myProgress?.isCompleted,
+    markItemScrolled,
+  ]);
+
+  const orderedCourseItems = useMemo(
+    () => (course ? getCourseItemsInOrder(course.id, lessons, items) : []),
+    [course, lessons, items]
+  );
+
+  const publishedLessonItems = useMemo(
+    () =>
+      lesson
+        ? items
+            .filter((i) => i.lessonId === lesson.id && i.status === "PUBLISHED")
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+        : [],
+    [lesson, items]
+  );
+
+  const courseProgress = useMemo(
+    () =>
+      course
+        ? getCourseProgress(course.id, lessons, items, progressMap)
+        : { completed: 0, total: 0, percent: 0 },
+    [course, lessons, items, progressMap]
+  );
+
+  const isCourseCompleted =
+    courseProgress.total > 0 && courseProgress.percent === 100;
+
+  const currentIdx = item
+    ? orderedCourseItems.findIndex((i) => i.id === item.id)
+    : -1;
+  const prevItem = currentIdx > 0 ? orderedCourseItems[currentIdx - 1] : null;
+  const nextItem =
+    currentIdx >= 0 && currentIdx < orderedCourseItems.length - 1
+      ? orderedCourseItems[currentIdx + 1]
+      : null;
+
+  const getItemHref = useCallback(
+    (target: ItemRecord) => {
+      if (!course) return "/";
+      const targetLesson = lessons.find((l) => l.id === target.lessonId);
+      if (!targetLesson) return `/learn/${course.slug}`;
+      return `/learn/${course.slug}/${targetLesson.slug}/${target.slug}`;
+    },
+    [course, lessons]
+  );
+
+  const isLastItemOfLesson = Boolean(
+    item &&
+      publishedLessonItems.length > 0 &&
+      publishedLessonItems[publishedLessonItems.length - 1]?.id === item.id
+  );
+  const isLastItemOfCourse = Boolean(
+    item &&
+      orderedCourseItems.length > 0 &&
+      orderedCourseItems[orderedCourseItems.length - 1]?.id === item.id
+  );
+
+  const isItemCompleted = Boolean(myProgress?.isCompleted);
+
+  // Track first-time completion in this session for CONTENT celebration confetti
+  const wasCompletedOnMountRef = useRef<boolean>(true);
+  const lastTrackedItemIdRef = useRef<string | null>(null);
+  const confettiFiredRef = useRef<boolean>(false);
+
+  if (item && lastTrackedItemIdRef.current !== item.id) {
+    lastTrackedItemIdRef.current = item.id;
+    wasCompletedOnMountRef.current = Boolean(
+      progressMap[item.id]?.isCompleted
+    );
+    confettiFiredRef.current = false;
+  }
+
+  useEffect(() => {
+    if (
+      item?.type === "CONTENT" &&
+      isItemCompleted &&
+      !wasCompletedOnMountRef.current &&
+      !confettiFiredRef.current &&
+      (isLastItemOfLesson || isLastItemOfCourse) &&
+      !reduceMotion
+    ) {
+      confettiFiredRef.current = true;
       try {
         confetti({
-          particleCount: 85,
-          spread: 75,
-          origin: { y: 0.6 },
+          particleCount: 55,
+          spread: 65,
+          origin: { y: 0.7 },
         });
       } catch {}
     }
-  }, [isCategoryCompleted]);
+  }, [
+    item?.type,
+    isItemCompleted,
+    isLastItemOfLesson,
+    isLastItemOfCourse,
+    reduceMotion,
+  ]);
 
-  // While checking authentication or loading handbook data, show Skeleton
-  // to avoid flashing forbidden/locked content before access evaluation
+  // Keyboard shortcuts for CONTENT reading page
+  useEffect(() => {
+    if (!item || item.type !== "CONTENT") return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === "/") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        return;
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        handleToggleFocusMode();
+        return;
+      }
+
+      if (e.key === "ArrowLeft" && prevItem) {
+        e.preventDefault();
+        router.push(getItemHref(prevItem));
+        return;
+      }
+
+      if (e.key === "ArrowRight" && nextItem) {
+        e.preventDefault();
+        router.push(getItemHref(nextItem));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    item,
+    prevItem,
+    nextItem,
+    getItemHref,
+    handleToggleFocusMode,
+    router,
+    setIsSearchOpen,
+  ]);
+
   if (dataLoading || authLoading) {
     return (
       <AppShell>
@@ -245,639 +431,598 @@ export function ArticleClientPage({
     );
   }
 
-  if (!article) {
-    if (dbError) {
-      return (
-        <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-          <div className="mx-auto max-w-2xl px-6 py-16">
-            <Card className="border-destructive/30 bg-destructive/5 p-8 text-center items-center space-y-3">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
-                <ShieldAlert className="size-6" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Lỗi kết nối cơ sở dữ liệu
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Hệ thống không thể tải dữ liệu từ PostgreSQL ({dbError}). Vui lòng kiểm tra lại đường truyền mạng hoặc liên hệ quản trị viên.
-              </p>
-              <div className="flex justify-center gap-3 pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => window.location.reload()}
-                  className="gap-1.5 font-semibold cursor-pointer"
-                >
-                  <RefreshCw className="size-3.5" />
-                  <span>Thử lại</span>
-                </Button>
-                <Button asChild variant="outline" size="sm" className="cursor-pointer">
-                  <Link href="/">
-                    <ArrowLeft className="size-4 mr-1" />
-                    <span>Quay về trang chủ</span>
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </AppShell>
-      );
-    }
-
+  if (dbError && (!course || !lesson || !item)) {
     return (
       <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-        <div className="mx-auto max-w-2xl px-6 py-16">
-          <Card className="p-8 text-center items-center space-y-3">
-            <h1 className="text-2xl font-bold text-foreground">
-              Article Not Found
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              The path{" "}
-              <code className="font-mono text-primary">/docs/{slug}</code>{" "}
-              does not exist or has been removed.
-            </p>
-            <Button asChild size="sm">
-              <Link href="/">
-                <ArrowLeft className="size-4" />
-                <span>Return to Handbook Home</span>
-              </Link>
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          <ShieldAlert className="size-8 text-destructive mx-auto" />
+          <h1 className="text-xl font-bold text-foreground">
+            {t("gates.dbErrorTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t("gates.dbErrorDesc", { error: dbError })}
+          </p>
+          <div className="flex justify-center gap-3 pt-2">
+            <Button
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="size-3.5" />
+              <span>{tCommon("actions.retry")}</span>
             </Button>
-          </Card>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/">{t("nav.backToHome")}</Link>
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
   }
 
-  const access = checkArticleAccess(article.id, articles, progressMap);
-  const myProgress = progressMap[article.id];
-  const isScrolledBottom =
-    !article.requireScrollToBottom || Boolean(myProgress?.hasScrolledBottom);
-  const isArticleCompleted = Boolean(myProgress?.isCompleted);
-  const isLiked = Boolean(user && article.likedUserIds?.includes(user.uid));
-  const likesCount = article.likesCount ?? 0;
-
-  // Ordered articles in the same category for Prev / Next sequential navigation
-  const siblingArticles = articles
-    .filter((a) => a.categoryId === article.categoryId && a.isPublished)
-    .sort((a, b) => a.orderIndex - b.orderIndex);
-  const currentIdx = siblingArticles.findIndex((a) => a.id === article.id);
-  const prevArticle = currentIdx > 0 ? siblingArticles[currentIdx - 1] : null;
-  const nextArticle =
-    currentIdx >= 0 && currentIdx < siblingArticles.length - 1
-      ? siblingArticles[currentIdx + 1]
-      : null;
-
-  const clientSafeQuestions = stripQuizAnswersForClient(
-    article.quizQuestions || []
-  );
-
-  // Draft / Pending Review Gate:
-  // Non-published articles can ONLY be viewed by ADMIN, EDITOR, or the original author.
-  // Regular users (MEMBER) or guests cannot view them via /docs/[...slug].
-  const isStaffOrAuthor = Boolean(
-    user &&
-      (user.role === "ADMIN" ||
-        user.role === "EDITOR" ||
-        user.uid === article.authorId)
-  );
-
-  if (!article.isPublished || article.status !== "PUBLISHED") {
-    if (!isStaffOrAuthor) {
-      return (
-        <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-          <div className="mx-auto max-w-2xl px-6 py-16">
-            <Card className="border-border bg-card p-8 text-center items-center gap-4">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                <Lock className="size-6" />
-              </div>
-              <Badge variant="warning">
-                {article.status === "PENDING_REVIEW"
-                  ? "Đang chờ duyệt (Pending Review)"
-                  : "Bản nháp (Draft)"}
-              </Badge>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                Bài viết chưa được xuất bản
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-                Bài viết <strong>&ldquo;{article.title}&rdquo;</strong> hiện đang ở trạng thái{" "}
-                <span className="font-semibold text-foreground lowercase">
-                  {article.status === "PENDING_REVIEW" ? "chờ kiểm duyệt" : "bản nháp"}
-                </span>{" "}
-                và chưa được công khai cho người đọc.
-              </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <Button asChild size="sm" className="cursor-pointer">
-                  <Link href="/">
-                    <ArrowLeft className="size-4 mr-1.5" />
-                    <span>Quay về trang chủ</span>
-                  </Link>
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </AppShell>
-      );
-    }
-  }
-
-  // Group Privacy Gate
-  const groupAccess = canUserViewArticle(user, article);
-  if (!groupAccess.allowed) {
+  if (!course) {
     return (
       <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-        <div className="mx-auto max-w-2xl px-6 py-16">
-          <Card className="border-destructive/30 bg-destructive/5 p-8 text-center items-center gap-4">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
-              {groupAccess.reason === "LOGIN_REQUIRED" ? (
-                <Lock className="size-6" />
-              ) : (
-                <ShieldAlert className="size-6" />
-              )}
-            </div>
-            <Badge variant={groupAccess.reason === "LOGIN_REQUIRED" ? "default" : "destructive"}>
-              {groupAccess.reason === "LOGIN_REQUIRED"
-                ? "Sign-in Required (Internal Access)"
-                : "Department Restricted"}
-            </Badge>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-              {groupAccess.reason === "LOGIN_REQUIRED"
-                ? "Internal Document Access"
-                : "Restricted to Internal Group"}
-            </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-              Article <strong>&ldquo;{article.title}&rdquo;</strong>{" "}
-              {groupAccess.allowedGroups && groupAccess.allowedGroups.length > 0
-                ? "is restricted to the following departments:"
-                : "is reserved for registered MPC members."}
-            </p>
-            {groupAccess.allowedGroups && groupAccess.allowedGroups.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2">
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          <h1 className="text-xl font-bold text-foreground">
+            {t("gates.courseNotFoundTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("gates.courseNotFoundDesc")}
+          </p>
+          <Button asChild size="sm">
+            <Link href="/">
+              <ArrowLeft className="size-4 mr-1.5" />
+              <span>{t("nav.backToHome")}</span>
+            </Link>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Course Privacy / Group Gate
+  const groupAccess = canUserViewCourse(user, course);
+  if (!groupAccess.allowed) {
+    const callbackPath = `/learn/${courseSlug}/${lessonSlug}/${itemSlug}`;
+    const isLogin = groupAccess.reason === "LOGIN_REQUIRED";
+
+    return (
+      <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          {isLogin ? (
+            <Lock className="size-8 text-primary mx-auto" />
+          ) : (
+            <ShieldAlert className="size-8 text-destructive mx-auto" />
+          )}
+          <h1 className="text-xl font-bold text-foreground">
+            {isLogin
+              ? t("gates.loginRequiredTitle")
+              : t("gates.groupRestrictedTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {isLogin
+              ? t("gates.loginRequiredDesc", { title: course.title })
+              : t("gates.groupRestrictedDesc", { title: course.title })}
+          </p>
+
+          {!isLogin &&
+            groupAccess.allowedGroups &&
+            groupAccess.allowedGroups.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1.5">
                 {groupAccess.allowedGroups.map((g) => (
-                  <Badge key={g} variant="outline" className="border-primary/40 text-primary font-medium">
+                  <Badge key={g} variant="secondary" className="text-xs">
                     {g}
                   </Badge>
                 ))}
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-2">
-              {groupAccess.reason === "LOGIN_REQUIRED"
-                ? "Please sign in with your MPC account to read this document."
-                : "Your account does not have access to these departments. Please contact Club Leaders if you need access."}
-            </p>
-            <div className="flex items-center gap-3 pt-2">
-              {groupAccess.reason === "LOGIN_REQUIRED" && (
-                <Button asChild size="sm" className="font-semibold cursor-pointer">
-                  <Link href={`/login?callbackUrl=/docs/${article.slug}`}>
-                    Sign in with MPC Account
-                  </Link>
-                </Button>
-              )}
-              <Button asChild variant="outline" size="sm" className="cursor-pointer">
-                <Link href="/">
-                  <ArrowLeft className="size-4 mr-1.5" />
-                  <span>Return to Home</span>
-                </Link>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            {isLogin ? (
+              <Button
+                size="sm"
+                onClick={() => signInWithMpcOidc(callbackPath)}
+                className="cursor-pointer"
+              >
+                {t("gates.loginButton")}
               </Button>
-            </div>
-          </Card>
+            ) : null}
+            <Button
+              asChild
+              variant={isLogin ? "ghost" : "default"}
+              size="sm"
+              className="cursor-pointer"
+            >
+              <Link href="/">{t("nav.backToHome")}</Link>
+            </Button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!lesson || !item) {
+    return (
+      <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          <h1 className="text-xl font-bold text-foreground">
+            {t("gates.itemNotFoundTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("gates.itemNotFoundDesc")}
+          </p>
+          <Button asChild size="sm">
+            <Link href={`/learn/${course.slug}`}>
+              <ArrowLeft className="size-4 mr-1.5" />
+              <span>{t("nav.backToCourse")}</span>
+            </Link>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Draft / Pending Review Gate
+  const isStaffOrAuthor = Boolean(
+    user &&
+      (user.role === "ADMIN" ||
+        user.role === "EDITOR" ||
+        user.uid === item.authorId ||
+        user.uid === course.authorId)
+  );
+  const canManage = canUserManageCourse(user, course.id) || isStaffOrAuthor;
+  const isUnpublished =
+    course.status !== "PUBLISHED" ||
+    !lesson.isPublished ||
+    item.status !== "PUBLISHED";
+
+  if (isUnpublished && !isStaffOrAuthor) {
+    return (
+      <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          <Lock className="size-8 text-muted-foreground mx-auto" />
+          <h1 className="text-xl font-bold text-foreground">
+            {t("gates.unpublishedTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t("gates.unpublishedDesc", { title: item.title })}
+          </p>
+          <Button asChild size="sm">
+            <Link href={`/learn/${course.slug}`}>
+              <ArrowLeft className="size-4 mr-1.5" />
+              <span>{t("nav.backToCourse")}</span>
+            </Link>
+          </Button>
         </div>
       </AppShell>
     );
   }
 
   // Locked Sequential Gate View
+  const access = checkItemAccess(
+    item.id,
+    courses,
+    lessons,
+    items,
+    progressMap
+  );
   if (!access.allowed && access.reason === "PREVIOUS_INCOMPLETE") {
+    const blockingLesson = access.blockingItem
+      ? lessons.find((l) => l.id === access.blockingItem?.lessonId)
+      : undefined;
+    const blockingHref =
+      access.blockingItem && blockingLesson
+        ? `/learn/${course.slug}/${blockingLesson.slug}/${access.blockingItem.slug}`
+        : `/learn/${course.slug}/${lesson.slug}`;
+
     return (
       <AppShell hideLeftSidebar={true} hideRightSidebar={true}>
-        <div className="mx-auto max-w-2xl px-6 py-16">
-          <Card className="border-amber-500/30 bg-amber-500/5 p-8 text-center items-center gap-4">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              <Lock className="size-6" />
-            </div>
-            <Badge variant="warning">Sequential Curriculum Gate</Badge>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-              This lesson is locked in the sequential roadmap
-            </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-              To unlock <strong>&ldquo;{article.title}&rdquo;</strong>, you must complete the previous lesson and its assessment:
-            </p>
-            {access.blockingArticle && (
-              <Button asChild size="lg" className="mt-2 cursor-pointer">
-                <Link href={`/docs/${access.blockingArticle.slug}`}>
-                  <span>Go to lesson: {access.blockingArticle.title}</span>
-                  <ArrowRight className="size-4 ml-1.5" />
+        <div className="mx-auto max-w-md px-6 py-20 text-center space-y-4">
+          <Lock className="size-8 text-primary mx-auto" />
+          <h1 className="text-xl font-bold text-foreground">
+            {t("gates.lockedTitle")}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t("gates.lockedDesc", { title: item.title })}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            {access.blockingItem && (
+              <Button asChild className="gap-1.5 cursor-pointer">
+                <Link href={blockingHref}>
+                  <span>
+                    {t("gates.goToBlockingItem", {
+                      title: access.blockingItem.title,
+                    })}
+                  </span>
+                  <ArrowRight className="size-4" />
                 </Link>
               </Button>
             )}
-          </Card>
+            <Button asChild variant="ghost" size="sm">
+              <Link href={`/learn/${course.slug}/${lesson.slug}`}>
+                {t("nav.backToLesson")}
+              </Link>
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
   }
 
-  const createdDateStr = formatDate(article.createdAt);
-  const updatedDateStr = formatDate(article.updatedAt);
-  const isRecentlyUpdated = article.createdAt !== article.updatedAt;
+  const isAssessmentItem = item.type === "QUIZ" || item.type === "ASSIGNMENT";
+
+  // Assessment Page (QUIZ / ASSIGNMENT) — Standalone 3-stage inline page
+  if (isAssessmentItem) {
+    const clientSafeQuestions = stripQuizAnswersForClient(
+      item.quizQuestions || []
+    );
+    const effectivePassScore =
+      item.passScorePercent > 0 ? item.passScorePercent : 80;
+    const itemAttempts = quizAttempts.filter(
+      (a) => a.itemId === item.id && (!user || a.userId === user.uid)
+    );
+    const hasPendingReview = itemAttempts.some(
+      (a) => a.status === "PENDING_REVIEW"
+    );
+    const nextItemHref = nextItem ? getItemHref(nextItem) : null;
+    const certificateHref =
+      isCourseCompleted || isLastItemOfCourse
+        ? `/learn/${course.slug}/certificate`
+        : null;
+
+    return (
+      <AppShell>
+        {isUnpublished && (
+          <div className="border-b border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+            <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+              <span>
+                <strong className="text-foreground mr-1.5">
+                  [{t("gates.previewBadge")}]
+                </strong>
+                {t("gates.previewNotice", {
+                  status: tCommon(`status.${item.status}`),
+                })}
+              </span>
+              {canManage && (
+                <Link
+                  href={`/studio/items/${item.id}`}
+                  className="text-primary hover:underline shrink-0"
+                >
+                  {t("actions.editInStudio")}
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 space-y-10">
+          <QuizRunner
+            key={item.id}
+            itemId={item.id}
+            title={item.title}
+            summary={item.summary}
+            type={item.type}
+            content={item.content || []}
+            attachments={item.attachments || []}
+            passScorePercent={effectivePassScore}
+            durationMinutes={item.quizDurationMinutes}
+            maxAttempts={item.quizMaxAttempts}
+            questions={clientSafeQuestions}
+            attemptsUsed={itemAttempts.length}
+            highestQuizScore={myProgress?.highestQuizScore ?? 0}
+            hasPendingReview={hasPendingReview}
+            isGuest={!user}
+            nextItemHref={nextItemHref}
+            certificateHref={certificateHref}
+            onSignIn={() =>
+              signInWithMpcOidc(
+                `/learn/${course.slug}/${lesson.slug}/${item.slug}`
+              )
+            }
+            onSubmitQuiz={(answers) => submitItemQuiz(item.id, answers)}
+          />
+
+          <ItemNav
+            prevItem={prevItem}
+            nextItem={nextItem}
+            getItemHref={getItemHref}
+          />
+
+          <CommentSection itemId={item.id} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  // CONTENT Reading Page
+  const effectiveRequireScroll = Boolean(item.requireScrollToBottom);
+  const isLiked = Boolean(
+    item.isLiked || (user && item.likedUserIds?.includes(user.uid))
+  );
+  const likesCount = item.likesCount ?? 0;
+
+  const updatedDateObj = new Date(item.updatedAt);
+  const formattedUpdatedDate = Number.isNaN(updatedDateObj.getTime())
+    ? ""
+    : format.dateTime(updatedDateObj, { dateStyle: "medium" });
+
+  const columnWidthClass =
+    readerPrefs.columnWidth === "sm"
+      ? "max-w-2xl"
+      : readerPrefs.columnWidth === "lg"
+      ? "max-w-4xl"
+      : "max-w-3xl";
 
   return (
-    <AppShell>
-      {/* Draft / Pending Preview Notice Banner for Staff & Author */}
-      {(!article.isPublished || article.status !== "PUBLISHED") && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-center text-xs sm:text-sm text-amber-800 dark:text-amber-300">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-            <div className="flex items-center gap-2 font-medium">
-              <Badge variant="outline" className="border-amber-500/40 bg-amber-500/20 text-amber-900 dark:text-amber-200 uppercase text-[10px] tracking-wide">
-                Chế độ xem trước
-              </Badge>
-              <span>
-                Bài viết này đang ở trạng thái{" "}
-                <strong>{article.status === "PENDING_REVIEW" ? "Pending Review" : "Draft"}</strong>{" "}
-                và chỉ Admin, Editor hoặc tác giả mới có thể thấy.
-              </span>
-            </div>
-            {isStaffOrAuthor && (
-              <Button asChild size="xs" variant="outline" className="h-7 text-xs border-amber-500/40 hover:bg-amber-500/20">
-                <Link href={`/studio/articles/${article.id}`}>Chỉnh sửa trong Studio</Link>
-              </Button>
+    <AppShell hideLeftSidebar={focusMode}>
+      {/* Fixed thin scroll progress bar at top */}
+      <ReadingProgressBar value={scrollProgressPct} />
+
+      {/* Preview banner for unpublished item */}
+      {isUnpublished && !focusMode && (
+        <div className="border-b border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+            <span>
+              <strong className="text-foreground mr-1.5">
+                [{t("gates.previewBadge")}]
+              </strong>
+              {t("gates.previewNotice", {
+                status: tCommon(`status.${item.status}`),
+              })}
+            </span>
+            {canManage && (
+              <Link
+                href={`/studio/items/${item.id}`}
+                className="text-primary hover:underline shrink-0"
+              >
+                {t("actions.editInStudio")}
+              </Link>
             )}
           </div>
         </div>
       )}
 
-      {/* Mobile / Tablet Top Sticky Reading Progress Bar */}
-      <div className="sticky top-14 z-20 xl:hidden">
-        <Progress value={scrollProgressPct} className="h-1 rounded-none" />
-      </div>
-
-      {/* Main Content + Right TOC */}
-      <div className="mx-auto flex max-w-7xl justify-between gap-10 px-4 sm:px-8 py-6">
-        {/* Center Article Column (Expanded width for comfortable reading) */}
-        <article className="w-full max-w-4xl lg:max-w-5xl flex-1 min-w-0">
-          {/* Article 3:1 Cover Banner */}
-          <div className="mb-6 overflow-hidden rounded-xl border border-border shadow-xs">
-            <ArticleCover
-              src={
-                article.coverImage?.startsWith("preset:")
-                  ? undefined
-                  : article.coverImage
-              }
-              seedId={
-                article.coverImage?.startsWith("preset:")
-                  ? article.coverImage.replace("preset:", "")
-                  : article.id
-              }
-              title={article.title}
-              aspectRatio="3/1"
-            />
-          </div>
-
-          {/* Article H1 & Metadata */}
-          <header className="mb-8 border-b border-border pb-6 space-y-3.5">
+      <div className="mx-auto flex max-w-6xl justify-center gap-12 px-4 sm:px-6 py-8">
+        <article className={cn("w-full min-w-0", columnWidthClass)}>
+          {/* Chapter Header: Title + single compact meta line */}
+          <header className="mb-8 border-b border-border/60 pb-6 space-y-3">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground text-balance">
-              {article.title}
+              {item.title}
             </h1>
 
-            {article.summary && (
+            {item.summary && (
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                {article.summary}
+                {item.summary}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleToggleLike}
-                    disabled={likeLoading}
-                    className={cn(
-                      "group inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold border shadow-xs transition-all duration-200 cursor-pointer select-none ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50",
-                      isLiked
-                        ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-600 shadow-rose-500/30 scale-100 active:scale-95"
-                        : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:border-rose-500/60 active:scale-95 hover:shadow-sm"
-                    )}
-                    aria-label={isLiked ? "Unlike article" : "Like article"}
-                  >
-                    <Heart
-                      className={cn(
-                        "size-3.5 transition-transform duration-300",
-                        isLiked
-                          ? "fill-white text-white scale-110"
-                          : "fill-rose-500/20 text-rose-600 dark:text-rose-400 group-hover:scale-125 group-hover:fill-rose-500"
-                      )}
-                    />
-                    <span className="font-mono tabular-nums">
-                      {likesCount > 0 ? `${likesCount} likes` : "Like"}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <span>{t("readingTime", { minutes: item.readingTime })}</span>
+                {formattedUpdatedDate && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {t("updatedAt", { date: formattedUpdatedDate })}
                     </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isLiked ? "Click to unlike" : "Click to like this article"}
-                </TooltipContent>
-              </Tooltip>
+                  </>
+                )}
+                {currentViews > 0 && (
+                  <>
+                    <span>·</span>
+                    <span>{t("views", { count: currentViews })}</span>
+                  </>
+                )}
+              </div>
 
-              {/* Share button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        navigator.clipboard.writeText(window.location.href);
-                        showToast("Article link copied to clipboard!", "success");
+              {/* Reader controls: Display Settings, Focus Mode, Shortcuts, Studio Link */}
+              <div className="flex items-center gap-1">
+                <ReadingSettings
+                  prefs={readerPrefs}
+                  onChange={handleChangePrefs}
+                />
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={focusMode ? "secondary" : "ghost"}
+                      size="xs"
+                      onClick={handleToggleFocusMode}
+                      aria-label={
+                        focusMode
+                          ? t("focusMode.disable")
+                          : t("focusMode.enable")
                       }
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-border/80 bg-muted/40 hover:bg-muted text-foreground/90 shadow-2xs hover:border-primary/40 transition-all cursor-pointer select-none active:scale-95"
-                    aria-label="Share article"
+                      className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      {focusMode ? (
+                        <Minimize2 className="size-3.5 text-primary" />
+                      ) : (
+                        <Maximize2 className="size-3.5" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {t("focusMode.label")}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {focusMode ? t("focusMode.disable") : t("focusMode.enable")}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setShortcutsOpen(true)}
+                      aria-label={t("shortcuts.triggerTooltip")}
+                      className="h-7 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <Keyboard className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t("shortcuts.triggerTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+
+                {canManage && !focusMode && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="xs"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    <Share2 className="size-3.5 text-primary shrink-0" />
-                    <span>Share</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Copy shareable link</TooltipContent>
-              </Tooltip>
-
-              {article.visibility === "UNPUBLIC" && (
-                <Badge variant="outline" className="border-purple-500/40 text-purple-600 dark:text-purple-400 bg-purple-500/10 text-xs gap-1 font-mono">
-                  <Link2 className="size-3" />
-                  <span>Unlisted</span>
-                </Badge>
-              )}
-              {article.audience === "INTERNAL" && (
-                <Badge variant="outline" className="border-primary/40 text-primary bg-primary/10 text-xs gap-1 font-mono">
-                  <Lock className="size-3" />
-                  <span>MPC Internal</span>
-                </Badge>
-              )}
-              {/* 1. Author (Icon User) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-xs text-foreground/90 font-medium cursor-default">
-                    <User className="size-3.5 text-primary shrink-0" />
-                    <span>{article.authorName}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Author</TooltipContent>
-              </Tooltip>
-
-              {/* 2. Publish Date (Icon Calendar) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground font-mono tabular-nums cursor-default">
-                    <Calendar className="size-3.5 text-muted-foreground/80 shrink-0" />
-                    <span>{createdDateStr}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Published Date</TooltipContent>
-              </Tooltip>
-
-              {/* 3. Last Edit Date (Icon Refresh) */}
-              {isRecentlyUpdated && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-xs text-foreground/80 font-mono tabular-nums cursor-default">
-                      <RefreshCw className="size-3 text-primary shrink-0" />
-                      <span>{updatedDateStr}</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>Last Updated</TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* 4. Reading Time (Icon Clock) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground font-mono tabular-nums cursor-default">
-                    <Clock className="size-3.5 text-muted-foreground/80 shrink-0" />
-                    <span>~{article.readingTime} min read</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Estimated reading time</TooltipContent>
-              </Tooltip>
-
-              {/* 5. Views Count (Icon Eye - with Debounce) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground font-mono tabular-nums cursor-default">
-                    <Eye className="size-3.5 text-muted-foreground/80 shrink-0" />
-                    <span>{currentViews.toLocaleString("en-US")}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>Article views</TooltipContent>
-              </Tooltip>
-
-              {/* 6. Learning Requirement / Completed Status */}
-              {/* {isArticleCompleted ? (
-                <Badge variant="success" className="gap-1 px-2.5 py-1 text-xs font-medium">
-                  <CheckCircle2 className="size-3.5" />
-                  <span>Completed</span>
-                </Badge>
-              ) : article.passScorePercent > 0 ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="info" className="gap-1 px-2.5 py-1 text-xs font-medium cursor-help">
-                      <Award className="size-3.5" />
-                      <span>≥ {article.passScorePercent}% Quiz</span>
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>Requires minimum {article.passScorePercent}% quiz score</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Badge variant="secondary" className="gap-1 px-2.5 py-1 text-xs font-normal text-muted-foreground">
-                  <BookOpen className="size-3.5" />
-                  <span>Read to complete</span>
-                </Badge>
-              )} */}
-
+                    <Link href={`/studio/items/${item.id}`}>
+                      {t("actions.editInStudio")}
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           </header>
 
-          {/* BlockNote Prose + Attachment Bar */}
+          {/* Main Chapter Content */}
           <ArticleRenderer
-            blocks={article.content || []}
-            attachments={article.attachments || []}
+            blocks={item.content || []}
+            attachments={item.attachments || []}
+            fontSize={readerPrefs.fontSize}
           />
 
-          {/* Scroll Tracker Sentinel at bottom of article */}
+          {/* Scroll Tracker Sentinel */}
           <ScrollTracker
-            key={`${article.id}_${Boolean(myProgress?.hasScrolledBottom)}`}
-            articleId={article.id}
-            requireScroll={article.requireScrollToBottom}
+            key={`${item.id}_${Boolean(myProgress?.hasScrolledBottom)}`}
+            itemId={item.id}
+            requireScroll={effectiveRequireScroll}
             initialScrolled={Boolean(myProgress?.hasScrolledBottom)}
             onScrollVerified={handleScrollVerified}
           />
 
-          {/* End-of-Article Quiz Runner */}
-          <QuizRunner
-            articleId={article.id}
-            passScorePercent={article.passScorePercent}
-            durationMinutes={article.quizDurationMinutes}
-            maxAttempts={article.quizMaxAttempts}
-            isExam={article.quizIsExam}
-            questions={clientSafeQuestions}
-            isUnlockedByScroll={isScrolledBottom}
-            highestQuizScore={myProgress?.highestQuizScore ?? 0}
-            onSubmitQuiz={(answers) => submitArticleQuiz(article.id, answers)}
-          />
-
-          {/* Completion Banner & Prev/Next Sequential Navigation */}
-          <footer className="mt-10 space-y-5">
-            <Separator />
-
-            {/* Notification Banner: Category Completed vs Article Completed */}
-            {isCategoryCompleted ? (
-              <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/15 via-card to-background p-6 sm:p-7 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-xs ring-2 ring-emerald-500/30">
-                      <Trophy className="size-6" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="success" className="gap-1 font-semibold text-xs py-0.5 px-2.5">
-                          <CheckCircle2 className="size-3.5" />
-                          <span>Category Completed</span>
-                        </Badge>
-                        <span className="text-xs font-mono text-muted-foreground">
-                          {categoryArticles.length}/{categoryArticles.length} lessons completed
-                        </span>
-                      </div>
-                      <h3 className="text-base sm:text-lg font-bold text-foreground">
-                        Congratulations! You have completed the entire section &ldquo;{currentRootCategory?.name || currentCat?.name}&rdquo;!
-                      </h3>
-                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
-                        {nextCategoryArticle
-                          ? "You have completed all lessons in this section. Continue on to explore subsequent categories in the curriculum roadmap!"
-                          : "You have successfully completed all lessons in the MPC Club Handbook!"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 2 Buttons: Continue reading & Return to Home */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-                    {nextCategoryArticle && (
-                      <Button
-                        asChild
-                        size="default"
-                        className="font-semibold gap-2 shadow-sm cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 px-5"
-                      >
-                        <Link href={`/docs/${nextCategoryArticle.slug}`}>
-                          <span>Continue reading</span>
-                          <ArrowRight className="size-4" />
-                        </Link>
-                      </Button>
-                    )}
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="default"
-                      className="gap-2 cursor-pointer font-medium h-10 px-4 border-border hover:bg-muted"
-                    >
-                      <Link href="/">
-                        <Home className="size-4" />
-                        <span>Return to Home</span>
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : isArticleCompleted ? (
-              <Alert variant="success" className="items-center">
-                <CheckCircle2 className="size-4" />
-                <div className="col-start-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-                  <div>
-                    <AlertTitle className="text-emerald-700 dark:text-emerald-400">
-                      You have successfully completed this lesson!
-                    </AlertTitle>
-                    <AlertDescription>
-                      Your progress has been recorded and the next lesson in the roadmap is unlocked.
-                    </AlertDescription>
-                  </div>
-                  {nextArticle && (
-                    <Button asChild variant="success" size="sm" className="shrink-0 cursor-pointer">
-                      <Link href={`/docs/${nextArticle.slug}`}>
-                        <span>Next: {nextArticle.title}</span>
-                        <ArrowRight className="size-3.5 ml-1" />
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              </Alert>
-            ) : null}
-
-            {/* Appreciation & Like Box */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card/60">
-              <div className="space-y-0.5 text-center sm:text-left">
-                <p className="text-sm font-semibold text-foreground">
-                  Did you find this helpful?
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Leave a like to support the author {article.authorName}.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant={isLiked ? "secondary" : "outline"}
-                size="sm"
-                onClick={handleToggleLike}
-                disabled={likeLoading}
-                className={`gap-2 cursor-pointer transition-all ${isLiked
-                    ? "border-rose-500/40 text-rose-600 dark:text-rose-400 bg-rose-500/10 font-semibold"
-                    : "hover:border-rose-500/40 hover:text-rose-600"
-                  }`}
-              >
-                <Heart
-                  className={`size-4 transition-transform ${isLiked ? "fill-rose-500 text-rose-500 scale-110" : ""
-                    }`}
-                />
-                <span>{isLiked ? "Liked" : "Like article"}</span>
-                <span className="font-mono text-xs opacity-80">({likesCount})</span>
-              </Button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {prevArticle ? (
-                <Card
-                  asChild
-                  className="p-4 gap-1 hover:border-primary/60 transition-colors cursor-pointer"
+          {/* End of Chapter Footer */}
+          <footer className="mt-10 pt-6 border-t border-border/60 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Completion indicator + Primary Next CTA */}
+              {isItemCompleted ? (
+                <motion.div
+                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={
+                    reduceMotion ? { duration: 0 } : { duration: 0.25 }
+                  }
+                  className="flex flex-wrap items-center gap-3"
                 >
-                  <Link href={`/docs/${prevArticle.slug}`}>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <ArrowLeft className="size-3.5" /> Previous lesson
-                    </span>
-                    <span className="text-sm font-semibold text-foreground truncate">
-                      {prevArticle.title}
-                    </span>
-                  </Link>
-                </Card>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    <span>{t("completion.completed")}</span>
+                  </span>
+
+                  {isCourseCompleted || isLastItemOfCourse ? (
+                    <Button asChild size="sm" className="gap-1.5 font-semibold">
+                      <Link href={`/learn/${course.slug}/certificate`}>
+                        <Award className="size-4" />
+                        <span>{t("completion.viewCertificate")}</span>
+                      </Link>
+                    </Button>
+                  ) : nextItem ? (
+                    <Button asChild size="sm" className="gap-1.5 font-semibold">
+                      <Link href={getItemHref(nextItem)}>
+                        <span>{t("completion.nextChapter")}</span>
+                        <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
+                  ) : null}
+                </motion.div>
               ) : (
                 <div />
               )}
 
-              {nextArticle ? (
-                <Card
-                  asChild
-                  className="p-4 gap-1 items-end text-right hover:border-primary/60 transition-colors cursor-pointer"
-                >
-                  <Link href={`/docs/${nextArticle.slug}`}>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      Next lesson <ArrowRight className="size-3.5" />
+              {/* Subtle Like & Share actions */}
+              {!focusMode && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    disabled={likeLoading}
+                    onClick={handleToggleLike}
+                    aria-label={
+                      isLiked
+                        ? t("actions.unlikeAria")
+                        : t("actions.likeAria")
+                    }
+                    className={cn(
+                      "h-8 gap-1.5 px-2.5 text-xs cursor-pointer",
+                      isLiked
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Heart
+                      className={cn(
+                        "size-3.5",
+                        isLiked ? "fill-current" : ""
+                      )}
+                    />
+                    <span>
+                      {isLiked ? t("actions.liked") : t("actions.like")}
                     </span>
-                    <span className="text-sm font-semibold text-foreground truncate max-w-full">
-                      {nextArticle.title}
-                    </span>
-                  </Link>
-                </Card>
-              ) : null}
+                    {likesCount > 0 && (
+                      <span className="font-mono tabular-nums">
+                        ({likesCount})
+                      </span>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        navigator.clipboard.writeText(window.location.href);
+                        showToast(t("actions.linkCopied"), "success");
+                      }
+                    }}
+                    className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <Share2 className="size-3.5" />
+                    <span>{t("actions.share")}</span>
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {isItemCompleted &&
+              (isCourseCompleted || isLastItemOfCourse || isLastItemOfLesson) && (
+                <p className="text-xs text-muted-foreground">
+                  {isCourseCompleted || isLastItemOfCourse
+                    ? t("completion.courseCompletedHint")
+                    : t("completion.lessonCompletedHint")}
+                </p>
+              )}
+
+            <ItemNav
+              prevItem={prevItem}
+              nextItem={nextItem}
+              getItemHref={getItemHref}
+            />
           </footer>
 
-          {/* Discussion & Comment Section */}
-          <CommentSection articleId={article.id} />
+          {/* Comments (hidden in Focus Mode) */}
+          {!focusMode && <CommentSection itemId={item.id} />}
         </article>
 
-        {/* Right Sticky Table of Contents & Progress */}
-        <TableOfContents article={article} progress={myProgress} />
+        {/* Right Sticky TOC (hidden in Focus Mode) */}
+        {!focusMode && <TableOfContents item={item} progress={myProgress} />}
       </div>
+
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </AppShell>
   );
 }
 
+export const ArticleClientPage = ItemReader;

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,15 +35,20 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   variant = "default",
   destructive = false,
   onConfirm,
   extraAction,
 }: ConfirmDialogProps) {
+  const tCommon = useTranslations("common");
+  const t = useTranslations("studio.confirmDialog");
   const isDestructive = destructive || variant === "destructive";
   const [loading, setLoading] = React.useState(false);
+
+  const resolvedConfirmLabel = confirmLabel ?? tCommon("actions.confirm");
+  const resolvedCancelLabel = cancelLabel ?? tCommon("actions.cancel");
 
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -67,7 +73,9 @@ export function ConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>
+            {resolvedCancelLabel}
+          </AlertDialogCancel>
           {extraAction && (
             <AlertDialogAction
               onClick={async (e) => {
@@ -94,7 +102,7 @@ export function ConfirmDialog({
                 "bg-destructive text-destructive-foreground hover:bg-destructive/90"
             )}
           >
-            {loading ? "Processing..." : confirmLabel}
+            {loading ? t("processing") : resolvedConfirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

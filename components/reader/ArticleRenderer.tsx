@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArticleAttachment, EditorBlock } from "@/types";
+import { useTranslations } from "next-intl";
+import { EditorBlock, ItemAttachment } from "@/types";
 import { FormattedText } from "@/components/reader/FormattedText";
+import type { ReaderFontSize } from "@/components/reader/ReadingSettings";
 import { Lightbox, LightboxItem } from "@/components/ui/Lightbox";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,10 +31,11 @@ import {
 
 interface ArticleRendererProps {
   blocks: EditorBlock[];
-  attachments: ArticleAttachment[];
+  attachments: ItemAttachment[];
+  fontSize?: ReaderFontSize;
 }
 
-function getYoutubeEmbedUrl(url: string): string | null {
+export function getYoutubeEmbedUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     if (parsed.hostname.includes("youtu.be")) {
@@ -50,10 +52,14 @@ function getYoutubeEmbedUrl(url: string): string | null {
   return null;
 }
 
-export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
+export function ArticleRenderer({
+  blocks,
+  attachments,
+  fontSize = "md",
+}: ArticleRendererProps) {
+  const t = useTranslations("reader.content");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxItems, setLightboxItems] = useState<LightboxItem[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -83,10 +89,17 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
     (att) => att.type !== "youtube"
   );
 
+  const proseSizeClass =
+    fontSize === "sm"
+      ? "text-[15px] leading-7"
+      : fontSize === "lg"
+      ? "text-lg leading-8"
+      : "text-base sm:text-[17px] leading-relaxed";
+
   return (
     <div className="space-y-6">
       {/* Article Prose Body */}
-      <div className="space-y-5 text-base leading-7 text-foreground/90">
+      <div className={cn("space-y-5 text-foreground/90", proseSizeClass)}>
         {blocks.map((block) => {
           const alignClass =
             block.props?.align === "center"
@@ -144,10 +157,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <p
                   key={block.id}
-                  className={cn(
-                    "text-sm sm:text-base leading-relaxed text-foreground/85",
-                    alignClass
-                  )}
+                  className={cn("text-foreground/85", alignClass)}
                 >
                   <FormattedText text={block.content} />
                 </p>
@@ -161,10 +171,10 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <ul
                   key={block.id}
-                  className="list-disc pl-5 space-y-1.5 text-sm sm:text-base text-foreground/85"
+                  className="list-disc pl-5 space-y-1.5 text-foreground/85"
                 >
                   {items.map((item, i) => (
-                    <li key={i} className="leading-relaxed">
+                    <li key={i}>
                       <FormattedText text={item} />
                     </li>
                   ))}
@@ -180,10 +190,10 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <ol
                   key={block.id}
-                  className="list-decimal pl-5 space-y-1.5 text-sm sm:text-base text-foreground/85"
+                  className="list-decimal pl-5 space-y-1.5 text-foreground/85"
                 >
                   {items.map((item, i) => (
-                    <li key={i} className="leading-relaxed">
+                    <li key={i}>
                       <FormattedText text={item} />
                     </li>
                   ))}
@@ -196,7 +206,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <div
                   key={block.id}
-                  className="flex items-start gap-3 rounded-lg border border-border/80 bg-muted/20 px-3.5 py-2 text-sm"
+                  className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2 text-sm"
                 >
                   <Checkbox
                     checked={checked}
@@ -206,7 +216,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                   <span
                     className={
                       checked
-                        ? "text-foreground font-medium line-through text-muted-foreground"
+                        ? "font-medium line-through text-muted-foreground"
                         : "text-foreground/85"
                     }
                   >
@@ -236,12 +246,12 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                       {copiedId === block.id ? (
                         <>
                           <Check className="size-3 text-emerald-400 mr-1" />
-                          <span>Copied</span>
+                          <span>{t("copied")}</span>
                         </>
                       ) : (
                         <>
                           <Copy className="size-3 mr-1" />
-                          <span>Copy</span>
+                          <span>{t("copy")}</span>
                         </>
                       )}
                     </Button>
@@ -267,7 +277,11 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               }[rawVariant];
 
               return (
-                <Alert key={block.id} variant={alertVariant} className="my-3 py-2.5">
+                <Alert
+                  key={block.id}
+                  variant={alertVariant}
+                  className="my-3 py-2.5"
+                >
                   <Icon className="size-4" />
                   <AlertDescription className="text-foreground/90 text-xs sm:text-sm leading-relaxed">
                     <FormattedText text={block.content} />
@@ -280,7 +294,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <blockquote
                   key={block.id}
-                  className="rounded-lg border-l-4 border-primary bg-muted/30 px-4 py-3 italic text-foreground/85 my-3 text-sm sm:text-base"
+                  className="rounded-lg border-l-4 border-primary bg-muted/30 px-4 py-3 italic text-foreground/85 my-3"
                 >
                   <FormattedText text={block.content} />
                 </blockquote>
@@ -300,12 +314,12 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                           block.props?.caption
                         )
                       }
-                      className="group relative overflow-hidden rounded-xl border border-border bg-muted/30 cursor-pointer shadow-xs"
+                      className="group relative overflow-hidden rounded-xl border border-border bg-muted/30 cursor-pointer"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={block.props.imageUrl}
-                        alt={block.props.caption || "Article illustration image"}
+                        alt={block.props.caption || t("imageAlt")}
                         referrerPolicy="no-referrer"
                         className="w-full max-h-[480px] object-contain transition-transform duration-300 group-hover:scale-[1.01]"
                       />
@@ -353,17 +367,22 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                       <div
                         key={img.id || idx}
                         onClick={() => openGallery(lightboxList, idx)}
-                        className="group relative overflow-hidden rounded-xl border border-border bg-card cursor-pointer shadow-xs aspect-[4/3]"
+                        className="group relative overflow-hidden rounded-xl border border-border bg-card cursor-pointer aspect-[4/3]"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={img.url}
-                          alt={img.alt || img.caption || "Gallery image"}
+                          alt={
+                            img.alt ||
+                            img.caption ||
+                            t("galleryImageAlt", { index: idx + 1 })
+                          }
                           className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3">
                           <span className="text-xs text-white truncate max-w-[80%]">
-                            {img.caption || `Image ${idx + 1}`}
+                            {img.caption ||
+                              t("galleryImageAlt", { index: idx + 1 })}
                           </span>
                           <Maximize2 className="size-3.5 text-white shrink-0" />
                         </div>
@@ -381,7 +400,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
 
               return (
                 <div key={block.id} className="my-6 space-y-2">
-                  <div className="overflow-hidden rounded-xl border border-border bg-card p-3 shadow-xs space-y-2">
+                  <div className="overflow-hidden rounded-xl border border-border bg-card p-3 space-y-2">
                     {block.content && (
                       <div className="flex items-center gap-2">
                         <Youtube className="size-4 text-red-500 shrink-0" />
@@ -395,17 +414,13 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                       {embedUrl ? (
                         <iframe
                           src={embedUrl}
-                          title={block.content || "Video player"}
+                          title={block.content || t("videoTitle")}
                           className="size-full border-0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         />
                       ) : (
-                        <video
-                          src={videoUrl}
-                          controls
-                          className="size-full"
-                        />
+                        <video src={videoUrl} controls className="size-full" />
                       )}
                     </div>
                   </div>
@@ -481,33 +496,39 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                     </p>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Left Column (Recommended / Do) */}
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
                         <CheckCircle2 className="size-4 shrink-0" />
-                        <span>{comp.leftTitle || "Recommended / Do"}</span>
+                        <span>{comp.leftTitle || t("comparisonDo")}</span>
                       </div>
                       <ul className="space-y-2 text-xs sm:text-sm text-foreground/85">
                         {comp.leftPoints.map((point, idx) => (
                           <li key={idx} className="flex items-start gap-2">
-                            <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
-                            <span><FormattedText text={point} /></span>
+                            <span className="text-emerald-500 font-bold shrink-0 mt-0.5">
+                              •
+                            </span>
+                            <span>
+                              <FormattedText text={point} />
+                            </span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    {/* Right Column (Caution / Avoid) */}
                     <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
                       <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-semibold text-sm">
                         <XCircle className="size-4 shrink-0" />
-                        <span>{comp.rightTitle || "Caution / Avoid"}</span>
+                        <span>{comp.rightTitle || t("comparisonAvoid")}</span>
                       </div>
                       <ul className="space-y-2 text-xs sm:text-sm text-foreground/85">
                         {comp.rightPoints.map((point, idx) => (
                           <li key={idx} className="flex items-start gap-2">
-                            <span className="text-amber-500 font-bold shrink-0 mt-0.5">•</span>
-                            <span><FormattedText text={point} /></span>
+                            <span className="text-amber-500 font-bold shrink-0 mt-0.5">
+                              •
+                            </span>
+                            <span>
+                              <FormattedText text={point} />
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -536,19 +557,19 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
               return (
                 <div
                   key={vid.id}
-                  className="overflow-hidden rounded-xl border border-border bg-card shadow-xs p-3.5 space-y-2"
+                  className="overflow-hidden rounded-xl border border-border bg-card p-3.5 space-y-2"
                 >
                   <div className="flex items-center gap-2">
                     <Youtube className="size-4 text-red-500 shrink-0" />
                     <span className="text-xs font-semibold text-foreground truncate">
-                      {vid.title || "Lecture Video"}
+                      {vid.title || t("videoTitle")}
                     </span>
                   </div>
 
                   <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
                     <iframe
                       src={embedUrl}
-                      title={vid.title}
+                      title={vid.title || t("videoTitle")}
                       className="size-full border-0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -566,8 +587,8 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
         <div className="mt-8 pt-4 border-t border-border/60 space-y-3">
           <div className="flex items-center gap-2">
             <Paperclip className="size-3.5 text-primary" />
-            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
-              Attachments & Resources ({fileAttachments.length})
+            <h4 className="text-xs font-semibold text-foreground">
+              {t("attachmentsTitle", { count: fileAttachments.length })}
             </h4>
           </div>
 
@@ -578,7 +599,7 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                 href={att.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-card px-3 py-2 text-xs text-foreground hover:border-primary/60 hover:text-primary transition-colors cursor-pointer shadow-2xs group"
+                className="inline-flex items-center gap-2 rounded-lg border border-border/80 bg-card px-3 py-2 text-xs text-foreground hover:border-primary/60 hover:text-primary transition-colors cursor-pointer group"
               >
                 {att.type === "drive" && (
                   <HardDrive className="size-3.5 text-blue-500 shrink-0" />
@@ -589,7 +610,9 @@ export function ArticleRenderer({ blocks, attachments }: ArticleRendererProps) {
                 {(att.type === "figma" || att.type === "external") && (
                   <LinkIcon className="size-3.5 text-amber-500 shrink-0" />
                 )}
-                {!["drive", "github", "figma", "external"].includes(att.type) && (
+                {!["drive", "github", "figma", "external"].includes(
+                  att.type
+                ) && (
                   <Paperclip className="size-3.5 text-muted-foreground shrink-0" />
                 )}
 

@@ -1,51 +1,70 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { HandbookProvider } from "@/context/HandbookContext";
+import { Companion } from "@/components/companion/Companion";
+import { SITE_URL } from "@/lib/seo";
 
 const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   variable: "--font-mono",
   weight: ["400", "500", "600"],
 });
 
-export const metadata: Metadata = {
-  referrer: "no-referrer-when-downgrade",
-  title: "MPC Handbook — Internal Handbook & Curriculum Roadmap",
-  description:
-    "Standardized internal handbook and sequential curriculum system for the Academic Programming Club (MPC), featuring MPC-SSO, BlockNote editor, and assessments.",
-  icons: {
-    icon: "/icon.svg",
-    shortcut: "/favicon.ico",
-  },
-  openGraph: {
-    title: "MPC Handbook — Internal Handbook & Curriculum Roadmap",
-    description:
-      "Standardized internal handbook and sequential curriculum system for the Academic Programming Club (MPC), featuring MPC-SSO, BlockNote editor, and assessments.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "MPC Handbook — Internal Handbook & Curriculum Roadmap",
-    description:
-      "Standardized internal handbook and sequential curriculum system for the Academic Programming Club (MPC), featuring MPC-SSO, BlockNote editor, and assessments.",
-  },
-};
+const OG_LOCALE: Record<string, string> = { vi: "vi_VN", en: "en_US" };
 
-export default function RootLayout({
+/**
+ * Metadata mặc định = trang chủ (là trang DUY NHẤT cho phép lập chỉ mục).
+ * Mọi trang khác tự ghi đè `robots` thành noindex; middleware cũng gắn X-Robots-Tag.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const [t, tSeo, locale] = await Promise.all([
+    getTranslations("common.meta"),
+    getTranslations("seo"),
+    getLocale(),
+  ]);
+  const title = t("title");
+  const description = t("description");
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: title, template: tSeo("titleTemplate", { title: "%s" }) },
+    description,
+    applicationName: tSeo("siteName"),
+    referrer: "no-referrer-when-downgrade",
+    icons: { icon: "/icon.svg", shortcut: "/favicon.ico" },
+    alternates: { canonical: "/" },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title,
+      description,
+      url: "/",
+      siteName: tSeo("siteName"),
+      type: "website",
+      locale: OG_LOCALE[locale] ?? "vi_VN",
+    },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`dark ${plusJakarta.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
@@ -53,7 +72,12 @@ export default function RootLayout({
         className="font-sans antialiased bg-background text-foreground"
         suppressHydrationWarning
       >
-        <HandbookProvider>{children}</HandbookProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <HandbookProvider>
+            {children}
+            <Companion />
+          </HandbookProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

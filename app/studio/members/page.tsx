@@ -1,19 +1,20 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { useHandbook } from "@/context/HandbookContext";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable, SortableHeader } from "@/components/admin/DataTable";
-import { formatDateTime } from "@/lib/date";
+import { ProgressBar } from "@/components/ui/animated-progress";
+import { hasQuiz } from "@/lib/quiz-rules";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -43,11 +44,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { DepartmentRecord, Role, UserProfile } from "@/types";
 import {
+  BookOpen,
   Building2,
   CheckCircle2,
   Clock,
   Edit,
-  FolderLock,
   Plus,
   RotateCcw,
   Save,
@@ -66,18 +67,13 @@ interface MemberWithStats extends UserProfile {
   statusKey: "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
 }
 
-function roleLabel(role: Role): string {
-  if (role === "ADMIN") return "Administrator";
-  if (role === "EDITOR") return "Department Editor";
-  return "Reader / Member";
-}
-
 export default function StudioMembersPage() {
   const {
     user: currentUser,
     allUsers,
-    articles,
-    categories,
+    courses,
+    lessons,
+    items,
     departments,
     allProgress,
     quizAttempts,
@@ -89,6 +85,10 @@ export default function StudioMembersPage() {
     showToast,
   } = useHandbook();
 
+  const format = useFormatter();
+  const t = useTranslations("studioItems.members");
+  const tc = useTranslations("common");
+
   const [mainTab, setMainTab] = useState<"members" | "departments">("members");
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,10 +96,8 @@ export default function StudioMembersPage() {
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // Selected member for slide-over sheet
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
 
-  // Department modal state
   const [deptDialogOpen, setDeptDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<DepartmentRecord | null>(null);
   const [deptName, setDeptName] = useState("");
@@ -108,14 +106,16 @@ export default function StudioMembersPage() {
   const [savingDept, setSavingDept] = useState(false);
   const [deleteDeptId, setDeleteDeptId] = useState<string | null>(null);
 
+  const fmtDateTime = (iso?: string) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return format.dateTime(d, { dateStyle: "short", timeStyle: "short" });
+  };
+
   const departmentList = useMemo(() => {
     if (departments && departments.length > 0) return departments;
-    return [
-      { id: "dept_1", name: "Executive Board", description: "General management and club operations", color: "#8b5cf6" },
-      { id: "dept_2", name: "Academic Team", description: "Technology R&D, technical training and curriculum", color: "#3b82f6" },
-      { id: "dept_3", name: "Media & Events", description: "Public relations, visual design, and event operations", color: "#ec4899" },
-      { id: "dept_4", name: "HR & External Affairs", description: "Member management, team building, and partner relations", color: "#f59e0b" },
-    ];
+    return [];
   }, [departments]);
 
   const departmentNames = useMemo(
@@ -123,28 +123,41 @@ export default function StudioMembersPage() {
     [departmentList]
   );
 
-  // Explicit permission form state inside Sheet
   const [editRole, setEditRole] = useState<Role>("MEMBER");
-  const [editDepartment, setEditDepartment] = useState<string>("Academic Team");
-  const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
+  const [editDepartment, setEditDepartment] = useState<string>("");
+  const [editCourseIds, setEditCourseIds] = useState<string[]>([]);
   const [editManagedGroups, setEditManagedGroups] = useState<string[]>([]);
   const [savingPerms, setSavingPerms] = useState(false);
 
-  const publishedArticles = useMemo(
+  const sortedCourses = useMemo(
+    () => [...courses].sort((a, b) => a.orderIndex - b.orderIndex),
+    [courses]
+  );
+
+  const lessonMap = useMemo(
+    () => new Map(lessons.map((l) => [l.id, l])),
+    [lessons]
+  );
+  const courseMap = useMemo(
+    () => new Map(courses.map((c) => [c.id, c])),
+    [courses]
+  );
+
+  const publishedItems = useMemo(
     () =>
-      articles
-        .filter((a) => a.isPublished)
+      items
+        .filter((i) => i.status === "PUBLISHED")
         .sort((a, b) => a.orderIndex - b.orderIndex),
-    [articles]
+    [items]
   );
 
   const membersWithStats = useMemo<MemberWithStats[]>(() => {
-    const totalPub = publishedArticles.length || 1;
-    const pubIds = new Set(publishedArticles.map((a) => a.id));
+    const totalPub = publishedItems.length || 1;
+    const pubIds = new Set(publishedItems.map((i) => i.id));
 
     return allUsers.map((m) => {
       const userProg = allProgress.filter(
-        (p) => p.userId === m.uid && pubIds.has(p.articleId)
+        (p) => p.userId === m.uid && pubIds.has(p.itemId)
       );
       const completedCount = userProg.filter((p) => p.isCompleted).length;
       const completionRate = Math.round((completedCount / totalPub) * 100);
@@ -160,7 +173,10 @@ export default function StudioMembersPage() {
 
       let statusKey: "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED" =
         "NOT_STARTED";
-      if (completedCount >= publishedArticles.length && publishedArticles.length > 0) {
+      if (
+        completedCount >= publishedItems.length &&
+        publishedItems.length > 0
+      ) {
         statusKey = "COMPLETED";
       } else if (userProg.length > 0) {
         statusKey = "IN_PROGRESS";
@@ -169,13 +185,13 @@ export default function StudioMembersPage() {
       return {
         ...m,
         completedCount,
-        totalPublished: publishedArticles.length,
+        totalPublished: publishedItems.length,
         completionRate,
         avgQuizScore,
         statusKey,
       };
     });
-  }, [allUsers, allProgress, publishedArticles]);
+  }, [allUsers, allProgress, publishedItems]);
 
   const filteredMembers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -198,15 +214,14 @@ export default function StudioMembersPage() {
     [membersWithStats, selectedUid]
   );
 
-  // Sync permission form when selectedMember changes
   useEffect(() => {
     if (selectedMember) {
       setEditRole(selectedMember.role);
-      setEditDepartment(selectedMember.department || "Academic Team");
-      setEditCategoryIds(selectedMember.managedCategoryIds || []);
+      setEditDepartment(selectedMember.department || departmentNames[0] || "");
+      setEditCourseIds(selectedMember.managedCourseIds || []);
       setEditManagedGroups(selectedMember.managedGroups || []);
     }
-  }, [selectedMember]);
+  }, [selectedMember, departmentNames]);
 
   const hasActiveFilters =
     searchQuery.trim() !== "" ||
@@ -226,15 +241,19 @@ export default function StudioMembersPage() {
       {
         accessorKey: "fullName",
         header: ({ column }) => (
-          <SortableHeader column={column} label="Member" />
+          <SortableHeader column={column} label={t("columns.member")} />
         ),
         cell: ({ row }) => {
           const m = row.original;
           return (
-            <div className="flex items-center gap-3 min-w-[220px]">
+            <div className="flex items-center gap-3 min-w-[200px]">
               <Avatar className="size-8 shrink-0">
                 {m.avatarUrl && (
-                  <AvatarImage src={m.avatarUrl} alt={m.fullName} referrerPolicy="no-referrer" />
+                  <AvatarImage
+                    src={m.avatarUrl}
+                    alt={m.fullName}
+                    referrerPolicy="no-referrer"
+                  />
                 )}
                 <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
                   {m.fullName.slice(0, 2).toUpperCase()}
@@ -255,27 +274,19 @@ export default function StudioMembersPage() {
       {
         accessorKey: "department",
         header: ({ column }) => (
-          <SortableHeader column={column} label="Department" />
+          <SortableHeader column={column} label={t("columns.department")} />
         ),
         cell: ({ row }) => {
           const m = row.original;
           return (
-            <div className="flex flex-col gap-1 min-w-[170px]">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className="text-xs font-medium border-border/80 bg-muted/40 text-foreground"
-                >
-                  {m.department || "Unassigned"}
-                </Badge>
-              </div>
+            <div className="flex flex-col gap-0.5 min-w-[160px]">
+              <span className="text-xs text-foreground">
+                {m.department || t("columns.unassignedDept")}
+              </span>
               {m.managedGroups && m.managedGroups.length > 0 && (
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground flex-wrap">
-                  <span className="font-semibold text-primary">Manages:</span>
-                  <span className="truncate max-w-[200px]">
-                    {m.managedGroups.join(", ")}
-                  </span>
-                </div>
+                <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                  {t("columns.viewGroupsPrefix")} {m.managedGroups.join(", ")}
+                </span>
               )}
             </div>
           );
@@ -284,41 +295,74 @@ export default function StudioMembersPage() {
       {
         accessorKey: "role",
         header: ({ column }) => (
-          <SortableHeader column={column} label="Role" />
+          <SortableHeader column={column} label={t("columns.role")} />
         ),
         cell: ({ row }) => {
           const m = row.original;
-          const adminEmails = ssoStatus?.superAdminEmails || ["trieukon1011@gmail.com"];
+          const adminEmails = ssoStatus?.superAdminEmails || [
+            "trieukon1011@gmail.com",
+          ];
           if (adminEmails.includes(m.email.toLowerCase())) {
             return (
-              <Badge
-                variant="default"
-                className="text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white border-none"
-              >
-                Super Admin
+              <Badge variant="default" className="text-xs font-medium">
+                {t("roles.SUPER_ADMIN")}
               </Badge>
             );
           }
           return (
-            <Badge
-              variant={
-                m.role === "ADMIN"
-                  ? "default"
-                  : m.role === "EDITOR"
-                  ? "info"
-                  : "secondary"
-              }
-              className="text-xs font-normal"
-            >
-              {roleLabel(m.role)}
-            </Badge>
+            <div className="flex flex-col items-start gap-0.5">
+              <Badge
+                variant={
+                  m.role === "ADMIN"
+                    ? "default"
+                    : m.role === "EDITOR"
+                    ? "secondary"
+                    : "outline"
+                }
+                className="text-xs font-normal"
+              >
+                {t(`roles.${m.role}`)}
+              </Badge>
+              {m.role === "EDITOR" && (
+                <span className="text-[11px] text-muted-foreground">
+                  {t("columns.assignedCoursesCount", {
+                    count: m.managedCourseIds?.length || 0,
+                  })}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "completionRate",
+        header: ({ column }) => (
+          <SortableHeader column={column} label={t("columns.progress")} />
+        ),
+        cell: ({ row }) => {
+          const m = row.original;
+          return (
+            <div className="w-32 space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">
+                  {t(`progressStatus.${m.statusKey}`)}
+                </span>
+                <span className="font-mono tabular-nums text-foreground">
+                  {m.completionRate}%
+                </span>
+              </div>
+              <ProgressBar
+                value={m.completionRate}
+                label={t("columns.progress")}
+              />
+            </div>
           );
         },
       },
       {
         accessorKey: "avgQuizScore",
         header: ({ column }) => (
-          <SortableHeader column={column} label="Avg Quiz Score" />
+          <SortableHeader column={column} label={t("columns.avgQuizScore")} />
         ),
         cell: ({ row }) => {
           const score = row.original.avgQuizScore;
@@ -333,58 +377,31 @@ export default function StudioMembersPage() {
         },
       },
       {
-        accessorKey: "statusKey",
-        header: "Status",
-        cell: ({ row }) => {
-          const st = row.original.statusKey;
-          if (st === "COMPLETED") {
-            return (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                <span>Completed</span>
-              </span>
-            );
-          }
-          if (st === "IN_PROGRESS") {
-            return (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                <span className="size-1.5 rounded-full bg-primary" />
-                <span>In Progress</span>
-              </span>
-            );
-          }
-          return (
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-              <span>Not Started</span>
-            </span>
-          );
-        },
-      },
-      {
         id: "actions",
-        header: () => <span className="sr-only">Details</span>,
+        header: () => <span className="sr-only">{t("columns.detailsSr")}</span>,
         cell: ({ row }) => (
           <div className="flex justify-end">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="xs"
               onClick={() => setSelectedUid(row.original.uid)}
-              className="cursor-pointer"
+              className="cursor-pointer text-xs"
             >
-              View Profile
+              {t("columns.viewProfile")}
             </Button>
           </div>
         ),
       },
     ],
-    []
+    [ssoStatus, t]
   );
 
-  const toggleManagedCategory = (catId: string) => {
-    setEditCategoryIds((prev) =>
-      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
+  const toggleManagedCourse = (courseId: string) => {
+    setEditCourseIds((prev) =>
+      prev.includes(courseId)
+        ? prev.filter((id) => id !== courseId)
+        : [...prev, courseId]
     );
   };
 
@@ -396,8 +413,13 @@ export default function StudioMembersPage() {
         selectedMember.uid,
         editRole,
         editDepartment,
-        editRole === "EDITOR" ? editCategoryIds : [],
+        editRole === "EDITOR" ? editCourseIds : [],
         editManagedGroups
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : t("toast.savePermsFailed"),
+        "error"
       );
     } finally {
       setSavingPerms(false);
@@ -423,7 +445,7 @@ export default function StudioMembersPage() {
   const handleSaveDeptSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deptName.trim()) {
-      showToast("Please enter a department name.", "error");
+      showToast(t("toast.deptNameRequired"), "error");
       return;
     }
     setSavingDept(true);
@@ -436,7 +458,10 @@ export default function StudioMembersPage() {
       });
       setDeptDialogOpen(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save department.", "error");
+      showToast(
+        err instanceof Error ? err.message : t("toast.saveDeptFailed"),
+        "error"
+      );
     } finally {
       setSavingDept(false);
     }
@@ -447,7 +472,10 @@ export default function StudioMembersPage() {
     try {
       await deleteDepartment(deleteDeptId);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete department.", "error");
+      showToast(
+        err instanceof Error ? err.message : t("toast.deleteDeptFailed"),
+        "error"
+      );
     } finally {
       setDeleteDeptId(null);
     }
@@ -455,12 +483,14 @@ export default function StudioMembersPage() {
 
   if (currentUser && currentUser.role !== "ADMIN") {
     return (
-      <AdminLayout breadcrumbs={[{ label: "Members & Teams" }]}>
+      <AdminLayout breadcrumbs={[{ label: t("breadcrumb") }]}>
         <div className="flex flex-col items-center justify-center p-12 text-center space-y-3">
           <Shield className="size-10 text-destructive/80" />
-          <h2 className="text-lg font-bold text-foreground">Access Restricted</h2>
+          <h2 className="text-lg font-bold text-foreground">
+            {t("noAccess.title")}
+          </h2>
           <p className="text-sm text-muted-foreground max-w-md">
-            Only Administrators have permission to view members and configure role assignments.
+            {t("noAccess.description")}
           </p>
         </div>
       </AdminLayout>
@@ -468,60 +498,61 @@ export default function StudioMembersPage() {
   }
 
   return (
-    <AdminLayout breadcrumbs={[{ label: "Members & Teams" }]}>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <PageHeader
-            title="Members & Departments"
-            description="Monitor member learning progress, editor permissions, and club department structures."
-          />
-          {mainTab === "departments" && (
-            <Button
-              type="button"
-              onClick={handleOpenCreateDept}
-              className="gap-2 cursor-pointer shrink-0 self-start sm:self-auto font-medium"
-            >
-              <Plus className="size-4" />
-              <span>Add Department</span>
-            </Button>
-          )}
-        </div>
+    <AdminLayout breadcrumbs={[{ label: t("breadcrumb") }]}>
+      <div className="space-y-5">
+        <PageHeader
+          title={t("title")}
+          description={t("description")}
+          actions={
+            mainTab === "departments" ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleOpenCreateDept}
+                className="gap-1.5 cursor-pointer text-xs"
+              >
+                <Plus className="size-3.5" />
+                <span>{t("addDepartment")}</span>
+              </Button>
+            ) : undefined
+          }
+        />
 
-        {/* Tab Switcher: Members vs Departments */}
+        {/* Chuyển tab: Thành viên | Các ban */}
         <div className="border-b border-border">
           <div className="flex items-center gap-6">
             <button
               type="button"
               onClick={() => setMainTab("members")}
               className={cn(
-                "pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer",
+                "pb-2.5 text-xs font-medium flex items-center gap-2 border-b-2 transition-colors cursor-pointer",
                 mainTab === "members"
-                  ? "border-primary text-primary"
+                  ? "border-primary text-primary font-semibold"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              <Users className="size-4" />
-              <span>Members Directory</span>
-              <Badge variant="secondary" className="text-[11px] h-5 px-1.5">
-                {allUsers.length}
-              </Badge>
+              <Users className="size-3.5" />
+              <span>{t("tabs.members")}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                ({allUsers.length})
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setMainTab("departments")}
               className={cn(
-                "pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors cursor-pointer",
+                "pb-2.5 text-xs font-medium flex items-center gap-2 border-b-2 transition-colors cursor-pointer",
                 mainTab === "departments"
-                  ? "border-primary text-primary"
+                  ? "border-primary text-primary font-semibold"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              <Building2 className="size-4" />
-              <span>Departments Management</span>
-              <Badge variant="secondary" className="text-[11px] h-5 px-1.5">
-                {departmentList.length}
-              </Badge>
+              <Building2 className="size-3.5" />
+              <span>{t("tabs.departments")}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                ({departmentList.length})
+              </span>
             </button>
           </div>
         </div>
@@ -532,8 +563,8 @@ export default function StudioMembersPage() {
             data={filteredMembers}
             loading={dataLoading}
             onRowClick={(m) => setSelectedUid(m.uid)}
-            emptyTitle="No matching members found"
-            emptyDescription="Try adjusting your search query or reset filters to view all club members."
+            emptyTitle={t("empty.title")}
+            emptyDescription={t("empty.description")}
             emptyAction={
               hasActiveFilters ? (
                 <Button
@@ -541,182 +572,198 @@ export default function StudioMembersPage() {
                   variant="outline"
                   size="sm"
                   onClick={resetFilters}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-xs"
                 >
                   <RotateCcw className="size-3.5 mr-1.5" />
-                  <span>Reset Filters</span>
+                  <span>{t("empty.resetFilters")}</span>
                 </Button>
               ) : undefined
             }
             toolbar={
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by full name or email..."
-                    className="pl-9 h-9 text-sm"
+                    placeholder={t("filters.searchPlaceholder")}
+                    className="pl-8 h-8 text-xs"
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select value={deptFilter} onValueChange={setDeptFilter}>
-                    <SelectTrigger className="h-9 w-[190px] text-sm cursor-pointer">
-                      <SelectValue placeholder="All Departments" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Departments</SelectItem>
-                      {departmentNames.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <Select value={deptFilter} onValueChange={setDeptFilter}>
+                  <SelectTrigger className="h-8 w-[170px] text-xs cursor-pointer">
+                    <SelectValue placeholder={t("filters.allDepartments")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">
+                      {t("filters.allDepartments")}
+                    </SelectItem>
+                    {departmentNames.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="h-9 w-[150px] text-sm cursor-pointer">
-                      <SelectValue placeholder="Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Roles</SelectItem>
-                      <SelectItem value="ADMIN">Administrator</SelectItem>
-                      <SelectItem value="EDITOR">Department Editor</SelectItem>
-                      <SelectItem value="MEMBER">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="h-8 w-[145px] text-xs cursor-pointer">
+                    <SelectValue placeholder={t("filters.allRoles")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">{t("filters.allRoles")}</SelectItem>
+                    <SelectItem value="ADMIN">{t("roles.ADMIN")}</SelectItem>
+                    <SelectItem value="EDITOR">{t("roles.EDITOR")}</SelectItem>
+                    <SelectItem value="MEMBER">{t("roles.MEMBER")}</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-9 w-[160px] text-sm cursor-pointer">
-                      <SelectValue placeholder="Progress" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Progress</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                      <SelectItem value="NOT_STARTED">Not Started</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-8 w-[145px] text-xs cursor-pointer">
+                    <SelectValue placeholder={t("filters.allProgress")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">
+                      {t("filters.allProgress")}
+                    </SelectItem>
+                    <SelectItem value="COMPLETED">
+                      {t("progressStatus.COMPLETED")}
+                    </SelectItem>
+                    <SelectItem value="IN_PROGRESS">
+                      {t("progressStatus.IN_PROGRESS")}
+                    </SelectItem>
+                    <SelectItem value="NOT_STARTED">
+                      {t("progressStatus.NOT_STARTED")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
 
-                  {hasActiveFilters && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={resetFilters}
-                      className="h-9 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <RotateCcw className="size-3.5 mr-1.5" />
-                      <span>Reset</span>
-                    </Button>
-                  )}
-                </div>
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <RotateCcw className="size-3.5 mr-1" />
+                    <span>{t("filters.reset")}</span>
+                  </Button>
+                )}
               </div>
             }
           />
         ) : (
-          /* Department Management Grid */
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {departmentList.map((dept) => {
-                const memberCount = allUsers.filter(
-                  (u) => u.department === dept.name
-                ).length;
-                const articleCount = articles.filter(
-                  (a) => a.allowedGroups?.includes(dept.name)
-                ).length;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {departmentList.map((dept) => {
+              const memberCount = allUsers.filter(
+                (u) => u.department === dept.name
+              ).length;
+              const restrictedCourseCount = courses.filter((c) =>
+                c.allowedGroups?.includes(dept.name)
+              ).length;
 
-                return (
-                  <div
-                    key={dept.id}
-                    className="rounded-xl border border-border bg-card p-5 shadow-2xs flex flex-col justify-between gap-4 hover:border-primary/40 transition-colors"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className="size-3.5 rounded-full shrink-0 ring-2 ring-background"
-                            style={{ backgroundColor: dept.color || "#f97316" }}
-                          />
-                          <h3 className="font-bold text-base text-foreground leading-snug">
-                            {dept.name}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleOpenEditDept(dept)}
-                            className="text-muted-foreground hover:text-foreground cursor-pointer"
-                            title="Edit department"
-                          >
-                            <Edit className="size-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            disabled={memberCount > 0}
-                            onClick={() => setDeleteDeptId(dept.id)}
-                            className={cn(
-                              "cursor-pointer",
-                              memberCount > 0
-                                ? "opacity-40 cursor-not-allowed text-muted-foreground"
-                                : "text-muted-foreground hover:text-destructive"
-                            )}
-                            title={
-                              memberCount > 0
-                                ? `Cannot delete department with ${memberCount} active members assigned.`
-                                : "Delete this department"
-                            }
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
+              return (
+                <div
+                  key={dept.id}
+                  className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between gap-4"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-3 rounded-full shrink-0"
+                          style={{ backgroundColor: dept.color || "#f97316" }}
+                        />
+                        <h3 className="font-semibold text-sm text-foreground">
+                          {dept.name}
+                        </h3>
                       </div>
-
-                      <p className="text-xs text-muted-foreground leading-relaxed min-h-[36px]">
-                        {dept.description || "No description provided for this department yet."}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                        <Badge variant="outline" className="gap-1 bg-muted/40 font-normal">
-                          <Users className="size-3 text-primary" />
-                          <span>{memberCount} members</span>
-                        </Badge>
-                        <Badge variant="outline" className="gap-1 bg-muted/40 font-normal">
-                          <FolderLock className="size-3 text-amber-500" />
-                          <span>{articleCount} restricted lessons</span>
-                        </Badge>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleOpenEditDept(dept)}
+                          className="text-muted-foreground hover:text-foreground cursor-pointer h-7 w-7"
+                          title={t("departmentsGrid.editAria")}
+                          aria-label={t("departmentsGrid.editAria")}
+                        >
+                          <Edit className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={memberCount > 0}
+                          onClick={() => setDeleteDeptId(dept.id)}
+                          className={cn(
+                            "cursor-pointer h-7 w-7",
+                            memberCount > 0
+                              ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                              : "text-muted-foreground hover:text-destructive"
+                          )}
+                          title={
+                            memberCount > 0
+                              ? t("departmentsGrid.deleteDisabledHint", {
+                                  count: memberCount,
+                                })
+                              : t("departmentsGrid.deleteAria")
+                          }
+                          aria-label={t("departmentsGrid.deleteAria")}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-border/60">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setDeptFilter(dept.name);
-                          setMainTab("members");
-                        }}
-                        className="text-xs h-8 cursor-pointer w-full"
-                      >
-                        <Users className="size-3.5 mr-1.5" />
-                        <span>View Members ({memberCount})</span>
-                      </Button>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {dept.description || t("departmentsGrid.noDescription")}
+                    </p>
+
+                    <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
+                      <span>
+                        {t("departmentsGrid.memberCount", {
+                          count: memberCount,
+                        })}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {t("departmentsGrid.restrictedCoursesCount", {
+                          count: restrictedCourseCount,
+                        })}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="pt-2 border-t border-border/60">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDeptFilter(dept.name);
+                        setMainTab("members");
+                      }}
+                      className="text-xs h-8 cursor-pointer w-full justify-start px-2"
+                    >
+                      <Users className="size-3.5 mr-1.5" />
+                      <span>
+                        {t("departmentsGrid.viewMembers", {
+                          count: memberCount,
+                        })}
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Member Detail & Permissions Slide-over Sheet */}
+      {/* Ngăn chi tiết thành viên & Phân quyền khóa học */}
       <Sheet
         open={Boolean(selectedMember)}
         onOpenChange={(open) => {
@@ -748,7 +795,10 @@ export default function StudioMembersPage() {
                       {selectedMember.fullName}
                     </SheetTitle>
                     <SheetDescription className="text-xs truncate">
-                      {selectedMember.email} · {selectedMember.department}
+                      {selectedMember.email}
+                      {selectedMember.department
+                        ? ` · ${selectedMember.department}`
+                        : ""}
                     </SheetDescription>
                   </div>
                 </div>
@@ -759,85 +809,102 @@ export default function StudioMembersPage() {
                   <TabsList className="w-full grid grid-cols-2 h-9">
                     <TabsTrigger value="progress" className="text-xs">
                       <UserCheck className="size-3.5 mr-1.5" />
-                      <span>Learning Progress</span>
+                      <span>{t("sheet.tabProgress")}</span>
                     </TabsTrigger>
                     <TabsTrigger value="permissions" className="text-xs">
                       <Shield className="size-3.5 mr-1.5" />
-                      <span>Roles & Permissions</span>
+                      <span>{t("sheet.tabPermissions")}</span>
                     </TabsTrigger>
                   </TabsList>
 
-                  {/* Tab 1: Learning Progress & Quiz History */}
+                  {/* Tab 1: Tiến độ học tập & Lịch sử nộp bài */}
                   <TabsContent value="progress" className="space-y-5 mt-0">
-                    {/* Stat Summary Strip */}
-                    <div className="grid grid-cols-3 gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Completed Lessons
-                        </p>
-                        <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
-                          {selectedMember.completedCount}/
-                          {selectedMember.totalPublished}
-                        </p>
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            {t("sheet.completedItems")}
+                          </p>
+                          <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
+                            {selectedMember.completedCount}/
+                            {selectedMember.totalPublished}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            {t("sheet.completionRate")}
+                          </p>
+                          <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
+                            {selectedMember.completionRate}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            {t("sheet.avgScore")}
+                          </p>
+                          <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
+                            {selectedMember.avgQuizScore !== null
+                              ? `${selectedMember.avgQuizScore}%`
+                              : "—"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Completion Rate
-                        </p>
-                        <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
-                          {selectedMember.completionRate}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Avg Quiz Score
-                        </p>
-                        <p className="text-base font-semibold font-mono tabular-nums mt-0.5">
-                          {selectedMember.avgQuizScore !== null
-                            ? `${selectedMember.avgQuizScore}%`
-                            : "—"}
-                        </p>
-                      </div>
+                      <ProgressBar
+                        value={selectedMember.completionRate}
+                        label={t("sheet.completionRate")}
+                      />
                     </div>
 
-                    {/* Per-Article Breakdown */}
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Curriculum Breakdown ({publishedArticles.length})
+                        {t("sheet.itemsDetailHeading", {
+                          count: publishedItems.length,
+                        })}
                       </p>
 
                       <div className="rounded-lg border border-border divide-y divide-border">
-                        {publishedArticles.map((art) => {
+                        {publishedItems.map((item) => {
                           const prog = allProgress.find(
                             (p) =>
                               p.userId === selectedMember.uid &&
-                              p.articleId === art.id
+                              p.itemId === item.id
                           );
-                          const hasQuiz =
-                            (art.quizQuestions?.length || 0) > 0 &&
-                            art.passScorePercent > 0;
+                          const lesson = lessonMap.get(item.lessonId);
+                          const course = lesson
+                            ? courseMap.get(lesson.courseId)
+                            : undefined;
 
                           return (
                             <div
-                              key={art.id}
+                              key={item.id}
                               className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
                             >
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-foreground truncate">
-                                  {art.title}
+                                  {item.title}
                                 </p>
+                                {course && lesson && (
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    {course.title} › {lesson.title}
+                                  </p>
+                                )}
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                  <span>
-                                    Reading:{" "}
-                                    {prog?.hasScrolledBottom ? "Read" : "Pending"}
-                                  </span>
-                                  {hasQuiz && (
-                                    <span className="font-mono">
-                                      Quiz:{" "}
-                                      {prog && prog.highestQuizScore > 0
-                                        ? `${prog.highestQuizScore}%`
-                                        : "Not taken"}
+                                  {item.type === "CONTENT" ? (
+                                    <span>
+                                      {prog?.hasScrolledBottom
+                                        ? t("sheet.readDone")
+                                        : t("sheet.readPending")}
                                     </span>
+                                  ) : (
+                                    hasQuiz(item.type) && (
+                                      <span className="font-mono">
+                                        {prog && prog.highestQuizScore > 0
+                                          ? t("sheet.scoreValue", {
+                                              score: prog.highestQuizScore,
+                                            })
+                                          : t("sheet.scoreNotTaken")}
+                                      </span>
+                                    )
                                   )}
                                 </div>
                               </div>
@@ -849,19 +916,21 @@ export default function StudioMembersPage() {
                                     className="text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                                   >
                                     <CheckCircle2 className="size-3 mr-1" />
-                                    <span>Completed</span>
+                                    <span>{t("progressStatus.COMPLETED")}</span>
                                   </Badge>
                                 ) : prog ? (
                                   <Badge
                                     variant="outline"
-                                    className="text-xs border-primary/30 text-primary"
+                                    className="text-xs"
                                   >
                                     <Clock className="size-3 mr-1" />
-                                    <span>Reading</span>
+                                    <span>
+                                      {t("progressStatus.IN_PROGRESS")}
+                                    </span>
                                   </Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">
-                                    Not Started
+                                    {t("progressStatus.NOT_STARTED")}
                                   </span>
                                 )}
                               </div>
@@ -871,10 +940,9 @@ export default function StudioMembersPage() {
                       </div>
                     </div>
 
-                    {/* Recent Quiz Attempts */}
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Assessment History
+                        {t("sheet.attemptHistoryHeading")}
                       </p>
                       {(() => {
                         const memberAttempts = quizAttempts.filter(
@@ -883,15 +951,15 @@ export default function StudioMembersPage() {
                         if (memberAttempts.length === 0) {
                           return (
                             <p className="text-xs text-muted-foreground py-2">
-                              This member has not submitted any assessments yet.
+                              {t("sheet.noAttempts")}
                             </p>
                           );
                         }
                         return (
                           <div className="rounded-lg border border-border divide-y divide-border">
                             {memberAttempts.map((att) => {
-                              const art = articles.find(
-                                (a) => a.id === att.articleId
+                              const item = items.find(
+                                (i) => i.id === att.itemId
                               );
                               return (
                                 <div
@@ -900,10 +968,12 @@ export default function StudioMembersPage() {
                                 >
                                   <div className="min-w-0">
                                     <p className="font-medium text-foreground truncate">
-                                      {art?.title || att.articleId}
+                                      {item?.title ||
+                                        att.itemTitle ||
+                                        att.itemId}
                                     </p>
                                     <p className="text-muted-foreground font-mono">
-                                      {formatDateTime(att.createdAt)}
+                                      {fmtDateTime(att.createdAt)}
                                     </p>
                                   </div>
                                   <Badge
@@ -915,7 +985,9 @@ export default function StudioMembersPage() {
                                     }
                                   >
                                     {att.scorePercent}% ·{" "}
-                                    {att.isPassed ? "Passed" : "Failed"}
+                                    {att.isPassed
+                                      ? t("sheet.passed")
+                                      : t("sheet.failed")}
                                   </Badge>
                                 </div>
                               );
@@ -926,12 +998,22 @@ export default function StudioMembersPage() {
                     </div>
                   </TabsContent>
 
-                  {/* Tab 2: Explicit Save Permissions Form */}
+                  {/* Tab 2: Vai trò & Phân quyền theo khóa học */}
                   <TabsContent value="permissions" className="space-y-5 mt-0">
                     {(() => {
-                      const adminEmails = ssoStatus?.superAdminEmails || ["trieukon1011@gmail.com"];
-                      const isCurrentSuperAdmin = Boolean(currentUser?.email && adminEmails.includes(currentUser.email.toLowerCase()));
-                      const isTargetSuperAdmin = Boolean(selectedMember?.email && adminEmails.includes(selectedMember.email.toLowerCase()));
+                      const adminEmails = ssoStatus?.superAdminEmails || [
+                        "trieukon1011@gmail.com",
+                      ];
+                      const isCurrentSuperAdmin = Boolean(
+                        currentUser?.email &&
+                          adminEmails.includes(currentUser.email.toLowerCase())
+                      );
+                      const isTargetSuperAdmin = Boolean(
+                        selectedMember?.email &&
+                          adminEmails.includes(
+                            selectedMember.email.toLowerCase()
+                          )
+                      );
                       const isTargetAdmin = selectedMember?.role === "ADMIN";
                       const canModifyTarget =
                         isCurrentSuperAdmin ||
@@ -940,28 +1022,35 @@ export default function StudioMembersPage() {
                       return (
                         <div className="space-y-4">
                           {isTargetSuperAdmin && (
-                            <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-xs text-purple-700 dark:text-purple-300">
-                              This is the system Super Admin account, protected via environment configuration.
+                            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                              {t("sheet.superAdminNotice")}
                             </div>
                           )}
 
-                          {!isCurrentSuperAdmin && isTargetAdmin && !isTargetSuperAdmin && (
-                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-                              Only the Super Admin has permission to modify roles for other Administrators.
-                            </div>
-                          )}
+                          {!isCurrentSuperAdmin &&
+                            isTargetAdmin &&
+                            !isTargetSuperAdmin && (
+                              <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                                {t("sheet.adminProtectedNotice")}
+                              </div>
+                            )}
 
                           <div className="space-y-1.5">
                             <Label className="text-xs font-medium">
-                              Department
+                              {t("sheet.departmentLabel")}
                             </Label>
                             <Select
                               value={editDepartment}
                               onValueChange={setEditDepartment}
-                              disabled={!canModifyTarget || currentUser?.role !== "ADMIN"}
+                              disabled={
+                                !canModifyTarget ||
+                                currentUser?.role !== "ADMIN"
+                              }
                             >
                               <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder="Select Department" />
+                                <SelectValue
+                                  placeholder={t("sheet.departmentPlaceholder")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {departmentNames.map((d) => (
@@ -975,97 +1064,125 @@ export default function StudioMembersPage() {
 
                           <div className="space-y-1.5">
                             <Label className="text-xs font-medium">
-                              System Role
+                              {t("sheet.roleLabel")}
                             </Label>
                             <Select
                               value={editRole}
                               onValueChange={(val) => setEditRole(val as Role)}
-                              disabled={!canModifyTarget || currentUser?.role !== "ADMIN"}
+                              disabled={
+                                !canModifyTarget ||
+                                currentUser?.role !== "ADMIN"
+                              }
                             >
                               <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder="Select Role" />
+                                <SelectValue
+                                  placeholder={t("sheet.rolePlaceholder")}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="MEMBER">
-                                  Reader / Member (Read, like, and comment)
+                                  {t("roles.MEMBER_DESC")}
                                 </SelectItem>
                                 <SelectItem value="EDITOR">
-                                  Department Editor (Draft and edit assigned categories)
+                                  {t("roles.EDITOR_DESC")}
                                 </SelectItem>
                                 {isCurrentSuperAdmin && (
                                   <SelectItem value="ADMIN">
-                                    Administrator (Full publishing and governance access)
+                                    {t("roles.ADMIN_DESC")}
                                   </SelectItem>
                                 )}
                               </SelectContent>
                             </Select>
                           </div>
 
-                          {/* Managed Groups (Audience Access) */}
-                          <div className="space-y-2 pt-1">
-                            <div className="space-y-0.5">
-                              <Label className="text-xs font-medium">
-                                Audience Access Groups (Managed Groups)
-                              </Label>
-                              <p className="text-[11px] text-muted-foreground">
-                                Select specific departments this member can access for internal restricted documents.
-                              </p>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border p-3">
-                              {departmentNames.map((dept) => {
-                                const isChecked = editManagedGroups.includes(dept);
-                                return (
-                                  <label
-                                    key={dept}
-                                    className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground"
-                                  >
-                                    <Checkbox
-                                      checked={isChecked}
-                                      disabled={!canModifyTarget || currentUser?.role !== "ADMIN"}
-                                      onCheckedChange={(checked) => {
-                                        setEditManagedGroups((prev) =>
-                                          checked
-                                            ? [...prev, dept]
-                                            : prev.filter((d) => d !== dept)
-                                        );
-                                      }}
-                                    />
-                                    <span className="truncate">{dept}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {editRole === "EDITOR" && (
+                          {departmentNames.length > 0 && (
                             <div className="space-y-2 pt-1">
-                              <Label className="text-xs font-medium">
-                                Assignable Editing Categories
-                              </Label>
-                              <div className="rounded-lg border border-border divide-y divide-border">
-                                {categories.map((cat) => {
-                                  const checked = editCategoryIds.includes(cat.id);
+                              <div className="space-y-0.5">
+                                <Label className="text-xs font-medium">
+                                  {t("sheet.managedGroupsLabel")}
+                                </Label>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {t("sheet.managedGroupsDescription")}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-border p-3">
+                                {departmentNames.map((dept) => {
+                                  const isChecked =
+                                    editManagedGroups.includes(dept);
                                   return (
                                     <label
-                                      key={cat.id}
-                                      className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/30"
+                                      key={dept}
+                                      className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground"
                                     >
-                                      <span className="truncate">
-                                        {cat.depth === 2
-                                          ? `↳ ${cat.name}`
-                                          : cat.name}
-                                      </span>
                                       <Checkbox
-                                        checked={checked}
-                                        disabled={!canModifyTarget}
-                                        onCheckedChange={() =>
-                                          toggleManagedCategory(cat.id)
+                                        checked={isChecked}
+                                        disabled={
+                                          !canModifyTarget ||
+                                          currentUser?.role !== "ADMIN"
                                         }
+                                        onCheckedChange={(checked) => {
+                                          setEditManagedGroups((prev) =>
+                                            checked
+                                              ? [...prev, dept]
+                                              : prev.filter((d) => d !== dept)
+                                          );
+                                        }}
                                       />
+                                      <span className="truncate">{dept}</span>
                                     </label>
                                   );
                                 })}
                               </div>
+                            </div>
+                          )}
+
+                          {/* Phân quyền theo khóa học cho EDITOR */}
+                          {editRole === "EDITOR" && (
+                            <div className="space-y-2 pt-1">
+                              <div className="space-y-0.5">
+                                <Label className="text-xs font-medium flex items-center gap-1.5">
+                                  <BookOpen className="size-3.5 text-primary" />
+                                  <span>{t("sheet.assignedCoursesLabel")}</span>
+                                </Label>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {t("sheet.assignedCoursesDescription")}
+                                </p>
+                              </div>
+                              {sortedCourses.length > 0 ? (
+                                <div className="rounded-lg border border-border divide-y divide-border">
+                                  {sortedCourses.map((course) => {
+                                    const checked = editCourseIds.includes(
+                                      course.id
+                                    );
+                                    return (
+                                      <label
+                                        key={course.id}
+                                        className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/30"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium text-foreground truncate">
+                                            {course.title}
+                                          </p>
+                                          <p className="text-[11px] text-muted-foreground font-mono truncate">
+                                            /learn/{course.slug}
+                                          </p>
+                                        </div>
+                                        <Checkbox
+                                          checked={checked}
+                                          disabled={!canModifyTarget}
+                                          onCheckedChange={() =>
+                                            toggleManagedCourse(course.id)
+                                          }
+                                        />
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground py-2">
+                                  {t("sheet.noCourses")}
+                                </p>
+                              )}
                             </div>
                           )}
 
@@ -1085,7 +1202,9 @@ export default function StudioMembersPage() {
                             >
                               <Save className="size-3.5 mr-1.5" />
                               <span>
-                                {savingPerms ? "Saving..." : "Save Permissions"}
+                                {savingPerms
+                                  ? t("sheet.savingPermissions")
+                                  : t("sheet.savePermissions")}
                               </span>
                             </Button>
                           </div>
@@ -1100,28 +1219,29 @@ export default function StudioMembersPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Dialog Add / Edit Department */}
+      {/* Hộp thoại Thêm / Sửa Ban */}
       <Dialog open={deptDialogOpen} onOpenChange={setDeptDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingDept ? "Edit Department" : "Add New Department"}
+              {editingDept
+                ? t("deptDialog.editTitle")
+                : t("deptDialog.createTitle")}
             </DialogTitle>
-            <DialogDescription>
-              Create or update club departments to organize document audience restrictions and editorial permissions.
-            </DialogDescription>
+            <DialogDescription>{t("deptDialog.description")}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSaveDeptSubmit} className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label htmlFor="deptNameInput" className="text-xs font-medium">
-                Department Name <span className="text-destructive">*</span>
+                {t("deptDialog.nameLabel")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="deptNameInput"
                 value={deptName}
                 onChange={(e) => setDeptName(e.target.value)}
-                placeholder="e.g. Academic Team, Media & Events..."
+                placeholder={t("deptDialog.namePlaceholder")}
                 className="h-9 text-sm"
                 required
               />
@@ -1129,20 +1249,22 @@ export default function StudioMembersPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="deptDescInput" className="text-xs font-medium">
-                Mission & Description
+                {t("deptDialog.descLabel")}
               </Label>
               <Textarea
                 id="deptDescInput"
                 rows={3}
                 value={deptDescription}
                 onChange={(e) => setDeptDescription(e.target.value)}
-                placeholder="Key responsibilities and organizational goals..."
+                placeholder={t("deptDialog.descPlaceholder")}
                 className="text-xs resize-y"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Brand / Accent Color</Label>
+              <Label className="text-xs font-medium">
+                {t("deptDialog.colorLabel")}
+              </Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -1151,17 +1273,27 @@ export default function StudioMembersPage() {
                   className="size-8 rounded border border-border cursor-pointer p-0.5 bg-background"
                 />
                 <div className="flex items-center gap-1.5">
-                  {["#8b5cf6", "#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#ef4444", "#06b6d4"].map((c) => (
+                  {[
+                    "#f97316",
+                    "#3b82f6",
+                    "#8b5cf6",
+                    "#10b981",
+                    "#f59e0b",
+                    "#ec4899",
+                  ].map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setDeptColor(c)}
                       className={cn(
                         "size-6 rounded-full cursor-pointer transition-transform",
-                        deptColor === c ? "ring-2 ring-primary ring-offset-2 scale-110" : "hover:scale-105"
+                        deptColor === c
+                          ? "ring-2 ring-primary ring-offset-2 scale-110"
+                          : "hover:scale-105"
                       )}
                       style={{ backgroundColor: c }}
                       title={c}
+                      aria-label={c}
                     />
                   ))}
                 </div>
@@ -1171,12 +1303,12 @@ export default function StudioMembersPage() {
             <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setDeptDialogOpen(false)}
                 className="cursor-pointer"
               >
-                Cancel
+                {tc("actions.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -1184,22 +1316,22 @@ export default function StudioMembersPage() {
                 disabled={savingDept || !deptName.trim()}
                 className="cursor-pointer font-medium"
               >
-                {savingDept ? "Saving..." : "Save Department"}
+                {savingDept ? t("deptDialog.saving") : t("deptDialog.save")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Delete Department */}
       <ConfirmDialog
         open={Boolean(deleteDeptId)}
         onOpenChange={(open) => {
           if (!open) setDeleteDeptId(null);
         }}
-        title="Confirm Delete Department"
-        description="Are you sure you want to delete this department? This action is only permitted when no members are assigned to this department."
-        confirmLabel="Delete Department"
+        title={t("deleteDeptDialog.title")}
+        description={t("deleteDeptDialog.description")}
+        confirmLabel={t("deleteDeptDialog.confirm")}
+        cancelLabel={tc("actions.cancel")}
         variant="destructive"
         onConfirm={handleConfirmDeleteDept}
       />

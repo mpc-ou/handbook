@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { AtSign } from "lucide-react";
 
 interface CommentContentRendererProps {
@@ -15,10 +16,8 @@ export function CommentContentRenderer({
   content,
   allUsers = [],
 }: CommentContentRendererProps) {
-  // Regex pattern to capture Discord-style mentions: <@userId>
+  const t = useTranslations("reader.comments");
   const mentionRegex = /<@([a-zA-Z0-9_-]+)>/g;
-
-  // Split lines first to preserve line breaks
   const lines = content.split("\n");
 
   const userMap = new Map<string, string>();
@@ -33,7 +32,6 @@ export function CommentContentRenderer({
         let lastIndex = 0;
         let match: RegExpExecArray | null;
 
-        // Reset regex state for this line
         mentionRegex.lastIndex = 0;
 
         while ((match = mentionRegex.exec(line)) !== null) {
@@ -41,18 +39,17 @@ export function CommentContentRenderer({
           const matchEnd = mentionRegex.lastIndex;
           const mentionedId = match[1];
 
-          // Push plain text preceding this mention
           if (matchStart > lastIndex) {
             parts.push(line.slice(lastIndex, matchStart));
           }
 
-          const targetName = userMap.get(mentionedId) || "Member";
+          const targetName =
+            userMap.get(mentionedId) || t("fallbackMember");
 
           parts.push(
             <span
               key={`${lineIdx}-${matchStart}`}
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-md text-xs font-medium bg-primary/15 text-primary border border-primary/25 align-baseline select-none"
-              title={`ID: ${mentionedId}`}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary align-baseline select-none"
             >
               <AtSign className="size-3 shrink-0" />
               <span>{targetName}</span>
@@ -62,7 +59,6 @@ export function CommentContentRenderer({
           lastIndex = matchEnd;
         }
 
-        // Push any remaining text on this line
         if (lastIndex < line.length) {
           parts.push(line.slice(lastIndex));
         }
@@ -76,4 +72,3 @@ export function CommentContentRenderer({
     </div>
   );
 }
-
