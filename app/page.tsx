@@ -177,9 +177,9 @@ function CourseCard({
               </div>
             )}
 
-            <h2 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {course.title}
-            </h2>
+            </h3>
 
             {course.summary && (
               <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
@@ -253,6 +253,51 @@ export default function HomePage() {
       course.categoryIds.includes(selectedCategoryId)
     );
   }, [visibleCourses, selectedCategoryId]);
+
+  // Within a group: in-progress first, then not started, completed last
+  const rankCourse = (course: CourseRecord) => {
+    if (!user) return 1;
+    const p = getCourseProgress(course.id, lessons, items, progressMap);
+    if (p.percent >= 100) return 2;
+    return p.completed > 0 ? 0 : 1;
+  };
+
+  // Group by primary category when browsing "All". A category becomes its own
+  // section only when it holds 3+ courses; the rest are merged into "Other".
+  const groups = useMemo(() => {
+    if (selectedCategoryId) return null;
+    const catOrder = new Map(sortedCategories.map((c) => [c.id, c]));
+    const buckets = new Map<string, CourseRecord[]>();
+    for (const course of filteredCourses) {
+      const primary = sortedCategories.find((c) =>
+        course.categoryIds.includes(c.id)
+      );
+      const key = primary ? primary.id : "__other";
+      buckets.set(key, [...(buckets.get(key) ?? []), course]);
+    }
+    const sections: { id: string; name: string | null; courses: CourseRecord[] }[] = [];
+    const other: CourseRecord[] = [];
+    for (const [key, list] of buckets) {
+      const cat = catOrder.get(key);
+      if (cat && list.length >= 3) {
+        sections.push({ id: key, name: cat.name, courses: list });
+      } else {
+        other.push(...list);
+      }
+    }
+    if (sections.length === 0) return null;
+    sections.sort(
+      (a, b) =>
+        (catOrder.get(a.id)?.orderIndex ?? 0) -
+        (catOrder.get(b.id)?.orderIndex ?? 0)
+    );
+    if (other.length > 0) {
+      other.sort((a, b) => a.orderIndex - b.orderIndex);
+      sections.push({ id: "__other", name: null, courses: other });
+    }
+    return sections;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredCourses, sortedCategories, selectedCategoryId]);
 
   // Find current incomplete item to continue learning
   const continueEntry = useMemo<{
@@ -462,6 +507,51 @@ export default function HomePage() {
             </Button>
           </div>
         ) : (
+          groups ? (
+            <div className="space-y-10">
+              {groups.map((group) => {
+                const ordered = [...group.courses].sort(
+                  (a, b) => rankCourse(a) - rankCourse(b)
+                );
+                return (
+                  <section key={group.id} className="space-y-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {group.name ?? t("groups.other")}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {t("groups.count", { count: ordered.length })}
+                        </span>
+                      </h2>
+                      {group.name && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategoryId(group.id)}
+                          className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          {t("groups.viewAll")}
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {ordered.map((course, idx) => (
+                        <CourseCard
+                          key={course.id}
+                          course={course}
+                          index={idx}
+                          categories={sortedCategories}
+                          lessons={lessons}
+                          items={items}
+                          progressMap={progressMap}
+                          user={user}
+                          isStaff={isStaff}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filteredCourses.map((course, idx) => (
               <CourseCard
@@ -477,6 +567,7 @@ export default function HomePage() {
               />
             ))}
           </div>
+          )
         )}
       </div>
     </AppShell>

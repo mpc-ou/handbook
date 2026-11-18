@@ -6,6 +6,13 @@ import { ItemAttachment, AttachmentType } from "@/types";
 import { uploadToCloudinary, MAX_FILE_SIZE_BYTES } from "@/lib/cloudinary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getYoutubeEmbedUrl } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   FileText,
@@ -13,6 +20,7 @@ import {
   HardDrive,
   Link as LinkIcon,
   Loader2,
+  ExternalLink,
   Plus,
   Trash2,
   UploadCloud,
@@ -24,6 +32,23 @@ interface AttachmentManagerProps {
   onChange: (items: ItemAttachment[]) => void;
 }
 
+function normalizeUrl(raw: string): string {
+  const v = raw.trim();
+  return /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`;
+}
+
+function getPreviewSrc(item: ItemAttachment): { kind: "image" | "frame"; src: string } | null {
+  const url = item.url;
+  if (/\.(png|jpe?g|gif|webp|svg|avif)([?#]|$)/i.test(url)) return { kind: "image", src: url };
+  const yt = getYoutubeEmbedUrl(url);
+  if (yt) return { kind: "frame", src: yt };
+  const drive = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (drive) return { kind: "frame", src: `https://drive.google.com/file/d/${drive[1]}/preview` };
+  if (/\.pdf([?#]|$)/i.test(url)) return { kind: "frame", src: url };
+  if (item.type === "figma") return { kind: "frame", src: `https://www.figma.com/embed?embed_host=mpc&url=${encodeURIComponent(url)}` };
+  return null;
+}
+
 export function AttachmentManager({
   attachments,
   onChange,
@@ -33,6 +58,7 @@ export function AttachmentManager({
   const [url, setUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<ItemAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const detectType = (link: string): AttachmentType => {
@@ -53,7 +79,7 @@ export function AttachmentManager({
       id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       type: detectType(url),
       title: title.trim(),
-      url: url.trim(),
+      url: normalizeUrl(url),
     };
     onChange([...attachments, newItem]);
     setTitle("");
@@ -186,14 +212,14 @@ export function AttachmentManager({
                   {item.type === "external" && (
                     <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
                   )}
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="truncate font-medium text-foreground hover:text-primary hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setPreviewItem(item)}
+                    title={t("preview")}
+                    className="truncate text-left font-medium text-foreground hover:text-primary hover:underline cursor-pointer"
                   >
                     {item.title}
-                  </a>
+                  </button>
                 </div>
                 <Button
                   type="button"
@@ -215,6 +241,43 @@ export function AttachmentManager({
           </div>
         )}
       </CardContent>
+      <Dialog open={!!previewItem} onOpenChange={(o) => !o && setPreviewItem(null)}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-6">{previewItem?.title}</DialogTitle>
+          </DialogHeader>
+          {previewItem &&
+            (() => {
+              const p = getPreviewSrc(previewItem);
+              return p ? (
+                p.kind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.src} alt={previewItem.title} className="max-h-[70vh] w-full rounded-md object-contain" />
+                ) : (
+                  <iframe
+                    src={p.src}
+                    title={previewItem.title}
+                    className="h-[60vh] w-full rounded-md border"
+                    allowFullScreen
+                  />
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">{t("previewUnavailable")}</p>
+              );
+            })()}
+          {previewItem && (
+            <a
+              href={previewItem.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              <ExternalLink className="size-4" />
+              {t("openNew")}
+            </a>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

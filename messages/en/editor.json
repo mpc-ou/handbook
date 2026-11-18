@@ -31,6 +31,9 @@
     "uploadFile": "Upload file (≤5MB)",
     "uploading": "Uploading…",
     "remove": "Remove attachment",
+    "preview": "Preview",
+    "openNew": "Open in new tab",
+    "previewUnavailable": "This link can't be embedded for preview. Open it in a new tab.",
     "empty": "No attachments added yet. Paste a link or upload a file directly.",
     "fileSizeError": "File \"{name}\" ({size}MB) exceeds the 5MB limit.",
     "uploadFailed": "Failed to upload attachment file."
@@ -176,7 +179,7 @@
       "changeType": "Change block type",
       "boldTitle": "Bold (**text**)",
       "italicTitle": "Italic (*text*)",
-      "underlineTitle": "Underline (<u>text</u>)",
+      "underlineTitle": "Underline (Ctrl+U)",
       "linkTitle": "Insert link [title](url)",
       "inlineCodeTitle": "Inline code (`code`)",
       "alignTitle": "Change alignment (current: {align})",

@@ -11,6 +11,11 @@
     "all": "All",
     "ariaLabel": "Filter by category"
   },
+  "groups": {
+    "other": "Other",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "viewAll": "View all"
+  },
   "card": {
     "chaptersCount": "{count, plural, one {# chapter} other {# chapters}}",
     "sequential": "Sequential",

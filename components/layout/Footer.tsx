@@ -6,13 +6,13 @@ import { useTranslations } from "next-intl";
 
 export function Footer() {
   const t = useTranslations("nav.footer");
-  const repoUrl = "https://github.com/mpc-club/handbook";
+  const repoUrl = "https://github.com/mpc-ou/handbook.git";
   const mainSiteUrl = "https://mpclub.dev";
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="border-t border-border/60 bg-background text-muted-foreground select-none">
-      <div className="mx-auto max-w-6xl px-4 sm:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+      <div className="mx-auto  px-4 sm:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2 font-semibold text-foreground">
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -11,6 +11,11 @@
     "all": "Tất cả",
     "ariaLabel": "Lọc theo danh mục"
   },
+  "groups": {
+    "other": "Khác",
+    "count": "{count} khóa",
+    "viewAll": "Xem tất cả"
+  },
   "card": {
     "chaptersCount": "{count} chương",
     "sequential": "Học theo thứ tự",

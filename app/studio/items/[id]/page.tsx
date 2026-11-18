@@ -1151,7 +1151,7 @@ export default function StudioItemEditorPage() {
       {/* Cột soạn thảo rộng ở giữa */}
       <main
         className={cn(
-          "flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6 transition-opacity",
+          "flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 transition-opacity",
           isLocked && "pointer-events-none opacity-85 select-text"
         )}
       >

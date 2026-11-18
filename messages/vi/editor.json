@@ -31,6 +31,9 @@
     "uploadFile": "Tải tệp (≤5MB)",
     "uploading": "Đang tải…",
     "remove": "Gỡ đính kèm",
+    "preview": "Xem trước",
+    "openNew": "Mở trong tab mới",
+    "previewUnavailable": "Không thể nhúng bản xem trước cho liên kết này. Hãy mở trong tab mới.",
     "empty": "Chưa có tài liệu đính kèm. Dán liên kết hoặc tải tệp lên trực tiếp.",
     "fileSizeError": "Tệp \"{name}\" ({size}MB) vượt quá giới hạn 5MB.",
     "uploadFailed": "Tải tệp đính kèm thất bại."
@@ -176,7 +179,7 @@
       "changeType": "Đổi loại khối",
       "boldTitle": "In đậm (**chữ**)",
       "italicTitle": "In nghiêng (*chữ*)",
-      "underlineTitle": "Gạch chân (<u>chữ</u>)",
+      "underlineTitle": "Gạch chân (Ctrl+U)",
       "linkTitle": "Chèn liên kết [tiêu đề](url)",
       "inlineCodeTitle": "Mã nội dòng (`code`)",
       "alignTitle": "Căn lề (hiện tại: {align})",

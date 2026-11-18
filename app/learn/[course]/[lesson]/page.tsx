@@ -61,7 +61,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
   if (dataLoading || authLoading) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8 space-y-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8">
           <Skeleton className="aspect-[3/1] w-full rounded-2xl" />
           <div className="space-y-3">
             <Skeleton className="h-9 w-2/3 rounded-lg" />
@@ -280,7 +280,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-8">
         {/* Lesson Cover */}
         <div className="overflow-hidden rounded-2xl border border-border/60">
           <Cover
