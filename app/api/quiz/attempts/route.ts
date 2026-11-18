@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { handleApiError, requireStaff, requireUser } from "@/lib/authz";
 import { apiError } from "@/lib/api-errors";
+import { fireAndForget, notifyAssignmentGraded, notifyIfCourseCompleted } from "@/lib/notifications";
 
 const attemptInclude = {
   user: {
@@ -136,6 +137,9 @@ export async function PUT(req: NextRequest) {
           completedAt: completedNow ? new Date() : null,
         },
       });
+
+      if (completedNow && !existing?.isCompleted) fireAndForget(notifyIfCourseCompleted(attempt.userId, itemId));
+      fireAndForget(notifyAssignmentGraded({ learnerId: attempt.userId, itemId, grader, score }));
     }
 
     return NextResponse.json({ success: true, attempt: { ...updated, createdAt: updated.createdAt.toISOString(), gradedAt: updated.gradedAt?.toISOString() } });

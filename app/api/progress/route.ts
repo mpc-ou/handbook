@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handleApiError, requireUser } from "@/lib/authz";
 import { apiError } from "@/lib/api-errors";
+import { fireAndForget, notifyIfCourseCompleted } from "@/lib/notifications";
 
 /**
  * Cập nhật tiến độ của người dùng hiện tại trên một Item.
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
         completedAt: completed ? new Date() : null,
       },
     });
+
+    // Vừa hoàn thành lần đầu → có thể là chương cuối của khóa học
+    if (completed && !existing?.isCompleted) fireAndForget(notifyIfCourseCompleted(user.id, itemId));
 
     return NextResponse.json({
       success: true,

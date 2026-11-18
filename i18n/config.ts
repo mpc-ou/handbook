@@ -25,6 +25,8 @@ export const NAMESPACES = [
   "certificate", // chứng nhận hoàn thành
   "errors", // thông báo lỗi từ API
   "seo", // metadata, Open Graph, ảnh xem trước liên kết
+  "notifications", // chuông thông báo + hộp thư
+  "studioModeration", // quản lý thành viên + kiểm duyệt bình luận
 ] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 

@@ -162,6 +162,16 @@ export interface HandbookContextValue {
     managedCourseIds: string[],
     managedGroups?: string[]
   ) => Promise<void>;
+  /** Tải lại toàn bộ dữ liệu từ server (sau thao tác quản trị ảnh hưởng nhiều nơi). */
+  refreshData: () => Promise<void>;
+  /** ADMIN xóa thành viên (tiến độ/bình luận của họ bị xóa; nội dung họ tạo chuyển cho người xóa). */
+  deleteMember: (uid: string) => Promise<void>;
+  /** ADMIN dọn dữ liệu học tập của thành viên, toàn bộ hoặc theo một khóa học. */
+  cleanupMemberData: (
+    uid: string,
+    actions: Array<"progress" | "attempts" | "comments">,
+    courseId?: string | null
+  ) => Promise<{ progress: number; attempts: number; comments: number }>;
   saveDepartment: (input: {
     id?: string;
     name: string;
@@ -1044,6 +1054,36 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
     [user, showToast]
   );
 
+  const refreshData = useCallback(() => loadHandbookData(), [loadHandbookData]);
+
+  const deleteMember = useCallback(
+    async (uid: string) => {
+      await apiRequest(`/api/members?id=${encodeURIComponent(uid)}`, { method: "DELETE" });
+      setAllUsers((prev) => prev.filter((u) => u.uid !== uid));
+      setAllProgress((prev) => prev.filter((p) => p.userId !== uid));
+      setQuizAttempts((prev) => prev.filter((a) => a.userId !== uid));
+      showToast(tt("memberDeleted"), "info");
+    },
+    [showToast, tt]
+  );
+
+  const cleanupMemberData = useCallback(
+    async (
+      uid: string,
+      actions: Array<"progress" | "attempts" | "comments">,
+      courseId?: string | null
+    ) => {
+      const { deleted } = await apiRequest<{ deleted: { progress: number; attempts: number; comments: number } }>(
+        "/api/members/cleanup",
+        { method: "POST", body: { userId: uid, actions, courseId: courseId ?? undefined } }
+      );
+      await loadHandbookData();
+      showToast(tt("memberCleaned", { progress: deleted.progress, attempts: deleted.attempts, comments: deleted.comments }), "success");
+      return deleted;
+    },
+    [loadHandbookData, showToast, tt]
+  );
+
   const saveDepartment = useCallback(
     async (input: {
       id?: string;
@@ -1135,6 +1175,9 @@ export function HandbookProvider({ children }: { children: React.ReactNode }) {
     toggleLikeItem,
     recordItemView,
     updateUserRoleAndPermissions,
+    refreshData,
+    deleteMember,
+    cleanupMemberData,
     saveDepartment,
     deleteDepartment,
   };

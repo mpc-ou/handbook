@@ -63,5 +63,10 @@
   "passwordFeatureDisabled": "Password management is currently turned off.",
   "passwordTooShort": "The new password must be at least 6 characters.",
   "currentPasswordRequired": "Please enter your current password.",
-  "currentPasswordIncorrect": "The current password is incorrect."
+  "currentPasswordIncorrect": "The current password is incorrect.",
+  "missingItemType": "Choose a type when creating a chapter or assignment.",
+  "itemTypeLocked": "The type can’t be changed after creation. Create a new item with the type you want.",
+  "notificationsNothingToMark": "No notifications to update.",
+  "cleanupNoAction": "Choose at least one thing to delete.",
+  "cannotDeleteSelf": "You can’t delete your own account."
 }

@@ -51,7 +51,7 @@ export async function learnMetadata(
 
 /** Trang riêng tư của ứng dụng (đăng nhập, hồ sơ, studio, chứng nhận): tiêu đề chung + noindex. */
 export async function privatePageMetadata(
-  page: "login" | "profile" | "studio" | "certificate"
+  page: "login" | "profile" | "studio" | "certificate" | "notifications"
 ): Promise<Metadata> {
   const t = await getTranslations("seo");
   return {

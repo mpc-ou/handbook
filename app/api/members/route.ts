@@ -73,3 +73,33 @@ export async function PUT(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+/**
+ * ADMIN xóa thành viên. Tiến độ, lượt làm bài, bình luận, thích, thông báo của họ bị xóa theo (cascade).
+ * Khóa học/chương họ là tác giả được chuyển cho người xóa để không mất nội dung.
+ * Không được xóa chính mình, Super Admin; chỉ Super Admin mới xóa được quản trị viên khác.
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const caller = await requireAdmin();
+    const uid = new URL(req.url).searchParams.get("id");
+    if (!uid) return fail("missingUserId", 422);
+    if (uid === caller.id) return fail("cannotDeleteSelf", 403);
+
+    const target = await prisma.user.findUnique({ where: { id: uid }, select: { id: true, email: true, role: true } });
+    if (!target) return fail("memberNotFound", 404);
+    if (isSuperAdminEmail(target.email)) return fail("superAdminLocked", 403);
+    if (target.role === "ADMIN" && !isSuperAdminEmail(caller.email)) return fail("superAdminOnlyEditAdmin", 403);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const courses = await tx.course.updateMany({ where: { authorId: uid }, data: { authorId: caller.id } });
+      const items = await tx.item.updateMany({ where: { authorId: uid }, data: { authorId: caller.id } });
+      await tx.user.delete({ where: { id: uid } });
+      return { transferredCourses: courses.count, transferredItems: items.count };
+    });
+
+    return NextResponse.json({ success: true, deletedId: uid, ...result });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

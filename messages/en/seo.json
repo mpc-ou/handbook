@@ -20,6 +20,7 @@
     "profile": "My profile",
     "studio": "Studio",
     "certificate": "Certificate of completion",
-    "notFound": "Page not found"
+    "notFound": "Page not found",
+    "notifications": "Notifications"
   }
 }

@@ -63,5 +63,10 @@
   "passwordFeatureDisabled": "Tính năng quản lý và đổi mật khẩu hiện đang bị tắt.",
   "passwordTooShort": "Mật khẩu mới phải có ít nhất 6 ký tự.",
   "currentPasswordRequired": "Vui lòng nhập mật khẩu hiện tại.",
-  "currentPasswordIncorrect": "Mật khẩu hiện tại không đúng."
+  "currentPasswordIncorrect": "Mật khẩu hiện tại không đúng.",
+  "missingItemType": "Hãy chọn loại cho chương/bài tập khi tạo.",
+  "itemTypeLocked": "Không thể đổi loại sau khi đã tạo. Hãy tạo mục mới với loại mong muốn.",
+  "notificationsNothingToMark": "Không có thông báo nào để xử lý.",
+  "cleanupNoAction": "Hãy chọn ít nhất một thứ cần xóa.",
+  "cannotDeleteSelf": "Bạn không thể tự xóa tài khoản của mình."
 }

@@ -67,7 +67,9 @@
     "departmentUpdated": "Updated {name}.",
     "departmentAdded": "Added {name}.",
     "departmentDeleted": "Department deleted.",
-    "copySuffix": "(Copy)"
+    "copySuffix": "(Copy)",
+    "memberDeleted": "Member deleted.",
+    "memberCleaned": "Deleted {progress} progress records, {attempts} attempts and {comments} comments."
   },
   "lightbox": {
     "zoomIn": "Zoom in",

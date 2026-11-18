@@ -65,7 +65,9 @@ export async function POST(req: NextRequest) {
     const { lessonId, title } = body;
     if (!lessonId) return bad("missingLessonId");
     if (!title || typeof title !== "string") return bad("missingItemTitle");
-    const type = (body.type ?? "CONTENT") as (typeof ITEM_TYPES)[number];
+    // Loại do người tạo chọn rõ ràng và không đổi được về sau
+    if (!body.type) return bad("missingItemType");
+    const type = body.type as (typeof ITEM_TYPES)[number];
     if (!ITEM_TYPES.includes(type)) return bad("invalidItemType");
     const user = await requireLessonEditor(lessonId);
 
@@ -141,7 +143,8 @@ export async function PUT(req: NextRequest) {
     if (patch.status === "PUBLISHED" && user.role !== "ADMIN") {
       return bad("publishAdminOnly", 403);
     }
-    if (patch.type !== undefined && !ITEM_TYPES.includes(patch.type)) return bad("invalidItemType");
+    // Loại item (chương/trắc nghiệm/bài tập) cố định sau khi tạo; chỉ sửa được nội dung
+    if (patch.type !== undefined && patch.type !== existing.type) return bad("itemTypeLocked", 409);
 
     // Chương (CONTENT) không gắn quiz; QUIZ/ASSIGNMENT luôn có quiz với loại câu hỏi đúng dạng
     const finalType = (patch.type ?? existing.type) as ItemType;
@@ -164,7 +167,6 @@ export async function PUT(req: NextRequest) {
     if (patch.title !== undefined) data.title = patch.title;
     if (patch.slug !== undefined) data.slug = patch.slug;
     if (patch.summary !== undefined) data.summary = patch.summary;
-    if (patch.type !== undefined) data.type = patch.type;
     if (patch.orderIndex !== undefined) data.orderIndex = Number(patch.orderIndex);
     if (patch.status !== undefined) data.status = patch.status;
     if (patch.isRequired !== undefined) data.isRequired = Boolean(patch.isRequired);

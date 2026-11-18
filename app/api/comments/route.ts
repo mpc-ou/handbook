@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { HttpError, handleApiError, requireUser } from "@/lib/authz";
+import { HttpError, handleApiError, requireItemEditor, requireUser } from "@/lib/authz";
+import { fireAndForget, notifyNewComment } from "@/lib/notifications";
 import { apiError } from "@/lib/api-errors";
 import type { CommentRecord, Role } from "@/types";
 
@@ -83,10 +84,12 @@ export async function POST(req: NextRequest) {
 
     // Chỉ cho 2 bậc: trả lời một bình luận bậc 2 thì gắn vào bình luận gốc
     let targetParentId: string | null = null;
+    let repliedToAuthorId: string | null = null;
     if (parentId) {
       const parent = await prisma.comment.findUnique({ where: { id: parentId } });
       if (!parent || parent.itemId !== itemId) return bad("parentInvalid");
       targetParentId = parent.parentId ?? parent.id;
+      repliedToAuthorId = parent.userId; // người được trả lời (kể cả khi gắn vào bình luận gốc)
     }
 
     const created = await prisma.comment.create({
@@ -94,13 +97,23 @@ export async function POST(req: NextRequest) {
       include: { user: { select: userSelect } },
     });
 
+    fireAndForget(
+      notifyNewComment({
+        actor: { id: user.id, fullName: user.fullName, avatarUrl: created.user.avatarUrl },
+        itemId,
+        commentId: created.id,
+        content: created.content,
+        parentAuthorId: repliedToAuthorId,
+      })
+    );
+
     return NextResponse.json({ success: true, comment: toRecord(created) });
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-/** Tác giả bình luận hoặc ADMIN mới được xóa. */
+/** Tác giả bình luận, ADMIN, hoặc EDITOR được giao khóa học đó (kiểm duyệt) mới được xóa. */
 export async function DELETE(req: NextRequest) {
   try {
     const user = await requireUser();
@@ -110,7 +123,8 @@ export async function DELETE(req: NextRequest) {
     const target = await prisma.comment.findUnique({ where: { id: commentId } });
     if (!target) throw new HttpError(404, "commentNotFound");
     if (target.userId !== user.id && user.role !== "ADMIN") {
-      throw new HttpError(403, "commentForbidden");
+      if (user.role !== "EDITOR") throw new HttpError(403, "commentForbidden");
+      await requireItemEditor(target.itemId); // 403 nếu không được giao khóa học chứa bình luận
     }
 
     await prisma.comment.delete({ where: { id: commentId } });

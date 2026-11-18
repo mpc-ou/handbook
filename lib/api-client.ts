@@ -21,7 +21,7 @@ export class ApiError extends Error {
 /** Gọi API JSON, ném `ApiError` với thông điệp của server khi thất bại. */
 export async function apiRequest<T = Record<string, unknown>>(
   url: string,
-  options: { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown } = {}
+  options: { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown } = {}
 ): Promise<T> {
   const res = await fetch(url, {
     method: options.method ?? "GET",

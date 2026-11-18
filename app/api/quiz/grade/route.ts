@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import { apiError } from "@/lib/api-errors";
+import { fireAndForget, notifyAssignmentSubmitted, notifyIfCourseCompleted } from "@/lib/notifications";
 import { QuizGradeResponse, QuizQuestion } from "@/types";
 
 const fail = apiError;
@@ -134,6 +135,9 @@ export async function POST(req: NextRequest) {
             completedAt: completedNow ? new Date() : null,
           },
         });
+
+        if (completedNow && !existing?.isCompleted) fireAndForget(notifyIfCourseCompleted(user.id, itemId));
+        if (requiresReview) fireAndForget(notifyAssignmentSubmitted(user.id, itemId));
       } catch (err) {
         console.error("Không lưu được lượt làm bài:", err);
         return fail("quizSaveFailed", 500);

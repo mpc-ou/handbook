@@ -324,3 +324,35 @@ export interface QuizGradeResponse {
     }
   >;
 }
+
+export type NotificationType =
+  | "COMMENT"
+  | "REPLY"
+  | "MENTION"
+  | "COURSE_COMPLETED"
+  | "CERTIFICATE_READY"
+  | "ASSIGNMENT_SUBMITTED"
+  | "ASSIGNMENT_GRADED";
+
+/** Snapshot lúc tạo thông báo (tên, tiêu đề, đường dẫn); nội dung hiển thị được dịch ở client theo `type`. */
+export interface NotificationData {
+  actorId?: string;
+  actorName?: string;
+  actorAvatarUrl?: string | null;
+  courseId?: string;
+  courseTitle?: string;
+  itemTitle?: string;
+  /** Trích đoạn bình luận (đã thay thẻ @mention bằng tên). */
+  excerpt?: string;
+  score?: number;
+  /** Đường dẫn nội bộ để mở khi bấm vào thông báo. */
+  href: string;
+}
+
+export interface NotificationRecord {
+  id: string;
+  type: NotificationType;
+  data: NotificationData;
+  read: boolean;
+  createdAt: string;
+}

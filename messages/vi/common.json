@@ -67,7 +67,9 @@
     "departmentUpdated": "Đã cập nhật {name}.",
     "departmentAdded": "Đã thêm {name}.",
     "departmentDeleted": "Đã xóa phòng ban.",
-    "copySuffix": "(Bản sao)"
+    "copySuffix": "(Bản sao)",
+    "memberDeleted": "Đã xóa thành viên.",
+    "memberCleaned": "Đã xóa {progress} tiến độ, {attempts} lượt làm bài, {comments} bình luận."
   },
   "lightbox": {
     "zoomIn": "Phóng to",

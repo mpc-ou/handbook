@@ -27,6 +27,16 @@ enum ItemType {
   ASSIGNMENT // Bài tập nộp bài / tự luận (bắt buộc có Quiz)
 }
 
+enum NotificationType {
+  COMMENT              // có người bình luận ở chương của bạn (admin nhận tất cả)
+  REPLY                // có người trả lời bình luận của bạn
+  MENTION              // có người nhắc tên bạn trong bình luận
+  COURSE_COMPLETED     // (admin) một học viên hoàn thành khóa học
+  CERTIFICATE_READY    // (học viên) bạn đã hoàn thành khóa học
+  ASSIGNMENT_SUBMITTED // (staff) có bài tập chờ chấm
+  ASSIGNMENT_GRADED    // (học viên) bài tập của bạn đã được chấm
+}
+
 enum Visibility {
   PUBLIC
   UNPUBLIC
@@ -70,6 +80,7 @@ model User {
   likes           ItemLike[]
   comments        Comment[]
   uploadedFiles   UploadedFile[]
+  notifications   Notification[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -313,4 +324,18 @@ model UploadedFile {
   @@index([publicId])
   @@index([isAttached, createdAt])
   @@index([uploaderId])
+}
+
+/// Thông báo trong ứng dụng. Nội dung dịch ở client theo `type` + `data` (snapshot tên/đường dẫn lúc tạo).
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  data      Json             @default("{}")
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
 }
