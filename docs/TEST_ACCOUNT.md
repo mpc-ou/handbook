@@ -4,7 +4,20 @@
 > **Default Password**: `Tester@123`  
 > **Authentication Mode**: Email + Password & MPC-SSO (OIDC)
 
-All test accounts below have been pre-seeded into the PostgreSQL database. They are ready for testing role-based access control (RBAC), sequential curriculum unlocks, interactive assessment quizzes, and the Studio administration workspace.
+All test accounts below are created by `pnpm db:seed`. They are ready for testing role-based access control (RBAC), sequential curriculum unlocks, quizzes and assignments, learner progress, and the Studio administration workspace.
+
+> ⚠️ **Development databases only.** These accounts share a publicly documented password and two of them are `ADMIN`. Never seed a production database (or one that shares data with production). Change or delete these accounts, and consider `EMAIL_LOGIN="disable"`, anywhere real members sign in.
+
+**Permission quick reference**
+
+| Action | `ADMIN` | `EDITOR` | `MEMBER` / guest |
+|---|:---:|:---:|:---:|
+| Read published, permitted content; take quizzes; comment | ✅ | ✅ | ✅ (guests: free courses, results not saved) |
+| Create courses | ✅ | ✅ (draft only) | ❌ |
+| Edit lessons/items | all courses | assigned courses only | ❌ |
+| Publish / roll back published content | ✅ | ❌ | ❌ |
+| Delete courses, manage categories, departments, members | ✅ | ❌ | ❌ |
+| Grade assignments, view learner progress | ✅ | ✅ (own courses) | ❌ |
 
 ---
 
@@ -14,8 +27,8 @@ All test accounts below have been pre-seeded into the PostgreSQL database. They 
 |:---:|---|---|:---:|---|:---:|---|
 | **0** | **Nguyễn Thanh Triều** | `trieukon1011@gmail.com` | `ADMIN` | Ban Chủ Nhiệm | `Tester@123` | **Super Admin** (Full privileges, SSO & Password, cannot be deleted or demoted) |
 | **1** | **Nguyễn Gia Bảo** | `admin.bao@mpclub.dev` | `ADMIN` | Ban Chủ Nhiệm | `Tester@123` | **Administrator** (Full studio management, curriculum creation, member role assignment) |
-| **2** | **Trần Minh Quân** | `editor.quan@mpclub.dev` | `EDITOR` | Ban Chuyên môn | `Tester@123` | **Department Editor** (Create, edit, draft, and publish curriculum for Academic Team) |
-| **3** | **Lê Khánh Linh** | `editor.linh@mpclub.dev` | `EDITOR` | Ban Truyền thông | `Tester@123` | **Department Editor** (Manage playbooks, communication guides, and event materials) |
+| **2** | **Trần Minh Quân** | `editor.quan@mpclub.dev` | `EDITOR` | Ban Chuyên môn | `Tester@123` | **Course Editor** (Edits only the courses assigned to them; can create new courses, drafts and submit for review; **cannot publish**) |
+| **3** | **Lê Khánh Linh** | `editor.linh@mpclub.dev` | `EDITOR` | Ban Truyền thông | `Tester@123` | **Course Editor** (Same rules; assigned to communication and event courses) |
 | **4** | **Võ Tuấn Anh** | `dev.tuan@mpclub.dev` | `MEMBER` | Ban Chuyên môn | `Tester@123` | **Member** (Learning roadmap, read lessons, take quizzes, like & comment) |
 | **5** | **Đỗ Quốc Huy** | `dev.huy@mpclub.dev` | `MEMBER` | Ban Chuyên môn | `Tester@123` | **Member** (Learning roadmap, take quizzes, track personal completion) |
 | **6** | **Hoàng Tuyết Mai** | `media.mai@mpclub.dev` | `MEMBER` | Ban Truyền thông | `Tester@123` | **Member** (Read communications material, submit quiz assessments) |

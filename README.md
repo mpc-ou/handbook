@@ -20,10 +20,18 @@
 ## 🚀 Key Highlights & Features
 
 ### 1. 🎓 Training Curriculum & Progressive Learning
-- **Sequential Roadmap**: Unlock lessons progressively; learners cannot jump to advanced lessons before completing required fundamentals.
-- **Reading Time & Scroll Tracking**: Real-time reading progress verification requiring learners to engage with the complete content before unlocking assessments.
-- **Interactive Assessments & Quizzes**: Multiple-choice, code snippet evaluation, scale ratings, and short-answer questions with immediate grading and feedback.
-- **Transcript Export**: Learners and department leads can export complete study transcripts to Excel/CSV with one click.
+- **Course → Lesson → Item**: A course has many lessons; each lesson has chapters and exercises in order. Courses carry one or many flat categories. Covers exist for courses and lessons only.
+- **Chapters are read-only; quizzes and assignments are separate items**:
+  - `CONTENT` (chapter): reading only, completed by scrolling to the end.
+  - `QUIZ`: multiple choice / fill-in / scale, graded automatically on the server.
+  - `ASSIGNMENT`: essay / file upload / code, graded manually by staff.
+  - Quizzes and assignments are full pages (intro → one question at a time → result), no modals.
+- **Flexible learning order**: `Course.sequential` is the default (ordered vs free); a lesson or item can override it.
+- **Focused reading**: focus mode, font size/width settings, keyboard shortcuts (`←` `→` `F` `?` `Ctrl+K`), reading progress bar.
+- **Motivation**: learning streak, achievements, animated progress rings, a hideable fox companion, and a printable completion certificate per course.
+- **Admin progress dashboard** (`/studio/progress`): overall learner progress, a learner × lesson heat-matrix per course, chapter drop-off funnel, CSV export.
+- **Search**: instant, typo-tolerant, diacritic-insensitive Vietnamese search (MiniSearch, `Ctrl+K`).
+- **Bilingual UI**: Vietnamese and English (cookie-based, no URL prefix). Course content itself is not translated.
 
 ### 2. 🔐 Dual Authentication Portal & RBAC
 - **Centralized MPC Single Sign-On (OIDC)**: Seamless one-click login connected to `https://auth.mpclub.dev`.
@@ -34,16 +42,23 @@
 
 ### 3. ✍️ Studio Workspace (Executive & Editor CMS)
 - **Rich Interactive Block Editor**: Built on modern block structures with full markdown support, code syntax highlighting, callouts, and multi-media embeds.
-- **Category Hierarchy**: Two-level structured taxonomy (Root Department Tracks & Sub-topics) with real-time drag-and-drop reordering.
-- **Role & Category Permissions**:
-  - `ADMIN`: Full operational authority over all club categories, curriculum roadmaps, and member appointments.
-  - `EDITOR`: Department-scoped editing privileges for designated knowledge categories.
+- **Course → Lesson → Item Curriculum**: A course holds many lessons, and each lesson holds chapters and exercises (`Item`: content, quiz, or assignment) in a defined order. Cover images belong to courses and lessons only; items have none. Drag-and-drop reordering at every level (`/studio/curriculum`).
+- **Flexible Learning Order**: `Course.sequential` sets the default (ordered vs free); a lesson or item can override it with `requirePrevious`.
+- **Flat Categories**: A course can carry one or many categories (tags) for browsing and filtering.
+- **Role & Course Permissions**:
+  - `ADMIN`: Full operational authority over all courses, categories, publishing, and member appointments.
+  - `EDITOR`: Edit privileges limited to the courses assigned to them; cannot publish.
   - `MEMBER`: Read-only curriculum navigation, assessment submission, commenting, and personal progress tracking.
 
 ### 4. ☁️ Cloudinary Asset Tracking & Automated Garbage Collection
-- **Orphan File Detection**: Prevents abandoned image uploads from accumulating costs on Cloudinary when authors refresh or close pages without saving.
+- **Orphan File Detection**: Prevents abandoned image uploads from accumulating costs on Cloudinary when authors refresh or close pages without saving. Covers are uploaded to Cloudinary (never stored as base64).
 - **Automated Lifecycle / Cron Cleanup**: `POST /api/upload/cleanup?hours=2` sweeps and destroys unused cloud assets permanently.
 - **Studio Storage Dashboard** (`/studio/settings`): Live Cloudinary quota insights (Bandwidth, Storage MB, Credits) with one-click manual garbage collection.
+
+### 5. 🔎 SEO & Link Previews (privacy-aware)
+- **Only the homepage is indexable.** `robots.txt` blocks search engines everywhere else, and every other page also carries `noindex` (meta + `X-Robots-Tag`).
+- **Link previews** (Facebook, Zalo, Slack, Discord, Telegram, X, LinkedIn, WhatsApp) get a generated 1200×630 image plus a short excerpt, but only for *public* content (published course, `PUBLIC` + `FREE`, published lesson/chapter). Anything else — drafts, members-only, group-restricted, or non-existent — returns the same generic "members-only" card, so nothing leaks and existence can't be probed. Quiz and assignment questions are never exposed.
+- Set `APP_URL` to the public site URL so canonical links, Open Graph URLs and the sitemap are correct.
 
 ---
 
@@ -57,7 +72,13 @@
 | **Database & ORM** | [PostgreSQL](https://www.postgresql.org/) + [Prisma ORM 6.4](https://www.prisma.io/) |
 | **Authentication** | [Auth.js (NextAuth v5 beta)](https://authjs.dev/) + Custom OIDC & Credentials Provider + `bcryptjs` |
 | **Cloud Storage** | [Cloudinary](https://cloudinary.com/) (Direct Signed Uploads + Admin Garbage Collection SDK) |
-| **Date & Time** | [date-fns v4](https://date-fns.org/) |
+| **i18n** | [next-intl](https://next-intl.dev/) (vi + en, cookie-based) |
+| **Search** | [MiniSearch](https://lucaong.github.io/minisearch/) (client-side, diacritic-insensitive) |
+| **Motion & UX** | [motion](https://motion.dev/), `canvas-confetti`, [@dnd-kit](https://dndkit.com/) |
+| **Link previews** | `next/og` (ImageResponse) with Plus Jakarta Sans (Vietnamese glyphs) |
+| **Date & Time** | [date-fns v4](https://date-fns.org/) + `next-intl` formatters |
+
+> Architecture, data model and conventions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CLAUDE.md](CLAUDE.md).
 
 ---
 
@@ -72,7 +93,7 @@
 Create a `.env` file in the root directory:
 
 ```env
-# Application URL
+# Public URL of the site (canonical links, Open Graph previews, sitemap)
 APP_URL="http://localhost:3000"
 
 # Super Admin Emails (comma-separated list)
@@ -139,14 +160,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 👥 Pre-seeded Test Accounts
 
-A complete suite of 10 test accounts is ready out of the box with the default password. For comprehensive details on privileges and test scopes, refer to [docs/TEST_ACCOUNT.md](docs/TEST_ACCOUNT.md).
+A complete suite of 10 test accounts is created by `pnpm db:seed` with a shared default password. For privileges and test scopes, see [docs/TEST_ACCOUNT.md](docs/TEST_ACCOUNT.md).
+
+> ⚠️ **Never seed a database that is, or shares data with, production.** The seed uses a publicly documented password for two `ADMIN` accounts. Use a separate development database, and set `EMAIL_LOGIN="disable"` where only SSO should be allowed.
 
 ---
 
 ## 📜 Database & Maintenance Scripts
 
 ```bash
-# Populate initial categories, articles, quizzes, and 10 test users
+# Populate initial categories, courses, lessons, items, quizzes, and 10 test users
 pnpm db:seed
 
 # Wipe progression logs, comments, and non-admin test records
@@ -159,11 +182,13 @@ pnpm db:reset
 pnpm clean
 ```
 
+> Don't run `pnpm build` while `pnpm dev` is running — they share `.next` and corrupt each other's cache. If it breaks, stop all `next` processes, run `pnpm clean`, and start again.
+
 ---
 
 ## 🤝 Contributing & Code of Conduct
 
-1. All contributors must follow the [MPC Code of Conduct & Culture](https://handbook.mpclub.dev/docs/quy-tac-ung-xu-mpc).
+1. All contributors must follow the MPC Code of Conduct & Culture (course "Nội quy & Văn hóa CLB" on the handbook). Agents and contributors working on code should read [CLAUDE.md](CLAUDE.md) first.
 2. Branch naming convention: `feat/feature-name`, `fix/bug-fix`, `refactor/component-name`.
 3. Always verify type safety (`pnpm exec tsc --noEmit`) and build integrity (`pnpm build`) before opening a Pull Request.
 
