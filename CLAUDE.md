@@ -52,6 +52,14 @@ Quy tắc:
 ## Cloudinary
 Upload trực tiếp có ký: `POST /api/upload/sign` → upload Cloudinary → `POST /api/upload/register` (tạo `UploadedFile`, `isAttached=false`). Khi lưu Course/Lesson/Item, `syncAttachments` gắn file đang dùng và **gỡ attach** file không còn dùng; `/api/upload/cleanup` xóa file mồ côi. Ảnh bìa phải upload lên Cloudinary (không lưu base64 vào DB). Chỉ `public_id` trong folder `mpc_handbook_assets/` được quản lý.
 
+## Nội dung chương (BlockNote)
+- `Item.content` là JSON tài liệu BlockNote (`editor.document`), type `ContentBlock` ở `types/index.ts`. Không còn định dạng khối cũ (`heading_2`, `content: string`); gặp thì đó là sót.
+- Trình soạn: `components/editor/ContentEditor.tsx` (chỉ client, import qua `next/dynamic` `ssr:false`). Schema ở `content-schema.tsx`: khối mặc định trừ audio/file/video (upload chỉ nhận ảnh) + khối riêng `callout`, `comparison`, `gallery`, `youtube`. Props khối riêng phải là kiểu nguyên thủy (danh sách lưu chuỗi: ý so sánh mỗi dòng một ý, ảnh thư viện là JSON).
+- Dán: HTML (Google Docs, Notion, web) và Markdown do BlockNote xử lý; HTML Word được làm sạch ở `word-paste.ts` (dựng lại danh sách `mso-list`, bỏ ảnh `file:///`). Ảnh dán/kéo thả tải lên Cloudinary qua `uploadToCloudinary`.
+- **Ghim `@mantine/core`/`@mantine/hooks` ở 8.x.** Mantine 9 dùng `useEffectEvent`/`Activity` (React 19.2 ổn định) mà React đóng gói trong Next 15 chưa có → `next build` lỗi. Chỉ nâng khi lên Next 16.
+- Trang đọc **không** tải BlockNote: `components/reader/ContentBlocks.tsx` render từ JSON. Thêm khối mới = thêm vào schema + `ContentBlocks` + `blockText()` trong `lib/content/blocks.ts`.
+- `lib/content/blocks.ts` (dùng được ở server): builder cho seed/mặc định (`h2`, `p`, `ul`, `callout`, `table`…; chữ trong builder nhận `**đậm**`, `*nghiêng*`, `` `code` ``, `[nhãn](url)`), `extractPlainText`, `estimateReadingTime`, `normalizeContent` (lọc JSON không hợp lệ ở API/serializer/bản nháp localStorage).
+
 ## Item: chương và bài tập là hai thứ tách biệt
 - `CONTENT` (chương) chỉ để đọc, **không có quiz**. `QUIZ` = trắc nghiệm (câu: single/multiple/fill_blank/scale, chấm tự động). `ASSIGNMENT` = bài tập (câu: essay/file_upload/code_submission, chấm tay). Quy tắc nằm ở `lib/quiz-rules.ts` và được server ép (`/api/items`, `/api/quiz/grade`); đổi giữa chương ↔ bài tập bị chặn (409) nếu đã có lượt làm.
 - QUIZ/ASSIGNMENT là một trang làm bài riêng (giới thiệu → từng câu → kết quả), **không dùng modal**.
@@ -88,5 +96,5 @@ Upload trực tiếp có ký: `POST /api/upload/sign` → upload Cloudinary → 
 - Code đã chuyển hoàn toàn từ `Category(depth)+Article` sang `Course→Lesson→Item`. Nếu gặp `Article`/`articleId`/`depth` thì đó là sót, hãy chuyển sang mô hình mới thay vì giữ tương thích cũ.
 - URL: reader `/learn/[course]/[lesson]/[item]`; studio `/studio/curriculum` (cây), `/studio/items` (danh sách), `/studio/items/[id]` (soạn). Đường dẫn cũ `/docs/*`, `/studio/articles/*`, `/editor/*` được `middleware.ts` redirect.
 - `GET /api/handbook/data` lọc theo người xem: khách/thành viên chỉ nhận nội dung đã xuất bản, đáp án quiz bị loại, tiến độ chỉ của chính họ. Chấm điểm luôn ở server (`/api/quiz/grade`).
-- Lint (`pnpm lint`) còn lỗi `react-hooks/*` có sẵn từ trước ở `HandbookContext`, `QuizRunner`, `BlockNoteEditor`, `QuizBuilder`; `tsc` và `build` sạch.
+- Lint (`pnpm lint`) còn lỗi `react-hooks/*` có sẵn từ trước ở `HandbookContext`, `QuizRunner`, `QuizBuilder`, các trang studio; `tsc` và `build` sạch.
 - DB là Prisma Postgres từ xa; `.env` và `.env.production` có thể trỏ cùng một DB. Không chạy `db push --force-reset` / `db:reset` khi chưa chắc đang trỏ vào DB nào.

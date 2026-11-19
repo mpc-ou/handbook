@@ -2,12 +2,30 @@ import {
   CategoryRecord,
   ContentAudience,
   ContentStatus,
+  ContentBlock,
   ContentVisibility,
-  EditorBlock,
   ItemAttachment,
   ItemType,
   QuizQuestion,
 } from "@/types";
+import {
+  callout,
+  code,
+  comparison,
+  doc,
+  estimateReadingTime,
+  extractPlainText,
+  countBlocks,
+  gallery,
+  h2,
+  h3,
+  ol,
+  p,
+  table,
+  todo,
+  ul,
+  withIds,
+} from "./content/blocks";
 
 export function slugify(input: string): string {
   return input
@@ -20,246 +38,6 @@ export function slugify(input: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 }
-
-export function extractPlainTextFromBlocks(blocks: EditorBlock[]): string {
-  return blocks
-    .map((b) => {
-      if (b.type === "divider") return "";
-      if (b.type === "image") return b.props?.caption || "";
-      if (b.type === "gallery") {
-        return (b.props?.galleryImages || [])
-          .map((img) => img.caption || img.alt || "")
-          .join(" ");
-      }
-      if (b.type === "table") {
-        const headers = (b.props?.tableData?.headers || []).join(" ");
-        const rows = (b.props?.tableData?.rows || []).map((r) => r.join(" ")).join(" ");
-        return `${headers} ${rows}`;
-      }
-      if (b.type === "comparison") {
-        const comp = b.props?.comparisonData;
-        if (!comp) return "";
-        return `${comp.leftTitle} ${comp.leftPoints.join(" ")} ${comp.rightTitle} ${comp.rightPoints.join(" ")}`;
-      }
-      if (b.type === "video") {
-        return b.content || b.props?.caption || "";
-      }
-      return b.content || "";
-    })
-    .filter(Boolean)
-    .join("\n")
-    .slice(0, 95000);
-}
-
-export function estimateReadingTime(plainText: string, blocksCount = 0): number {
-  const words = plainText.trim().split(/\s+/).filter(Boolean).length;
-  // Standard reading speed ~200 wpm plus visual inspection time for media blocks
-  const minutes = Math.ceil(words / 200 + blocksCount * 0.05);
-  return Math.max(1, Math.min(300, minutes));
-}
-
-export interface ArticleTemplateDefinition {
-  id: "event_playbook" | "skill_guide" | "club_rules";
-  name: string;
-  subtitle: string;
-  defaultSummary: string;
-  blocks: EditorBlock[];
-}
-
-export type ItemTemplateDefinition = ArticleTemplateDefinition;
-
-export const ARTICLE_TEMPLATES: ArticleTemplateDefinition[] = [
-  {
-    id: "event_playbook",
-    name: "Mẫu quy trình sự kiện",
-    subtitle: "Dành cho điều phối sự kiện WebDesign, Tuyển CTV, Tech Talk",
-    defaultSummary:
-      "Tài liệu hướng dẫn tổng thể từ khâu lập kế hoạch, phân công nhân sự đến vận hành và tổng kết sự kiện của CLB MPC.",
-    blocks: [
-      {
-        id: "tpl_ep_1",
-        type: "heading_2",
-        content: "1. Mục tiêu và mốc thời gian tổng thể",
-      },
-      {
-        id: "tpl_ep_2",
-        type: "callout",
-        content:
-          "Mục tiêu cốt lõi: Đảm bảo 100% thành viên nắm rõ mốc thời gian và đầu việc chịu trách nhiệm trước ngày diễn ra sự kiện ít nhất 14 ngày.",
-        props: { variant: "info" },
-      },
-      {
-        id: "tpl_ep_3",
-        type: "bullet_list",
-        content:
-          "Tuần 1-2: Lên đề xuất, xin duyệt kinh phí Ban Chủ Nhiệm và chốt nhà tài trợ.\nTuần 3: Mở đơn đăng ký, truyền thông đa kênh và chốt danh sách thí sinh.\nTuần 4: Tổ chức vòng Chung kết, chấm điểm và trao giải.",
-      },
-      {
-        id: "tpl_ep_4",
-        type: "heading_2",
-        content: "2. Phân công nhân sự các ban",
-      },
-      {
-        id: "tpl_ep_5",
-        type: "numbered_list",
-        content:
-          "Ban Chuyên môn: Xây dựng đề bài, chuẩn bị hệ thống chấm điểm và cố vấn kỹ thuật.\nBan Truyền thông: Thiết kế bộ nhận diện, viết bài phát động, chụp ảnh và quay phóng sự.\nBan Sự kiện: Đặt hội trường, chuẩn bị âm thanh, ánh sáng và quà tặng.\nBan Nhân sự: Điểm danh thành viên trực, đón tiếp khách mời và ban giám khảo.",
-      },
-      {
-        id: "tpl_ep_6",
-        type: "heading_2",
-        content: "3. Danh sách kiểm tra trước, trong và sau sự kiện",
-      },
-      {
-        id: "tpl_ep_7",
-        type: "checklist",
-        content: "Đã duyệt kịch bản MC và slide trình chiếu chính thức",
-        props: { checked: true },
-      },
-      {
-        id: "tpl_ep_8",
-        type: "checklist",
-        content: "Đã chạy thử âm thanh, máy chiếu và đường truyền mạng tại hội trường",
-        props: { checked: false },
-      },
-      {
-        id: "tpl_ep_9",
-        type: "checklist",
-        content: "Đã tổng hợp ảnh sự kiện lên Google Drive CLB trong vòng 24 giờ sau sự kiện",
-        props: { checked: false },
-      },
-      {
-        id: "tpl_ep_10",
-        type: "heading_2",
-        content: "4. Các sự cố thường gặp và phương án dự phòng",
-      },
-      {
-        id: "tpl_ep_11",
-        type: "callout",
-        content:
-          "Lưu ý dự phòng: Luôn chuẩn bị sẵn bản slide offline trên USB và bộ phát mạng 4G dự phòng cho bàn kỹ thuật.",
-        props: { variant: "warning" },
-      },
-      {
-        id: "tpl_ep_12",
-        type: "heading_2",
-        content: "5. Tài liệu mẫu và liên kết lưu trữ",
-      },
-      {
-        id: "tpl_ep_13",
-        type: "paragraph",
-        content:
-          "Vui lòng đính kèm link thư mục Google Drive chứa đề án, bảng phân công và bộ nhận diện sự kiện tại khung tài liệu đính kèm bên dưới.",
-      },
-    ],
-  },
-  {
-    id: "skill_guide",
-    name: "Mẫu hướng dẫn kỹ năng",
-    subtitle: "Dành cho hướng dẫn chụp ảnh, thiết kế, viết bài và kỹ thuật",
-    defaultSummary:
-      "Cẩm nang tiêu chuẩn chất lượng, công cụ cần chuẩn bị và hướng dẫn thực hành từng bước kèm ví dụ đúng và sai.",
-    blocks: [
-      {
-        id: "tpl_sg_1",
-        type: "heading_2",
-        content: "1. Tiêu chuẩn chất lượng của CLB MPC",
-      },
-      {
-        id: "tpl_sg_2",
-        type: "paragraph",
-        content:
-          "Mọi sản phẩm đầu ra của CLB cần tuân thủ đúng màu sắc thương hiệu, bố cục rõ ràng và truyền tải tinh thần học thuật và sáng tạo của MPC.",
-      },
-      {
-        id: "tpl_sg_3",
-        type: "heading_2",
-        content: "2. Công cụ và tài nguyên cần chuẩn bị",
-      },
-      {
-        id: "tpl_sg_4",
-        type: "bullet_list",
-        content:
-          "Bộ logo và phông chữ chuẩn của CLB MPC.\nTài khoản hoặc phần mềm chuyên dụng (Figma, Lightroom, VS Code, Git).\nKho lưu trữ preset và template mẫu trên Google Drive nội bộ.",
-      },
-      {
-        id: "tpl_sg_5",
-        type: "heading_2",
-        content: "3. Hướng dẫn thực hiện từng bước",
-      },
-      {
-        id: "tpl_sg_6",
-        type: "numbered_list",
-        content:
-          "Bước 1: Tiếp nhận yêu cầu và xác định thông điệp trọng tâm.\nBước 2: Phác thảo bố cục và kiểm tra chéo với tiêu chuẩn CLB.\nBước 3: Hoàn thiện sản phẩm và gửi Trưởng ban duyệt trước deadline tối thiểu 12 giờ.",
-      },
-      {
-        id: "tpl_sg_7",
-        type: "heading_2",
-        content: "4. So sánh thực tế: Nên làm và Tránh làm",
-      },
-      {
-        id: "tpl_sg_8",
-        type: "callout",
-        content:
-          "Nên làm: Đặt tên file theo chuẩn năm tháng ngày và tên sự kiện để dễ dàng tra cứu lại về sau.",
-        props: { variant: "success" },
-      },
-      {
-        id: "tpl_sg_9",
-        type: "callout",
-        content:
-          "Tránh làm: Tuyệt đối không kéo giãn làm méo tỷ lệ logo CLB hoặc sử dụng ảnh bị vỡ nét khi đăng bài truyền thông.",
-        props: { variant: "danger" },
-      },
-    ],
-  },
-  {
-    id: "club_rules",
-    name: "Mẫu nội quy và quy định CLB",
-    subtitle: "Dành cho Ban Chủ Nhiệm và Ban Nhân sự ban hành quy chế",
-    defaultSummary:
-      "Quy định chính thức áp dụng cho toàn bộ thành viên và cộng tác viên thuộc Câu lạc bộ Lập trình Học thuật (MPC).",
-    blocks: [
-      {
-        id: "tpl_cr_1",
-        type: "heading_2",
-        content: "1. Phạm vi và đối tượng áp dụng",
-      },
-      {
-        id: "tpl_cr_2",
-        type: "paragraph",
-        content:
-          "Quy định này áp dụng bắt buộc đối với toàn thể Ban Chủ Nhiệm, Trưởng ban, Thành viên chính thức và Cộng tác viên đang hoạt động tại CLB MPC.",
-      },
-      {
-        id: "tpl_cr_3",
-        type: "heading_2",
-        content: "2. Quy định chi tiết",
-      },
-      {
-        id: "tpl_cr_4",
-        type: "numbered_list",
-        content:
-          "Tác phong làm việc: Đúng giờ trong mọi cuộc họp định kỳ và ca trực sự kiện.\nGiao tiếp nội bộ: Phản hồi thông báo công việc trên kênh chung trong vòng tối đa 12 giờ.\nBảo mật tài nguyên: Không tự ý chia sẻ tài liệu nội bộ, source code hoặc danh sách nhân sự ra bên ngoài CLB.",
-      },
-      {
-        id: "tpl_cr_5",
-        type: "heading_2",
-        content: "3. Quyền lợi, khen thưởng và kỷ luật",
-      },
-      {
-        id: "tpl_cr_6",
-        type: "callout",
-        content:
-          "Thành viên hoàn thành xuất sắc nhiệm vụ học kỳ sẽ được vinh danh và cấp giấy chứng nhận hoạt động từ CLB và Khoa.",
-        props: { variant: "info" },
-      },
-    ],
-  },
-];
-
-export const ITEM_TEMPLATES = ARTICLE_TEMPLATES;
 
 const NOW = "2026-10-24T08:00:00.000Z";
 
@@ -311,7 +89,7 @@ export interface SeedItem {
   requirePrevious: boolean | null;
   requireScrollToBottom: boolean;
   passScorePercent: number;
-  content: EditorBlock[];
+  content: ContentBlock[];
   plainText: string;
   readingTime: number;
   attachments: ItemAttachment[];
@@ -575,144 +353,56 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       },
     ],
-    content: [
-      {
-        id: "b_coc_1",
-        type: "callout",
-        content:
-          "Chào mừng bạn đến với hệ thống Sổ tay nội bộ MPC Handbook! Đây là bài đọc mở đầu bắt buộc trong lộ trình hội nhập dành cho mọi thành viên CLB.",
-        props: { variant: "info" },
-      },
-      {
-        id: "b_coc_2",
-        type: "heading_2",
-        content: "1. Ba giá trị cốt lõi của Câu lạc bộ Lập trình Học thuật",
-      },
-      {
-        id: "b_coc_3",
-        type: "paragraph",
-        content:
-          "Từ những ngày đầu thành lập, MPC luôn duy trì môi trường học thuật mở, nơi các thành viên từ Ban Chuyên môn, Ban Truyền thông, Ban Sự kiện và Ban Nhân sự cùng nhau phát triển kỹ năng thực chiến.",
-      },
-      {
-        id: "b_coc_4",
-        type: "numbered_list",
-        content:
-          "**Chủ động học hỏi:** Tự giác nghiên cứu tài liệu trước khi đặt câu hỏi và sẵn sàng nhận nhiệm vụ mới.\n**Tinh thần đồng đội:** Không để đồng đội bị quá tải; báo cáo sớm cho Trưởng ban ít nhất 24 giờ nếu gặp sự cố cá nhân.\n**Chia sẻ tri thức:** Mọi sự kiện và dự án sau khi kết thúc đều phải được đúc kết thành tài liệu trên [Cổng tài liệu MPC](https://docs.mpclub.dev).",
-      },
-      {
-        id: "b_coc_comp",
-        type: "comparison",
-        content: "Khung so sánh văn hóa làm việc và phối hợp tại MPC",
-        props: {
-          comparisonData: {
-            leftTitle: "Nên làm tại MPC",
-            leftPoints: [
-              "Chủ động phản hồi tin nhắn gắn thẻ trong vòng 12 giờ",
-              "Góp ý mang tính xây dựng trực tiếp vào sản phẩm",
-              "Báo cáo khó khăn trước deadline tối thiểu 24 giờ",
-              "Tài liệu hóa mọi quy trình và bài học kinh nghiệm",
-            ],
-            rightTitle: "Tránh làm tại MPC",
-            rightPoints: [
-              "Im lặng không xác nhận thông báo công việc quan trọng",
-              "Công kích hoặc chỉ trích cá nhân đồng đội",
-              "Đến sát giờ sự kiện mới thông báo vắng mặt",
-              "Tự ý chia sẻ tài khoản hoặc mã nguồn nội bộ ra ngoài",
-            ],
-          },
-        },
-      },
-      {
-        id: "b_coc_5",
-        type: "heading_2",
-        content: "2. Quy chuẩn giao tiếp và phản hồi công việc",
-      },
-      {
-        id: "b_coc_table",
-        type: "table",
-        content: "Bảng quy định thời hạn phản hồi theo kênh liên lạc",
-        props: {
-          tableData: {
-            headers: ["Kênh liên lạc", "Mục đích sử dụng", "Thời hạn phản hồi tối đa", "Ghi chú"],
-            rows: [
-              [
-                "Discord Server",
-                "Thảo luận chuyên môn, họp ban và điều phối dự án",
-                "Trong vòng 12 giờ",
-                "Cần gắn thẻ đúng vai trò",
-              ],
-              [
-                "Zalo Thông báo",
-                "Thông báo khẩn cấp từ Ban Chủ Nhiệm",
-                "Trong vòng 6 giờ",
-                "Thả biểu cảm xác nhận đã đọc",
-              ],
-              [
-                "Email @mpclub.dev",
-                "Biên bản họp chính thức và đối tác ngoài",
-                "Trong vòng 24 giờ",
-                "Kiểm tra hòm thư định kỳ",
-              ],
-              [
-                "GitHub Pull Request",
-                "Kiểm duyệt mã nguồn và đóng góp tài liệu",
-                "Trong vòng 48 giờ",
-                "Ít nhất 1 duyệt viên chấp thuận",
-              ],
-            ],
-          },
-        },
-      },
-      {
-        id: "b_coc_7",
-        type: "heading_3",
-        content: "2.1 Quy tắc đặt tên nhánh và tài liệu nội bộ",
-      },
-      {
-        id: "b_coc_8",
-        type: "code",
-        content:
-          "# Chuẩn đặt tên thư mục Google Drive sự kiện:\n[YYYY-MM]_[Tên-Sự-Kiện]/[01_Proposal | 02_Design | 03_Media | 04_Report]\n\n# Chuẩn đặt tên nhánh Git trong dự án .mpclub.dev:\nfeat/mpc-handbook-quiz-engine\nfix/sso-token-refresh",
-        props: { language: "bash" },
-      },
-      {
-        id: "b_coc_gallery",
-        type: "gallery",
-        content: "Không gian học thuật và hoạt động tiêu biểu của MPC",
-        props: {
-          galleryImages: [
-            {
-              id: "img_g1",
-              url: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80",
-              caption: "Buổi sinh hoạt chuyên đề công nghệ tại phòng lab",
-            },
-            {
-              id: "img_g2",
-              url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80",
-              caption: "Đội ngũ ban tổ chức phối hợp chuẩn bị sự kiện",
-            },
-            {
-              id: "img_g3",
-              url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80",
-              caption: "Thuyết trình đề án và phản biện kỹ thuật",
-            },
-          ],
-        },
-      },
-      {
-        id: "b_coc_9",
-        type: "heading_2",
-        content: "3. Bảo mật tài nguyên và bản quyền CLB",
-      },
-      {
-        id: "b_coc_10",
-        type: "callout",
-        content:
-          "Tuyệt đối không tự ý công khai danh sách thông tin cá nhân thành viên, đề thi chưa công bố hoặc khóa bí mật (.env, API Key) lên các kho lưu trữ công khai.",
-        props: { variant: "warning" },
-      },
-    ],
+    content: doc(
+      callout("info", "Chào mừng bạn đến với hệ thống Sổ tay nội bộ MPC Handbook! Đây là bài đọc mở đầu bắt buộc trong lộ trình hội nhập dành cho mọi thành viên CLB."),
+      h2("1. Ba giá trị cốt lõi của Câu lạc bộ Lập trình Học thuật"),
+      p("Từ những ngày đầu thành lập, MPC luôn duy trì môi trường học thuật mở, nơi các thành viên từ Ban Chuyên môn, Ban Truyền thông, Ban Sự kiện và Ban Nhân sự cùng nhau phát triển kỹ năng thực chiến."),
+      ol([
+        "**Chủ động học hỏi:** Tự giác nghiên cứu tài liệu trước khi đặt câu hỏi và sẵn sàng nhận nhiệm vụ mới.",
+        "**Tinh thần đồng đội:** Không để đồng đội bị quá tải; báo cáo sớm cho Trưởng ban ít nhất 24 giờ nếu gặp sự cố cá nhân.",
+        "**Chia sẻ tri thức:** Mọi sự kiện và dự án sau khi kết thúc đều phải được đúc kết thành tài liệu trên [Cổng tài liệu MPC](https://docs.mpclub.dev).",
+      ]),
+      comparison({
+        title: "Khung so sánh văn hóa làm việc và phối hợp tại MPC",
+        leftTitle: "Nên làm tại MPC",
+        leftPoints: [
+          "Chủ động phản hồi tin nhắn gắn thẻ trong vòng 12 giờ",
+          "Góp ý mang tính xây dựng trực tiếp vào sản phẩm",
+          "Báo cáo khó khăn trước deadline tối thiểu 24 giờ",
+          "Tài liệu hóa mọi quy trình và bài học kinh nghiệm",
+        ],
+        rightTitle: "Tránh làm tại MPC",
+        rightPoints: [
+          "Im lặng không xác nhận thông báo công việc quan trọng",
+          "Công kích hoặc chỉ trích cá nhân đồng đội",
+          "Đến sát giờ sự kiện mới thông báo vắng mặt",
+          "Tự ý chia sẻ tài khoản hoặc mã nguồn nội bộ ra ngoài",
+        ],
+      }),
+      h2("2. Quy chuẩn giao tiếp và phản hồi công việc"),
+      p("**Bảng quy định thời hạn phản hồi theo kênh liên lạc**"),
+      table([
+        ["Kênh liên lạc", "Mục đích sử dụng", "Thời hạn phản hồi tối đa", "Ghi chú"],
+        ["Discord Server", "Thảo luận chuyên môn, họp ban và điều phối dự án", "Trong vòng 12 giờ", "Cần gắn thẻ đúng vai trò"],
+        ["Zalo Thông báo", "Thông báo khẩn cấp từ Ban Chủ Nhiệm", "Trong vòng 6 giờ", "Thả biểu cảm xác nhận đã đọc"],
+        ["Email @mpclub.dev", "Biên bản họp chính thức và đối tác ngoài", "Trong vòng 24 giờ", "Kiểm tra hòm thư định kỳ"],
+        ["GitHub Pull Request", "Kiểm duyệt mã nguồn và đóng góp tài liệu", "Trong vòng 48 giờ", "Ít nhất 1 duyệt viên chấp thuận"],
+      ]),
+      h3("2.1 Quy tắc đặt tên nhánh và tài liệu nội bộ"),
+      code("bash", `# Chuẩn đặt tên thư mục Google Drive sự kiện:
+[YYYY-MM]_[Tên-Sự-Kiện]/[01_Proposal | 02_Design | 03_Media | 04_Report]
+
+# Chuẩn đặt tên nhánh Git trong dự án .mpclub.dev:
+feat/mpc-handbook-quiz-engine
+fix/sso-token-refresh`),
+      gallery("Không gian học thuật và hoạt động tiêu biểu của MPC", [
+        { url: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80", caption: "Buổi sinh hoạt chuyên đề công nghệ tại phòng lab" },
+        { url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80", caption: "Đội ngũ ban tổ chức phối hợp chuẩn bị sự kiện" },
+        { url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80", caption: "Thuyết trình đề án và phản biện kỹ thuật" },
+      ]),
+      h2("3. Bảo mật tài nguyên và bản quyền CLB"),
+      callout("warning", "Tuyệt đối không tự ý công khai danh sách thông tin cá nhân thành viên, đề thi chưa công bố hoặc khóa bí mật (.env, API Key) lên các kho lưu trữ công khai."),
+    ),
     quizQuestions: [],
   },
   {
@@ -740,54 +430,20 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://docs.google.com/document/d/mpc-meeting-minutes-template",
       },
     ],
-    content: [
-      {
-        id: "b_meet_1",
-        type: "heading_2",
-        content: "1. Trước buổi họp (24 giờ trước giờ G)",
-      },
-      {
-        id: "b_meet_2",
-        type: "paragraph",
-        content:
-          "Mọi buổi họp toàn CLB hoặc họp Ban chỉ được phép diễn ra khi đã có Agenda (khung chương trình họp) gửi trước tối thiểu 24 giờ.",
-      },
-      {
-        id: "b_meet_3",
-        type: "checklist",
-        content: "Chốt mục tiêu cuộc họp, thời lượng dự kiến và danh sách người tham dự",
-        props: { checked: true },
-      },
-      {
-        id: "b_meet_4",
-        type: "checklist",
-        content: "Phân công thư ký ghi biên bản trước khi bắt đầu",
-        props: { checked: true },
-      },
-      {
-        id: "b_meet_5",
-        type: "heading_2",
-        content: "2. Trong buổi họp: Nguyên tắc 50/10",
-      },
-      {
-        id: "b_meet_6",
-        type: "numbered_list",
-        content:
-          "10 phút đầu: Điểm danh nhanh và rà soát tiến độ các đầu việc từ buổi họp trước.\n40 phút giữa: Thảo luận tập trung vào các vấn đề trong Agenda, tránh lan man.\n10 phút cuối: Chốt các đầu việc cần làm (ai làm việc gì, hạn chót ngày nào, kết quả đầu ra là gì).",
-      },
-      {
-        id: "b_meet_7",
-        type: "heading_2",
-        content: "3. Sau buổi họp: Công bố biên bản trong 12 giờ",
-      },
-      {
-        id: "b_meet_8",
-        type: "callout",
-        content:
-          "Thư ký cuộc họp cần hoàn thiện biên bản họp và đăng tải link lên kênh thông báo trong vòng 12 giờ sau khi kết thúc để các thành viên vắng mặt có phép nắm bắt đầy đủ.",
-        props: { variant: "success" },
-      },
-    ],
+    content: doc(
+      h2("1. Trước buổi họp (24 giờ trước giờ G)"),
+      p("Mọi buổi họp toàn CLB hoặc họp Ban chỉ được phép diễn ra khi đã có Agenda (khung chương trình họp) gửi trước tối thiểu 24 giờ."),
+      todo("Chốt mục tiêu cuộc họp, thời lượng dự kiến và danh sách người tham dự", true),
+      todo("Phân công thư ký ghi biên bản trước khi bắt đầu", true),
+      h2("2. Trong buổi họp: Nguyên tắc 50/10"),
+      ol([
+        "10 phút đầu: Điểm danh nhanh và rà soát tiến độ các đầu việc từ buổi họp trước.",
+        "40 phút giữa: Thảo luận tập trung vào các vấn đề trong Agenda, tránh lan man.",
+        "10 phút cuối: Chốt các đầu việc cần làm (ai làm việc gì, hạn chót ngày nào, kết quả đầu ra là gì).",
+      ]),
+      h2("3. Sau buổi họp: Công bố biên bản trong 12 giờ"),
+      callout("success", "Thư ký cuộc họp cần hoàn thiện biên bản họp và đăng tải link lên kênh thông báo trong vòng 12 giờ sau khi kết thúc để các thành viên vắng mặt có phép nắm bắt đầy đủ."),
+    ),
     quizQuestions: [],
   },
   {
@@ -815,42 +471,18 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://docs.google.com/spreadsheets/d/mpc-points-2026",
       },
     ],
-    content: [
-      {
-        id: "b_rew_1",
-        type: "heading_2",
-        content: "1. Hệ thống điểm hoạt động MPC Point",
-      },
-      {
-        id: "b_rew_2",
-        type: "paragraph",
-        content:
-          "Mỗi thành viên bắt đầu học kỳ với 100 điểm cơ sở. Điểm được cộng thêm khi tham gia ban tổ chức sự kiện, viết bài chia sẻ kỹ thuật hoặc hỗ trợ đào tạo nội bộ.",
-      },
-      {
-        id: "b_rew_3",
-        type: "heading_2",
-        content: "2. Danh hiệu khen thưởng cuối kỳ",
-      },
-      {
-        id: "b_rew_4",
-        type: "bullet_list",
-        content:
-          "Thành viên xuất sắc học kỳ: Top 5 thành viên có điểm đóng góp cao nhất toàn CLB.\nThành viên tích cực: Thành viên đạt từ 130 điểm trở lên và hoàn thành 100% lộ trình Sổ tay MPC.\nGiấy chứng nhận từ Ban Chủ Nhiệm và Khoa xác nhận tham gia công tác tổ chức sự kiện học thuật.",
-      },
-      {
-        id: "b_rew_5",
-        type: "heading_2",
-        content: "3. Các mức nhắc nhở và xử lý vi phạm",
-      },
-      {
-        id: "b_rew_6",
-        type: "callout",
-        content:
-          "Sau khi đọc xong 3 chương nội quy, hãy bước sang Bài tập cuối chương bên dưới để hoàn thành bài học Quy tắc ứng xử!",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      h2("1. Hệ thống điểm hoạt động MPC Point"),
+      p("Mỗi thành viên bắt đầu học kỳ với 100 điểm cơ sở. Điểm được cộng thêm khi tham gia ban tổ chức sự kiện, viết bài chia sẻ kỹ thuật hoặc hỗ trợ đào tạo nội bộ."),
+      h2("2. Danh hiệu khen thưởng cuối kỳ"),
+      ul([
+        "Thành viên xuất sắc học kỳ: Top 5 thành viên có điểm đóng góp cao nhất toàn CLB.",
+        "Thành viên tích cực: Thành viên đạt từ 130 điểm trở lên và hoàn thành 100% lộ trình Sổ tay MPC.",
+        "Giấy chứng nhận từ Ban Chủ Nhiệm và Khoa xác nhận tham gia công tác tổ chức sự kiện học thuật.",
+      ]),
+      h2("3. Các mức nhắc nhở và xử lý vi phạm"),
+      callout("info", "Sau khi đọc xong 3 chương nội quy, hãy bước sang Bài tập cuối chương bên dưới để hoàn thành bài học Quy tắc ứng xử!"),
+    ),
     quizQuestions: [],
   },
   {
@@ -874,15 +506,9 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_rq_1",
-        type: "callout",
-        content:
-          "Hãy trả lời các câu hỏi trắc nghiệm bên dưới dựa trên nội dung 3 chương Quy tắc ứng xử, Quy trình họp định kỳ và Cơ chế đánh giá MPC Point.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      callout("info", "Hãy trả lời các câu hỏi trắc nghiệm bên dưới dựa trên nội dung 3 chương Quy tắc ứng xử, Quy trình họp định kỳ và Cơ chế đánh giá MPC Point."),
+    ),
     quizQuestions: [
       {
         id: "q_coc_1",
@@ -976,38 +602,13 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_onb_1",
-        type: "heading_2",
-        content: "1. Đăng nhập một lần với tài khoản MPC-SSO",
-      },
-      {
-        id: "b_onb_2",
-        type: "paragraph",
-        content:
-          "Mỗi thành viên chính thức và Cộng tác viên của CLB được cấp một tài khoản định danh thống nhất trên hệ thống MPC-SSO để truy cập Sổ tay nội bộ, hệ thống chấm bài và kho tài nguyên CLB.",
-      },
-      {
-        id: "b_onb_3",
-        type: "checklist",
-        content: "Đăng nhập thành công vào MPC Handbook qua cổng MPC-SSO",
-        props: { checked: true },
-      },
-      {
-        id: "b_onb_4",
-        type: "checklist",
-        content: "Cập nhật đúng tên hiển thị theo cú pháp [Ban] Họ và Tên trên Discord Server CLB",
-        props: { checked: true },
-      },
-      {
-        id: "b_onb_5",
-        type: "callout",
-        content:
-          "Bài học này được cấu hình requirePrevious = false để bạn có thể tra cứu nhanh hướng dẫn công cụ bất cứ lúc nào ngay cả khi chưa hoàn thành bài học trước.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      h2("1. Đăng nhập một lần với tài khoản MPC-SSO"),
+      p("Mỗi thành viên chính thức và Cộng tác viên của CLB được cấp một tài khoản định danh thống nhất trên hệ thống MPC-SSO để truy cập Sổ tay nội bộ, hệ thống chấm bài và kho tài nguyên CLB."),
+      todo("Đăng nhập thành công vào MPC Handbook qua cổng MPC-SSO", true),
+      todo("Cập nhật đúng tên hiển thị theo cú pháp [Ban] Họ và Tên trên Discord Server CLB", true),
+      callout("info", "Bài học này được cấu hình requirePrevious = false để bạn có thể tra cứu nhanh hướng dẫn công cụ bất cứ lúc nào ngay cả khi chưa hoàn thành bài học trước."),
+    ),
     quizQuestions: [],
   },
 
@@ -1046,42 +647,18 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://www.figma.com/file/mpc-webdesign-2026",
       },
     ],
-    content: [
-      {
-        id: "b_wd_1",
-        type: "heading_2",
-        content: "1. Cấu trúc các vòng thi WebDesign",
-      },
-      {
-        id: "b_wd_2",
-        type: "paragraph",
-        content:
-          "Cuộc thi WebDesign là sự kiện học thuật trọng điểm của CLB MPC, thu hút hơn 200 thí sinh tham gia mỗi năm với 2 vòng thi chính: Vòng Sơ khảo và Vòng Chung kết.",
-      },
-      {
-        id: "b_wd_3",
-        type: "heading_2",
-        content: "2. Yêu cầu kỹ thuật bắt buộc trong đề bài",
-      },
-      {
-        id: "b_wd_4",
-        type: "bullet_list",
-        content:
-          "Giao diện tương thích đa thiết bị cả máy tính và điện thoại.\nĐiểm hiệu năng tối thiểu 85 ở mục hiệu suất và khả năng tiếp cận.\nTriển khai trực tuyến và mã nguồn quản lý qua GitHub.",
-      },
-      {
-        id: "b_wd_5",
-        type: "heading_2",
-        content: "3. Quy trình nghiệm thu đề bài với cố vấn",
-      },
-      {
-        id: "b_wd_6",
-        type: "callout",
-        content:
-          "Đề thi vòng Chung kết phải được Ban Chuyên môn làm thử độc lập bởi ít nhất 2 thành viên để đo lường chính xác quỹ thời gian làm bài.",
-        props: { variant: "warning" },
-      },
-    ],
+    content: doc(
+      h2("1. Cấu trúc các vòng thi WebDesign"),
+      p("Cuộc thi WebDesign là sự kiện học thuật trọng điểm của CLB MPC, thu hút hơn 200 thí sinh tham gia mỗi năm với 2 vòng thi chính: Vòng Sơ khảo và Vòng Chung kết."),
+      h2("2. Yêu cầu kỹ thuật bắt buộc trong đề bài"),
+      ul([
+        "Giao diện tương thích đa thiết bị cả máy tính và điện thoại.",
+        "Điểm hiệu năng tối thiểu 85 ở mục hiệu suất và khả năng tiếp cận.",
+        "Triển khai trực tuyến và mã nguồn quản lý qua GitHub.",
+      ]),
+      h2("3. Quy trình nghiệm thu đề bài với cố vấn"),
+      callout("warning", "Đề thi vòng Chung kết phải được Ban Chuyên môn làm thử độc lập bởi ít nhất 2 thành viên để đo lường chính xác quỹ thời gian làm bài."),
+    ),
     quizQuestions: [],
   },
   {
@@ -1109,31 +686,17 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://docs.google.com/spreadsheets/d/mpc-webdesign-scoring-sheet",
       },
     ],
-    content: [
-      {
-        id: "b_wdj_1",
-        type: "heading_2",
-        content: "1. Cơ cấu bảng điểm chung kết (Thang 100 điểm)",
-      },
-      {
-        id: "b_wdj_2",
-        type: "numbered_list",
-        content:
-          "Giao diện và trải nghiệm người dùng (30 điểm): Bố cục, hệ thống chữ, màu sắc và độ mượt mà.\nKỹ thuật lập trình và tính năng (40 điểm): Hoàn thiện chức năng, mã nguồn sạch sẽ, tương thích thiết bị.\nSáng tạo và giá trị thực tiễn (15 điểm): Điểm nhấn khác biệt giải quyết đúng bài toán.\nKỹ năng thuyết trình và phản biện (15 điểm): Trình bày đúng 7 phút và trả lời sắc bén câu hỏi từ ban giám khảo.",
-      },
-      {
-        id: "b_wdj_3",
-        type: "heading_2",
-        content: "2. Điều phối thời gian mỗi đội thi",
-      },
-      {
-        id: "b_wdj_4",
-        type: "callout",
-        content:
-          "Bàn điều phối thời gian phải giơ bảng báo hiệu khi đội thi còn 2 phút, 1 phút và hết giờ để đảm bảo công bằng tuyệt đối giữa các đội.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      h2("1. Cơ cấu bảng điểm chung kết (Thang 100 điểm)"),
+      ol([
+        "Giao diện và trải nghiệm người dùng (30 điểm): Bố cục, hệ thống chữ, màu sắc và độ mượt mà.",
+        "Kỹ thuật lập trình và tính năng (40 điểm): Hoàn thiện chức năng, mã nguồn sạch sẽ, tương thích thiết bị.",
+        "Sáng tạo và giá trị thực tiễn (15 điểm): Điểm nhấn khác biệt giải quyết đúng bài toán.",
+        "Kỹ năng thuyết trình và phản biện (15 điểm): Trình bày đúng 7 phút và trả lời sắc bén câu hỏi từ ban giám khảo.",
+      ]),
+      h2("2. Điều phối thời gian mỗi đội thi"),
+      callout("info", "Bàn điều phối thời gian phải giơ bảng báo hiệu khi đội thi còn 2 phút, 1 phút và hết giờ để đảm bảo công bằng tuyệt đối giữa các đội."),
+    ),
     quizQuestions: [],
   },
   {
@@ -1157,15 +720,9 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_wdq_1",
-        type: "callout",
-        content:
-          "Hoàn thành bài trắc nghiệm ngắn dưới đây để xác nhận bạn đã nắm vững quy trình ra đề và chấm điểm sự kiện WebDesign.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      callout("info", "Hoàn thành bài trắc nghiệm ngắn dưới đây để xác nhận bạn đã nắm vững quy trình ra đề và chấm điểm sự kiện WebDesign."),
+    ),
     quizQuestions: [
       {
         id: "q_wd_1",
@@ -1242,30 +799,16 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://drive.google.com/drive/folders/mpc-recruitment-kit",
       },
     ],
-    content: [
-      {
-        id: "b_rec_1",
-        type: "heading_2",
-        content: "1. Tiêu chí tuyển chọn: Thái độ đi đầu",
-      },
-      {
-        id: "b_rec_2",
-        type: "paragraph",
-        content:
-          "MPC tìm kiếm những bạn sinh viên có tinh thần cầu thị, cam kết gắn bó lâu dài và sẵn sàng học hỏi. Kỹ năng chuyên môn có thể được đào tạo qua hệ thống hướng dẫn nội bộ.",
-      },
-      {
-        id: "b_rec_3",
-        type: "heading_2",
-        content: "2. Quy tắc dành cho hội đồng phỏng vấn",
-      },
-      {
-        id: "b_rec_4",
-        type: "bullet_list",
-        content:
-          "Luôn tạo không khí cởi mở, thân thiện để ứng viên thể hiện tốt nhất năng lực.\nĐiền điểm và nhận xét chi tiết vào phiếu đánh giá ngay sau mỗi ca phỏng vấn.\nGửi email thông báo kết quả đúng hẹn trong vòng 48 giờ sau ngày phỏng vấn cuối.",
-      },
-    ],
+    content: doc(
+      h2("1. Tiêu chí tuyển chọn: Thái độ đi đầu"),
+      p("MPC tìm kiếm những bạn sinh viên có tinh thần cầu thị, cam kết gắn bó lâu dài và sẵn sàng học hỏi. Kỹ năng chuyên môn có thể được đào tạo qua hệ thống hướng dẫn nội bộ."),
+      h2("2. Quy tắc dành cho hội đồng phỏng vấn"),
+      ul([
+        "Luôn tạo không khí cởi mở, thân thiện để ứng viên thể hiện tốt nhất năng lực.",
+        "Điền điểm và nhận xét chi tiết vào phiếu đánh giá ngay sau mỗi ca phỏng vấn.",
+        "Gửi email thông báo kết quả đúng hẹn trong vòng 48 giờ sau ngày phỏng vấn cuối.",
+      ]),
+    ),
     quizQuestions: [],
   },
   {
@@ -1289,14 +832,9 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_recq_1",
-        type: "callout",
-        content: "Trả lời các câu hỏi dưới đây để hoàn thành bài học Tuyển cộng tác viên.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      callout("info", "Trả lời các câu hỏi dưới đây để hoàn thành bài học Tuyển cộng tác viên."),
+    ),
     quizQuestions: [
       {
         id: "q_rec_1",
@@ -1377,31 +915,17 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
         url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       },
     ],
-    content: [
-      {
-        id: "b_med_1",
-        type: "heading_2",
-        content: "1. Shot-list bắt buộc tại mọi sự kiện của CLB",
-      },
-      {
-        id: "b_med_2",
-        type: "numbered_list",
-        content:
-          "Ảnh toàn cảnh hội trường (Wide shot) thể hiện quy mô đông đảo người tham dự.\nẢnh cận cảnh diễn giả / Ban Giám khảo đang chia sẻ (chú ý bắt khoảnh khắc tự nhiên, không bị nhắm mắt).\nẢnh tương tác giữa thí sinh / khán giả đặt câu hỏi và thảo luận nhóm.\nẢnh tập thể toàn bộ Ban Tổ Chức cùng khách mời tại khu vực Backdrop cuối chương trình.",
-      },
-      {
-        id: "b_med_3",
-        type: "heading_2",
-        content: "2. Quy trình lọc ảnh và hậu kỳ 3 bước",
-      },
-      {
-        id: "b_med_4",
-        type: "callout",
-        content:
-          "Chọn lọc ngay 10-15 bức ảnh đẹp nhất (Highlight Photos) gửi cho đội Content trong vòng 2 giờ sau sự kiện để kịp lên bài Recap nóng hổi!",
-        props: { variant: "success" },
-      },
-    ],
+    content: doc(
+      h2("1. Shot-list bắt buộc tại mọi sự kiện của CLB"),
+      ol([
+        "Ảnh toàn cảnh hội trường (Wide shot) thể hiện quy mô đông đảo người tham dự.",
+        "Ảnh cận cảnh diễn giả / Ban Giám khảo đang chia sẻ (chú ý bắt khoảnh khắc tự nhiên, không bị nhắm mắt).",
+        "Ảnh tương tác giữa thí sinh / khán giả đặt câu hỏi và thảo luận nhóm.",
+        "Ảnh tập thể toàn bộ Ban Tổ Chức cùng khách mời tại khu vực Backdrop cuối chương trình.",
+      ]),
+      h2("2. Quy trình lọc ảnh và hậu kỳ 3 bước"),
+      callout("success", "Chọn lọc ngay 10-15 bức ảnh đẹp nhất (Highlight Photos) gửi cho đội Content trong vòng 2 giờ sau sự kiện để kịp lên bài Recap nóng hổi!"),
+    ),
     quizQuestions: [],
   },
   {
@@ -1425,15 +949,9 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_medq_1",
-        type: "callout",
-        content:
-          "Mặc dù khóa Đào tạo kỹ năng cho phép học tự do (sequential = false), bài tập kiểm tra này đặt requirePrevious = true để yêu cầu bạn đọc xong Chương 1 trước khi làm bài.",
-        props: { variant: "info" },
-      },
-    ],
+    content: doc(
+      callout("info", "Mặc dù khóa Đào tạo kỹ năng cho phép học tự do (sequential = false), bài tập kiểm tra này đặt requirePrevious = true để yêu cầu bạn đọc xong Chương 1 trước khi làm bài."),
+    ),
     quizQuestions: [
       {
         id: "q_med_1",
@@ -1497,35 +1015,26 @@ const RAW_INITIAL_ITEMS: RawSeedItem[] = [
     createdAt: NOW,
     updatedAt: NOW,
     attachments: [],
-    content: [
-      {
-        id: "b_mvd_1",
-        type: "callout",
-        content:
-          "Tài liệu này đang ở trạng thái Bản nháp (DRAFT) và đang được Trưởng Ban Truyền thông hoàn thiện trước khi gửi duyệt xuất bản.",
-        props: { variant: "warning" },
-      },
-      {
-        id: "b_mvd_2",
-        type: "heading_2",
-        content: "1. Thông số kỹ thuật xuất video dọc (9:16)",
-      },
-      {
-        id: "b_mvd_3",
-        type: "bullet_list",
-        content:
-          "Độ phân giải: Full HD 1080x1920, tốc độ khung hình 60fps.\nThời lượng khuyến nghị: 30 - 60 giây với 3 giây đầu (Hook) ấn tượng nhất của sự kiện.\nLuôn đính kèm Intro/Outro chuyển động chính thức của CLB MPC.",
-      },
-    ],
+    content: doc(
+      callout("warning", "Tài liệu này đang ở trạng thái Bản nháp (DRAFT) và đang được Trưởng Ban Truyền thông hoàn thiện trước khi gửi duyệt xuất bản."),
+      h2("1. Thông số kỹ thuật xuất video dọc (9:16)"),
+      ul([
+        "Độ phân giải: Full HD 1080x1920, tốc độ khung hình 60fps.",
+        "Thời lượng khuyến nghị: 30 - 60 giây với 3 giây đầu (Hook) ấn tượng nhất của sự kiện.",
+        "Luôn đính kèm Intro/Outro chuyển động chính thức của CLB MPC.",
+      ]),
+    ),
     quizQuestions: [],
   },
 ];
 
 export const INITIAL_ITEMS: SeedItem[] = RAW_INITIAL_ITEMS.map((item) => {
-  const plainText = extractPlainTextFromBlocks(item.content);
-  const readingTime = estimateReadingTime(plainText, item.content.length);
+  const content = withIds(item.content, item.id);
+  const plainText = extractPlainText(content);
+  const readingTime = estimateReadingTime(plainText, countBlocks(content));
   return {
     ...item,
+    content,
     plainText,
     readingTime,
   };

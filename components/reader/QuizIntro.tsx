@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import type { EditorBlock, ItemAttachment, ItemType } from "@/types";
+import type { ContentBlock, ItemAttachment, ItemType } from "@/types";
 import { ArticleRenderer } from "@/components/reader/ArticleRenderer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ interface QuizIntroProps {
   title: string;
   summary?: string;
   type: ItemType;
-  content: EditorBlock[];
+  content: ContentBlock[];
   attachments: ItemAttachment[];
   questionsCount: number;
   durationMinutes?: number;

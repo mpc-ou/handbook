@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ClientQuizQuestion } from "@/types";
-import { getYoutubeEmbedUrl } from "@/components/reader/ArticleRenderer";
+import { getYoutubeEmbedUrl } from "@/lib/content/blocks";
 import { ProgressBar } from "@/components/ui/animated-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

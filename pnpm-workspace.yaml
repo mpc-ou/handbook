@@ -1,8 +1,10 @@
 allowBuilds:
   '@firebase/util': true
   '@google/genai': true
+  '@parcel/watcher': false
   '@prisma/client': true
   '@prisma/engines': true
+  '@swc/core': false
   '@tailwindcss/oxide': true
   esbuild: true
   prisma: true

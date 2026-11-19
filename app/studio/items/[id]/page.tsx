@@ -4,9 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { useHandbook } from "@/context/HandbookContext";
 import { ApiError } from "@/lib/api-client";
-import BlockNoteEditor from "@/components/editor/BlockNoteEditor";
 import { AttachmentManager } from "@/components/editor/AttachmentManager";
 import { QuizBuilder } from "@/components/editor/QuizBuilder";
 import { ArticleRenderer } from "@/components/reader/ArticleRenderer";
@@ -19,14 +19,19 @@ import {
   hasQuiz,
 } from "@/lib/quiz-rules";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/seed-data";
 import {
+  countBlocks,
+  doc,
   estimateReadingTime,
-  extractPlainTextFromBlocks,
-  slugify,
-} from "@/lib/seed-data";
+  extractPlainText,
+  h2,
+  normalizeContent,
+  p,
+} from "@/lib/content/blocks";
 import type {
+  ContentBlock,
   ContentStatus,
-  EditorBlock,
   ItemAttachment,
   ItemType,
   QuizQuestion,
@@ -84,6 +89,12 @@ import {
   Share2,
   ShieldAlert,
 } from "lucide-react";
+
+// BlockNote chỉ chạy phía client
+const ContentEditor = dynamic(() => import("@/components/editor/ContentEditor"), {
+  ssr: false,
+  loading: () => <div className="h-40 animate-pulse rounded-lg bg-muted/40" />,
+});
 
 const ITEM_TYPE_ICONS: Record<
   ItemType,
@@ -168,22 +179,11 @@ export default function StudioItemEditorPage() {
       : 80
   );
 
-  const [blocks, setBlocks] = useState<EditorBlock[]>(() => {
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() => {
     if (existingItem?.content) return existingItem.content;
     const initType = existingItem?.type || queryType || "CONTENT";
     if (initType === "CONTENT") {
-      return [
-        {
-          id: "blk_init_1",
-          type: "heading_2",
-          content: t("canvas.defaultHeading"),
-        },
-        {
-          id: "blk_init_2",
-          type: "paragraph",
-          content: t("canvas.defaultParagraph"),
-        },
-      ];
+      return doc(h2(t("canvas.defaultHeading")), p(t("canvas.defaultParagraph")));
     }
     return [];
   });
@@ -272,10 +272,10 @@ export default function StudioItemEditorPage() {
       ? t("noPermission.memberReason")
       : t("noPermission.unassignedReason");
 
-  const plainText = useMemo(() => extractPlainTextFromBlocks(blocks), [blocks]);
+  const plainText = useMemo(() => extractPlainText(blocks), [blocks]);
   const estimatedReadingTime = useMemo(
-    () => estimateReadingTime(plainText, blocks.length),
-    [plainText, blocks.length]
+    () => estimateReadingTime(plainText, countBlocks(blocks)),
+    [plainText, blocks]
   );
 
   const draftStorageKey = isNew
@@ -476,8 +476,10 @@ export default function StudioItemEditorPage() {
       if (d.requireScrollToBottom !== undefined)
         setRequireScrollToBottom(d.requireScrollToBottom);
       if (Array.isArray(d.blocks)) {
-        setBlocks(d.blocks);
-        if (d.blocks.length > 0) setShowInstructions(true);
+        // Bản nháp cũ (định dạng khối trước BlockNote) bị lọc bỏ ở đây
+        const restored = normalizeContent(d.blocks);
+        setBlocks(restored);
+        if (restored.length > 0) setShowInstructions(true);
       }
       if (Array.isArray(d.attachments)) setAttachments(d.attachments);
       if (hasQuiz(isNew ? (d.type ?? type) : type)) {
@@ -1232,8 +1234,9 @@ export default function StudioItemEditorPage() {
         {/* Phân biệt theo loại: CONTENT vs QUIZ / ASSIGNMENT */}
         {type === "CONTENT" ? (
           <div className="space-y-8">
-            <BlockNoteEditor
-              blocks={blocks}
+            <ContentEditor
+              value={blocks}
+              editable={!isLocked}
               onChange={(nextBlocks) => {
                 setBlocks(nextBlocks);
                 markDirty();
@@ -1286,15 +1289,7 @@ export default function StudioItemEditorPage() {
                   onClick={() => {
                     const next = !showInstructions;
                     setShowInstructions(next);
-                    if (next && blocks.length === 0) {
-                      setBlocks([
-                        {
-                          id: `blk_${Date.now()}`,
-                          type: "paragraph",
-                          content: "",
-                        },
-                      ]);
-                    }
+                    if (next && blocks.length === 0) setBlocks(doc(p("")));
                   }}
                   className="text-xs cursor-pointer gap-1"
                 >
@@ -1314,8 +1309,9 @@ export default function StudioItemEditorPage() {
 
               {showInstructions && (
                 <div className="rounded-xl border border-border p-4 bg-card/40">
-                  <BlockNoteEditor
-                    blocks={blocks}
+                  <ContentEditor
+                    value={blocks}
+                    editable={!isLocked}
                     onChange={(nextBlocks) => {
                       setBlocks(nextBlocks);
                       markDirty();

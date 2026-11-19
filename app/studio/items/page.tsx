@@ -47,6 +47,7 @@ import type {
   ItemType,
   LessonRecord,
 } from "@/types";
+import { doc, h2, p, withIds } from "@/lib/content/blocks";
 import {
   CheckCircle2,
   ClipboardList,
@@ -290,18 +291,10 @@ export default function StudioItemsPage() {
           : {}),
         content:
           newType === "CONTENT"
-            ? [
-                {
-                  id: `blk_${Date.now()}_1`,
-                  type: "heading_2",
-                  content: tEditor("canvas.defaultHeading"),
-                },
-                {
-                  id: `blk_${Date.now()}_2`,
-                  type: "paragraph",
-                  content: tEditor("canvas.defaultParagraph"),
-                },
-              ]
+            ? withIds(
+                doc(h2(tEditor("canvas.defaultHeading")), p(tEditor("canvas.defaultParagraph"))),
+                `blk${Date.now().toString(36)}`
+              )
             : [],
         attachments: [],
       });

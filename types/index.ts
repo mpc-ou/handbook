@@ -75,60 +75,83 @@ export interface ClientQuizQuestion {
   sampleCode?: string;
 }
 
-export type BlockType =
-  | "heading_1"
-  | "heading_2"
-  | "heading_3"
+/*
+ * Nội dung chương = JSON tài liệu của BlockNote (`editor.document`).
+ * Type dưới đây mô tả cấu trúc đó mà không kéo @blocknote vào phía đọc.
+ * Schema thật (khối mặc định + callout/comparison/gallery/youtube) ở
+ * `components/editor/schema.tsx`; hàm dựng/đọc ở `lib/content/blocks.ts`.
+ */
+export type ContentBlockType =
   | "paragraph"
-  | "bullet_list"
-  | "numbered_list"
-  | "checklist"
-  | "code"
-  | "callout"
+  | "heading"
   | "quote"
+  | "bulletListItem"
+  | "numberedListItem"
+  | "checkListItem"
+  | "toggleListItem"
+  | "codeBlock"
   | "divider"
   | "image"
-  | "gallery"
-  | "video"
   | "table"
-  | "comparison";
+  | "callout"
+  | "comparison"
+  | "gallery"
+  | "youtube";
+
+export type CalloutVariant = "info" | "warning" | "success" | "danger";
+
+export interface ContentStyles {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  code?: boolean;
+  textColor?: string;
+  backgroundColor?: string;
+}
+
+export interface ContentText {
+  type: "text";
+  text: string;
+  styles: ContentStyles;
+}
+
+export interface ContentLink {
+  type: "link";
+  href: string;
+  content: ContentText[];
+}
+
+export type ContentInline = ContentText | ContentLink;
+
+export interface ContentTableCell {
+  type: "tableCell";
+  props?: Record<string, unknown>;
+  content: ContentInline[];
+}
+
+export interface ContentTable {
+  type: "tableContent";
+  columnWidths: (number | null | undefined)[];
+  headerRows?: number;
+  headerCols?: number;
+  rows: { cells: (ContentInline[] | ContentTableCell)[] }[];
+}
+
+export type ContentPropValue = string | number | boolean;
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  props: Record<string, ContentPropValue>;
+  /** inline (đa số khối) | bảng | không có (divider, image, khối tùy biến "none"). */
+  content?: ContentInline[] | ContentTable;
+  children: ContentBlock[];
+}
 
 export interface GalleryImage {
-  id: string;
   url: string;
   caption?: string;
-  alt?: string;
-}
-
-export interface TableData {
-  headers: string[];
-  rows: string[][];
-}
-
-export interface ComparisonData {
-  leftTitle: string;
-  leftPoints: string[];
-  rightTitle: string;
-  rightPoints: string[];
-}
-
-export interface EditorBlock {
-  id: string;
-  type: BlockType;
-  content: string;
-  props?: {
-    align?: "left" | "center" | "right" | "justify";
-    language?: string;
-    checked?: boolean;
-    variant?: "info" | "warning" | "success" | "danger";
-    imageUrl?: string;
-    caption?: string;
-    videoUrl?: string;
-    videoProvider?: "youtube" | "direct";
-    galleryImages?: GalleryImage[];
-    tableData?: TableData;
-    comparisonData?: ComparisonData;
-  };
 }
 
 export interface UserProfile {
@@ -215,7 +238,7 @@ export interface ItemRecord {
   title: string;
   slug: string;
   summary: string;
-  content: EditorBlock[];
+  content: ContentBlock[];
   plainText: string;
   readingTime: number;
   attachments: ItemAttachment[];

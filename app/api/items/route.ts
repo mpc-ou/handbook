@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { slugify, extractPlainTextFromBlocks, estimateReadingTime } from "@/lib/seed-data";
+import { slugify } from "@/lib/seed-data";
+import { countBlocks, estimateReadingTime, extractPlainText, normalizeContent, withIds } from "@/lib/content/blocks";
 import { extractCloudinaryUrlsFromItem, syncAttachments } from "@/lib/cloudinary-server";
 import { handleApiError, requireItemEditor, requireLessonEditor, requireStaff } from "@/lib/authz";
 import { findInvalidQuestionTypes, hasQuiz } from "@/lib/quiz-rules";
 import { apiError } from "@/lib/api-errors";
 import { itemInclude, serializeItem } from "@/lib/serializers";
-import type { EditorBlock, QuizQuestion } from "@/types";
+import type { QuizQuestion } from "@/types";
 import type { ItemType } from "@prisma/client";
 
 const bad = apiError;
@@ -71,8 +72,8 @@ export async function POST(req: NextRequest) {
     if (!ITEM_TYPES.includes(type)) return bad("invalidItemType");
     const user = await requireLessonEditor(lessonId);
 
-    const content = (body.content ?? []) as EditorBlock[];
-    const plainText = extractPlainTextFromBlocks(content);
+    const content = withIds(normalizeContent(body.content), `blk${Date.now().toString(36)}`);
+    const plainText = extractPlainText(content);
     const max = await prisma.item.aggregate({ where: { lessonId }, _max: { orderIndex: true } });
     // Chương (CONTENT) không có bài kiểm tra; QUIZ/ASSIGNMENT luôn có
     const needsQuiz = hasQuiz(type);
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
         passScorePercent: needsQuiz ? (body.passScorePercent ?? null) : null,
         content: content as unknown as Prisma.InputJsonValue,
         plainText,
-        readingTime: estimateReadingTime(plainText, content.length),
+        readingTime: estimateReadingTime(plainText, countBlocks(content)),
         attachments: (body.attachments ?? []) as Prisma.InputJsonValue,
         authorId: user.id,
         updaterId: user.id,
@@ -178,10 +179,11 @@ export async function PUT(req: NextRequest) {
     else if (patch.passScorePercent !== undefined) data.passScorePercent = patch.passScorePercent;
     if (patch.attachments !== undefined) data.attachments = patch.attachments as Prisma.InputJsonValue;
     if (patch.content !== undefined) {
-      const blocks = patch.content as EditorBlock[];
+      const blocks = withIds(normalizeContent(patch.content), `blk${Date.now().toString(36)}`);
+      const plainText = extractPlainText(blocks);
       data.content = blocks as unknown as Prisma.InputJsonValue;
-      data.plainText = extractPlainTextFromBlocks(blocks);
-      data.readingTime = estimateReadingTime(data.plainText, blocks.length);
+      data.plainText = plainText;
+      data.readingTime = estimateReadingTime(plainText, countBlocks(blocks));
     }
     // Chuyển item sang bài học khác (cùng quyền sửa ở đích)
     if (patch.lessonId !== undefined) {
