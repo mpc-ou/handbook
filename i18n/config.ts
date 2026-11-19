@@ -16,7 +16,7 @@ export const NAMESPACES = [
   "quiz", // trắc nghiệm + bài tập
   "studio", // dashboard, trình dựng giáo trình, cài đặt, AdminLayout, ConfirmDialog/PageHeader
   "studioItems", // danh sách + trình soạn chương/bài tập, trang quizzes, trang members
-  "editor", // components/editor/* (BlockNoteEditor, QuizBuilder, AttachmentManager, CoverImagePicker, ImageCropDialog)
+  "editor", // components/editor/* (ContentEditor, QuizBuilder, AttachmentManager, CoverImagePicker, ImageCropDialog)
   "progress", // tiến độ học viên (admin) + thành tích + chuỗi ngày
   "profile", // hồ sơ cá nhân
   "search", // tìm kiếm toàn cục

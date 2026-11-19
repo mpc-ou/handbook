@@ -1,8 +1,6 @@
 import { Prisma, PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
-  estimateReadingTime,
-  extractPlainTextFromBlocks,
   INITIAL_CATEGORIES,
   INITIAL_COURSES,
   INITIAL_ITEMS,
@@ -399,8 +397,7 @@ async function main() {
     const orderIndex = itemOrderByLesson.get(lessonId) ?? 0;
     itemOrderByLesson.set(lessonId, orderIndex + 1);
 
-    const plainText = extractPlainTextFromBlocks(it.content);
-    const readingTime = estimateReadingTime(plainText, it.content.length);
+    const { plainText, readingTime } = it;
     const contentJson = it.content as unknown as Prisma.InputJsonValue;
     const attachmentsJson = it.attachments as unknown as Prisma.InputJsonValue;
     const passScorePercent = it.passScorePercent > 0 ? it.passScorePercent : null;

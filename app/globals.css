@@ -155,3 +155,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Trình soạn nội dung (BlockNote): nền trong suốt, font của app, chữ cùng lề với tiêu đề.
+   Lề 54px của BlockNote dành cho tay nắm kéo thả nên được kéo ra ngoài cột ở màn hình rộng. */
+.mpc-content-editor .bn-container[data-color-scheme] {
+  --bn-colors-editor-background: transparent;
+  --bn-font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+.mpc-content-editor .bn-editor {
+  padding-inline: 0;
+}
+@media (min-width: 768px) {
+  .mpc-content-editor .bn-container {
+    margin-inline: -54px;
+  }
+  .mpc-content-editor .bn-editor {
+    padding-inline: 54px;
+  }
+}

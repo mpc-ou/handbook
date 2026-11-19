@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import type {
   ClientQuizQuestion,
-  EditorBlock,
+  ContentBlock,
   ItemAttachment,
   ItemType,
   QuizGradeResponse,
@@ -18,7 +18,7 @@ export interface QuizRunnerProps {
   title: string;
   summary?: string;
   type: ItemType;
-  content: EditorBlock[];
+  content: ContentBlock[];
   attachments: ItemAttachment[];
   passScorePercent: number;
   durationMinutes?: number;

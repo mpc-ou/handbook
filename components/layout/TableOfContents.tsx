@@ -3,6 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { ItemRecord, UserProgressRecord } from "@/types";
+import { inlineToText } from "@/lib/content/blocks";
 
 interface TableOfContentsProps {
   item: ItemRecord;
@@ -12,12 +13,14 @@ interface TableOfContentsProps {
 export function TableOfContents({ item }: TableOfContentsProps) {
   const t = useTranslations("reader.toc");
 
-  const headings = (item.content || []).filter(
-    (block) =>
-      block.type === "heading_1" ||
-      block.type === "heading_2" ||
-      block.type === "heading_3"
-  );
+  const headings = (item.content || [])
+    .filter((block) => block.type === "heading" && Number(block.props.level) <= 3)
+    .map((block) => ({
+      id: block.id,
+      level: Number(block.props.level),
+      text: inlineToText(Array.isArray(block.content) ? block.content : undefined),
+    }))
+    .filter((h) => h.text.trim());
 
   if (headings.length === 0) {
     return null;
@@ -35,9 +38,9 @@ export function TableOfContents({ item }: TableOfContentsProps) {
             <li
               key={h.id}
               className={
-                h.type === "heading_3"
+                h.level === 3
                   ? "pl-3"
-                  : h.type === "heading_2"
+                  : h.level === 2
                   ? "pl-1.5"
                   : "font-medium text-foreground"
               }
@@ -46,7 +49,7 @@ export function TableOfContents({ item }: TableOfContentsProps) {
                 href={`#block-${h.id}`}
                 className="block py-0.5 text-muted-foreground hover:text-foreground transition-colors line-clamp-2"
               >
-                {h.content}
+                {h.text}
               </a>
             </li>
           ))}

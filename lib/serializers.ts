@@ -2,12 +2,12 @@ import type { Prisma } from "@prisma/client";
 import type {
   CategoryRecord,
   CourseRecord,
-  EditorBlock,
   ItemAttachment,
   ItemRecord,
   LessonRecord,
   QuizQuestion,
 } from "@/types";
+import { normalizeContent } from "@/lib/content/blocks";
 
 export const courseInclude = {
   author: { select: { fullName: true } },
@@ -86,7 +86,7 @@ export function serializeItem(i: ItemRow): ItemRecord {
     title: i.title,
     slug: i.slug,
     summary: i.summary ?? "",
-    content: i.content as unknown as EditorBlock[],
+    content: normalizeContent(i.content),
     plainText: i.plainText,
     readingTime: i.readingTime,
     attachments: i.attachments as unknown as ItemAttachment[],
